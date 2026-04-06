@@ -65,8 +65,8 @@ export function AnimatedBackground() {
     }
     resizeCanvas()
 
-    // Optimized particle count based on screen size
-    const particleCount = Math.min(60, Math.floor((width * height) / 25000))
+    // Drastically reduce particle count for smooth performance
+    const particleCount = 20
     
     // Initialize particles only once
     if (particlesRef.current.length === 0) {
@@ -158,24 +158,7 @@ export function AnimatedBackground() {
         ctx.fill()
       }
 
-      // Draw connections (optimized with spatial check)
-      ctx.lineWidth = 0.5
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x
-          const dy = particles[i].y - particles[j].y
-          const distSq = dx * dx + dy * dy
-
-          if (distSq < connectionDistanceSq) {
-            const alpha = (1 - distSq / connectionDistanceSq) * 0.15
-            ctx.strokeStyle = `hsla(220, 70%, 60%, ${alpha})`
-            ctx.beginPath()
-            ctx.moveTo(particles[i].x, particles[i].y)
-            ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.stroke()
-          }
-        }
-      }
+      // Draw connections removed for better performance and smoother UI
 
       animationRef.current = requestAnimationFrame(animate)
     }

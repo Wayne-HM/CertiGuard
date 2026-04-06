@@ -49,7 +49,8 @@ export default function Home() {
       formData.append("certificate", file)
       formData.append("platform", platform)
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/verify`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://certiguard-ksm9.onrender.com"
+      const response = await fetch(`${API_URL}/verify`, {
         method: "POST",
         body: formData,
       })
