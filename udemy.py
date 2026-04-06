@@ -8,10 +8,9 @@ from urllib.parse import urlparse
 from PIL import Image, ImageOps, ImageEnhance
 import io
 from pyzbar.pyzbar import decode
-import cv2
-import numpy as np
 import pytesseract
 import os
+import gc
 
 # --- TESSERACT CONFIGURATION ---
 TESSERACT_PATHS = [
@@ -115,32 +114,7 @@ def decode_qr_with_preprocessing(pil_img):
         res = try_decode(rotated)
         if res: return res
 
-    # 5. OpenCV-based Contour Extraction (Finding QR in complex images)
-    try:
-        # Convert PIL to OpenCV format
-        open_cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-        gray_cv = cv2.cvtColor(open_cv_img, cv2.COLOR_BGR2GRAY)
-        
-        # Adaptive thresholding to find squares
-        thresh_cv = cv2.adaptiveThreshold(gray_cv, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-        
-        # Find contours
-        contours, _ = cv2.findContours(thresh_cv, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        
-        for cnt in contours:
-            # QR codes are roughly square
-            peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
-            
-            if len(approx) == 4: # Square-ish
-                x, y, w, h = cv2.boundingRect(approx)
-                aspect_ratio = float(w) / h
-                if 0.8 <= aspect_ratio <= 1.2 and w > 50: # Sane size
-                    # Crop and try to decode
-                    roi = pil_img.crop((x-10, y-10, x+w+10, y+h+10))
-                    res = try_decode(roi)
-                    if res: return res
-    except: pass
+    # Removed opencv preprocessing to save dependencies
 
     return None
 
