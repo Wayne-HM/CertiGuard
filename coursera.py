@@ -102,7 +102,7 @@ def extract_text_via_ocr(pdf_path):
     try:
         doc = fitz.open(pdf_path)
         page = doc[0]
-        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
         img_data = pix.tobytes("png")
         pil_img = Image.open(io.BytesIO(img_data))
         
@@ -112,6 +112,11 @@ def extract_text_via_ocr(pdf_path):
         
         ocr_text = pytesseract.image_to_string(high_contrast).strip()
         doc.close()
+        
+        del pix, img_data, pil_img, gray, enhancer, high_contrast
+        import gc
+        gc.collect()
+        
         return ocr_text
     except Exception as e:
         print(f"Full-page OCR error: {e}")
@@ -134,9 +139,13 @@ def extract_verification_link(text, pdf_path=""):
 def scrape_page(verification_link):
     try:
         options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1280,720")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
         import os
         if os.path.exists("/usr/bin/chromium"):
             options.binary_location = "/usr/bin/chromium"

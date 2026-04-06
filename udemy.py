@@ -199,19 +199,22 @@ def extract_details_via_ocr(pdf_path):
         doc = fitz.open(pdf_path)
         page = doc[0]
         
-        # Render high-DPI image of the full page
-        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+        # Render high-DPI image of the page
+        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
         img_data = pix.tobytes("png")
         pil_img = Image.open(io.BytesIO(img_data))
         
         # Preprocessing: Grayscale and contrast enhancement
         gray = ImageOps.grayscale(pil_img)
-        enhancer = ImageEnhance.Contrast(gray)
-        high_contrast = enhancer.enhance(2.0)
+        high_contrast = ImageEnhance.Contrast(gray).enhance(2.0)
         
         # Extract text via Tesseract
-        ocr_text = pytesseract.image_to_string(high_contrast).strip()
+        custom_config = r'--oem 3 --psm 6'
+        ocr_text = pytesseract.image_to_string(high_contrast, config=custom_config).strip()
         doc.close()
+        
+        del pix, img_data, pil_img, gray, high_contrast
+        gc.collect()
         
         # Use existing parsing logic on OCR results
         return extract_details_from_pdf_text(ocr_text)
@@ -319,9 +322,13 @@ def get_verified_details(verification_link):
     driver = None
     try:
         options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1280,720")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         
         import os
