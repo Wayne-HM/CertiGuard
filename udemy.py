@@ -191,10 +191,11 @@ def extract_details_via_ocr(pdf_path):
         gc.collect()
         
         # Use existing parsing logic on OCR results
-        return extract_details_from_pdf_text(ocr_text)
+        extracted_name, extracted_course = extract_details_from_pdf_text(ocr_text)
+        return extracted_name, extracted_course, ocr_text
     except Exception as e:
         print(f"Full-page OCR error: {e}")
-        return "Name Not Found", "Course Not Found"
+        return "Name Not Found", "Course Not Found", ""
 
 
 def extract_details_from_pdf_text(text):
@@ -382,7 +383,8 @@ def run_verification(file_path):
     if local_name == "Name Not Found" or local_course == "Course Not Found":
         if not extracted_text.strip():
             print("INFO: Image-based PDF detected, attempting full-page OCR for metadata...")
-            local_name, local_course = extract_details_via_ocr(file_path)
+            local_name, local_course, raw_ocr = extract_details_via_ocr(file_path)
+            extracted_text += "\n" + raw_ocr
             print(f"DEBUG: OCR Name: {local_name}, OCR Course: {local_course}")
 
 
@@ -428,6 +430,26 @@ def run_verification(file_path):
     if not is_name_match and local_name != "Name Not Found":
         normalized_local_name = local_name.lower().strip()
         is_name_match = any(part in normalized_local_name for part in name_parts)
+
+    import difflib
+    
+    # NEW: Fuzzy matching threshold for OCR typos
+    if not is_name_match and extracted_text.strip():
+        # Check against the full text to see if there's a highly similar string
+        # We look for a string in the text that closely matches the full verified name
+        ratio = difflib.SequenceMatcher(None, normalized_web_name, normalized_extracted_text).ratio()
+        # If the text is massive, sequence matcher ratio might be tiny, so we check chunks
+        text_words = normalized_extracted_text.split()
+        for i in range(len(text_words)):
+            chunk = " ".join(text_words[i:i+len(name_parts)])
+            if difflib.SequenceMatcher(None, normalized_web_name, chunk).ratio() > 0.75:
+                is_name_match = True
+                break
+
+    # If all extraction failed but we have a valid scraped verified_name and URL
+    if not is_name_match and not extracted_text.strip():
+        # Blindly trust the URL if it's completely unparseable visually
+        return f"✅ Valid Udemy Certificate (Direct Verification)\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}\n[Note: Document text unreadable, validated via embedded link.]"
 
     if is_name_match:
         return f"✅ Valid Udemy Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}"
