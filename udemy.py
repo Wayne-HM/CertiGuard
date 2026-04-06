@@ -200,59 +200,58 @@ def extract_details_via_ocr(pdf_path):
 def extract_details_from_pdf_text(text):
     """
     Extracts student name and course name directly from the PDF text.
-    
-    Standard Udemy certificate layout:
-        CERTIFICATE OF COMPLETION
-        [Course Title]
-        Instructors [Instructor Name]
-        [Student Name]
-        Date [Date]
-        Length [Hours]
     """
     name = "Name Not Found"
     course = "Course Not Found"
     
     # --- Extract Course ---
-    # Pattern 1: Text between "CERTIFICATE OF COMPLETION" and "Instructors"
     course_match = re.search(
         r"CERTIFICATE\s+OF\s+COMPLETION\s+(.*?)\s*Instructors?",
         text, re.IGNORECASE | re.DOTALL
     )
     if course_match:
         course = course_match.group(1).strip()
-        # Clean up newlines within the course title
         course = re.sub(r"\s+", " ", course).strip()
     
     # --- Extract Name ---
-    # Pattern 1: Name is on a line between "Instructors [name]" and "Date"
+    # Pattern 1: Multi-line matching
     name_match = re.search(
         r"Instructors?\s+.+?\n\s*\n?\s*([A-Za-z][A-Za-z\s\-']+?)\s*\n\s*Date",
         text, re.IGNORECASE | re.DOTALL
     )
     if name_match:
-        name = name_match.group(1).strip()
-        name = re.sub(r"\s+", " ", name).strip()
-    
+        candidate = name_match.group(1).strip()
+        candidate = re.sub(r"\s+", " ", candidate).strip()
+        if "Bootcamp" not in candidate and "Instructor" not in candidate and len(candidate.split()) < 5:
+            name = candidate
+            
     if name == "Name Not Found":
-        # Pattern 2: Simpler — look for a line with just a name (2-4 words, capitalized) before "Date"
-        name_match = re.search(
-            r"\n\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s*\n\s*Date",
-            text, re.DOTALL
-        )
-        if name_match:
-            name = name_match.group(1).strip()
-
-    if name == "Name Not Found":
-        # Pattern 3: Fallback for single-line text (newlines collapsed)
+        # Regex often fails on complex Udemy certificates due to missing newlines.
+        # Fallback: Extract everything between Instructor names and Date
         text_clean = text.replace("\n", " ").replace("  ", " ")
-        name_match = re.search(
-            r"Instructors?\s+[\w\s]+?\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\s+Date",
-            text_clean, re.IGNORECASE
-        )
-        if name_match:
-            name = name_match.group(1).strip()
-
-    return name, course
+        if "Instructor" in text_clean and "Date" in text_clean:
+            # Get the chunk between the last occurrence of Instructor and the first occurrence of Date
+            parts = text_clean.split("Date")
+            if parts:
+                before_date = parts[0]
+                instructor_parts = re.split(r"Instructors?", before_date, flags=re.IGNORECASE)
+                if len(instructor_parts) > 1:
+                    after_instructors = instructor_parts[-1].strip()
+                    # The chunk 'after_instructors' contains the instructor name AND the student name
+                    # e.g., "Toppers Bootcamp Jane Doe"
+                    words = after_instructors.split()
+                    
+                    # Assuming student name is usually the last 2-3 words before 'Date'
+                    if len(words) >= 2:
+                        candidate = " ".join(words[-3:]) if len(words) >= 3 else " ".join(words[-2:])
+                        # Filter out known instructor keywords
+                        if "Bootcamp" not in candidate and "Academy" not in candidate:
+                            name = candidate
+                        elif len(words) >= 4:
+                            # Try just the last two words if the 3rd word was Bootcamp
+                            candidate_2 = " ".join(words[-2:])
+                            if "Bootcamp" not in candidate_2 and "Academy" not in candidate_2:
+                                name = candidate_2
 
 def extract_verification_link(text, pdf_path=""):
     # Try QR code first
