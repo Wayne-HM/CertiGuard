@@ -253,6 +253,8 @@ def extract_details_from_pdf_text(text):
                             if "Bootcamp" not in candidate_2 and "Academy" not in candidate_2:
                                 name = candidate_2
 
+    return name, course
+
 def extract_verification_link(text, pdf_path=""):
     # Try QR code first
     qr_url = extract_qr_from_pdf(pdf_path)
