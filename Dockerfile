@@ -1,7 +1,7 @@
 # Start with Python image
 FROM python:3.11-slim
 
-# Install system packages (including zbar for pyzbar)
+# Install system packages (including zbar for pyzbar and tesseract-ocr)
 RUN apt-get update && apt-get install -y \
     libzbar0 \
     curl \
@@ -9,12 +9,12 @@ RUN apt-get update && apt-get install -y \
     wget \
     libglib2.0-0 \
     libnss3 \
-    libgconf-2-4 \
     libxss1 \
     libasound2 \
     libxtst6 \
     libx11-xcb1 \
     xvfb \
+    tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
