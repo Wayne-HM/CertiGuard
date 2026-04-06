@@ -422,12 +422,12 @@ def run_verification(file_path):
     
     # Check against standard extracted text first
     normalized_extracted_text = extracted_text.lower()
-    is_name_match = all(part in normalized_extracted_text for part in name_parts)
+    is_name_match = any(part in normalized_extracted_text for part in name_parts)
     
     # For image-based PDFs: also check against OCR-extracted local_name
     if not is_name_match and local_name != "Name Not Found":
         normalized_local_name = local_name.lower().strip()
-        is_name_match = all(part in normalized_local_name for part in name_parts)
+        is_name_match = any(part in normalized_local_name for part in name_parts)
 
     if is_name_match:
         return f"✅ Valid Udemy Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}"

@@ -141,11 +141,11 @@ def parse_verification_output(output, platform, text):
         status = "fake"
     
     # Precise extraction for standardized labels
-    name_match = re.search(r"^Name:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
+    name_match = re.search(r"^(?:Verified )?Name:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
     name = name_match.group(1).strip() if name_match else ""
     if not name:
         # Fallback to older format (Stricter matching to avoid error message words)
-        name_match = re.search(r"Name:\s+([A-Za-z\s]+)", output)
+        name_match = re.search(r"Name:\s+([A-Za-z\s]+?)(?=\n|$)", output)
         name = name_match.group(1).strip() if name_match else "Extracted from Certificate"
     
     course_match = re.search(r"^Course:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
