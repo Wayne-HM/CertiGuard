@@ -324,7 +324,12 @@ def get_verified_details(verification_link):
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        import os
+        if os.path.exists("/usr/bin/chromium"):
+            options.binary_location = "/usr/bin/chromium"
+            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
+        else:
+            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         driver.set_page_load_timeout(30)
         
         driver.get(verification_link)

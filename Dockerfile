@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y \
     libx11-xcb1 \
     xvfb \
     tesseract-ocr \
+    chromium \
+    chromium-driver \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
