@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1fe72d66-0d77-4a11-9b86-528102c9437c",
+    "name": "Antigravity Test",
+    "email": "test@example.com",
+    "password": "scrypt:32768:8:1$7ZgTXSz3pJQPqXEH$c37fec4e5603247abb7fd45ccaa7ab421933f8c9b76f205bca42c8becc5741cca29610ddad76eb6944b9ee9d81df231ddeda34fc3bb0fe619ca14e9b48abdc9a",
+    "created_at": "2026-04-04T15:15:15.204217"
+  },
+  {
+    "id": "b0f1d878-c007-48a0-b6d3-ef3a8b2a140f",
+    "name": "syed",
+    "email": "knownasperfect@gmail.com",
+    "password": "scrypt:32768:8:1$d2SDqv85JG9eKkb8$cdb3243e2dda4ff9b662ca17aef1b7155d2c82fcb0ddece674560eb78ca0064867872ae2ed508d5fd0ada108e89c4a041674bc2f145301c02bde8f7d94496967",
+    "created_at": "2026-04-04T15:38:10.329931"
+  }
+]

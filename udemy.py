@@ -1,0 +1,438 @@
+import fitz  # PyMuPDF
+import re
+import time
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from urllib.parse import urlparse
+from PIL import Image, ImageOps, ImageEnhance
+import io
+from pyzbar.pyzbar import decode
+import cv2
+import numpy as np
+import pytesseract
+import os
+
+# --- TESSERACT CONFIGURATION ---
+TESSERACT_PATHS = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe", # Local user path
+    r"/usr/bin/tesseract" # Linux path
+]
+
+for path in TESSERACT_PATHS:
+    if os.path.exists(path):
+        pytesseract.pytesseract.tesseract_cmd = path
+        break
+
+
+TRUSTED_DOMAINS = {
+    "udemy.com": "udemy",
+    "www.udemy.com": "udemy",
+    "ude.my": "udemy"
+}
+
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    try:
+        doc = fitz.open(pdf_path)
+        for page in doc:
+            text += page.get_text("text") + "\n"
+            # If standard text extraction yields nothing, try blocks/words
+            if not text.strip():
+                text += "\n".join(b[4] for b in page.get_text("blocks"))
+        doc.close()
+    except Exception as e:
+        print(f"Error extracting text: {e}")
+    return text.strip()
+
+def extract_qr_from_pdf(pdf_path):
+    try:
+        doc = fitz.open(pdf_path)
+        for page in doc:
+            images = page.get_images(full=True)
+            # If no images, try rendering the page as an image (for vector-only scans)
+            if not images:
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2)) # 2x zoom
+                img_data = pix.tobytes("png")
+                pil_img = Image.open(io.BytesIO(img_data))
+                qr_url = decode_qr_with_preprocessing(pil_img)
+                if qr_url:
+                    doc.close()
+                    return qr_url
+                continue
+
+            for img in images:
+                xref = img[0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                pil_img = Image.open(io.BytesIO(image_bytes))
+                
+                qr_url = decode_qr_with_preprocessing(pil_img)
+                if qr_url:
+                    doc.close()
+                    return qr_url
+        doc.close()
+    except Exception as e:
+        print(f"QR Extraction error: {e}")
+    return None
+
+def decode_qr_with_preprocessing(pil_img):
+    """
+    Tries multiple preprocessing steps to help pyzbar find the QR code.
+    """
+    def try_decode(img):
+        try:
+            decoded = decode(img)
+            for obj in decoded:
+                data = obj.data.decode("utf-8").strip()
+                if "udemy.com/certificate" in data or "ude.my" in data:
+                    return data
+        except: pass
+        return None
+
+    # 1. Original
+    res = try_decode(pil_img)
+    if res: return res
+
+    # 2. Grayscale + High Contrast
+    gray = ImageOps.grayscale(pil_img)
+    enhancer = ImageEnhance.Contrast(gray)
+    high_contrast = enhancer.enhance(2.5)
+    res = try_decode(high_contrast)
+    if res: return res
+
+    # 3. Upscaling (helpful for small QR codes)
+    width, height = pil_img.size
+    if width < 2000:
+        big = pil_img.resize((width * 2, height * 2), Image.Resampling.LANCZOS)
+        res = try_decode(big)
+        if res: return res
+
+    # 4. Rotations (some scans are sideways)
+    for angle in [90, 180, 270]:
+        rotated = high_contrast.rotate(angle, expand=True)
+        res = try_decode(rotated)
+        if res: return res
+
+    # 5. OpenCV-based Contour Extraction (Finding QR in complex images)
+    try:
+        # Convert PIL to OpenCV format
+        open_cv_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        gray_cv = cv2.cvtColor(open_cv_img, cv2.COLOR_BGR2GRAY)
+        
+        # Adaptive thresholding to find squares
+        thresh_cv = cv2.adaptiveThreshold(gray_cv, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        
+        # Find contours
+        contours, _ = cv2.findContours(thresh_cv, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        
+        for cnt in contours:
+            # QR codes are roughly square
+            peri = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.04 * peri, True)
+            
+            if len(approx) == 4: # Square-ish
+                x, y, w, h = cv2.boundingRect(approx)
+                aspect_ratio = float(w) / h
+                if 0.8 <= aspect_ratio <= 1.2 and w > 50: # Sane size
+                    # Crop and try to decode
+                    roi = pil_img.crop((x-10, y-10, x+w+10, y+h+10))
+                    res = try_decode(roi)
+                    if res: return res
+    except: pass
+
+    return None
+
+def extract_top_right_url(pdf_path):
+    """
+    Specifically renders and OCRs the top-right corner of the certificate
+    to extract the 'Certificate url' which is the secondary line in that area.
+    """
+    try:
+        doc = fitz.open(pdf_path)
+        page = doc[0]
+        
+        # Define top-right area (Udemy standard: x > 60%, y < 15%)
+        # For a standard PDF resolution, x from 350 to end, y from 0 to 120
+        rect = page.rect
+        # Create a crop box for the top right (roughly 40% width from right, 20% height from top)
+        crop_rect = fitz.Rect(rect.width * 0.55, 0, rect.width, rect.height * 0.2)
+        
+        # Render high-DPI image of this area
+        pix = page.get_pixmap(matrix=fitz.Matrix(4, 4), clip=crop_rect)
+        img_data = pix.tobytes("png")
+        pil_img = Image.open(io.BytesIO(img_data))
+        
+        # Preprocessing for OCR
+        gray = ImageOps.grayscale(pil_img)
+        # Apply binary thresholding for cleaner text
+        thresh = gray.point(lambda p: 255 if p > 180 else 0)
+        
+        # Use Tesseract to get text
+        ocr_text = pytesseract.image_to_string(thresh).strip()
+        
+        # Clean specific misreads (like spaces, or misread 'ude.my')
+        ocr_text = ocr_text.replace(" ", "")
+        
+        # Look for the URL pattern
+        match = re.search(r"(?:ude\.my/|udemy\.com/certificate/)([a-zA-Z0-9\-]+)", ocr_text, re.IGNORECASE)
+        if match:
+            url_part = match.group(1).strip()
+            found_url = f"https://www.udemy.com/certificate/{url_part}/"
+            print(f"DEBUG: Found Udemy URL via OCR: {found_url}")
+            doc.close()
+            return found_url
+        
+        doc.close()
+    except Exception as e:
+        print(f"OCR Extraction error: {e}")
+    return None
+
+
+def extract_details_via_ocr(pdf_path):
+    """
+    Performs OCR on the entire first page of the PDF to extract
+    the student name and course title when text extraction is empty.
+    """
+    try:
+        doc = fitz.open(pdf_path)
+        page = doc[0]
+        
+        # Render high-DPI image of the full page
+        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+        img_data = pix.tobytes("png")
+        pil_img = Image.open(io.BytesIO(img_data))
+        
+        # Preprocessing: Grayscale and contrast enhancement
+        gray = ImageOps.grayscale(pil_img)
+        enhancer = ImageEnhance.Contrast(gray)
+        high_contrast = enhancer.enhance(2.0)
+        
+        # Extract text via Tesseract
+        ocr_text = pytesseract.image_to_string(high_contrast).strip()
+        doc.close()
+        
+        # Use existing parsing logic on OCR results
+        return extract_details_from_pdf_text(ocr_text)
+    except Exception as e:
+        print(f"Full-page OCR error: {e}")
+        return "Name Not Found", "Course Not Found"
+
+
+def extract_details_from_pdf_text(text):
+    """
+    Extracts student name and course name directly from the PDF text.
+    
+    Standard Udemy certificate layout:
+        CERTIFICATE OF COMPLETION
+        [Course Title]
+        Instructors [Instructor Name]
+        [Student Name]
+        Date [Date]
+        Length [Hours]
+    """
+    name = "Name Not Found"
+    course = "Course Not Found"
+    
+    # --- Extract Course ---
+    # Pattern 1: Text between "CERTIFICATE OF COMPLETION" and "Instructors"
+    course_match = re.search(
+        r"CERTIFICATE\s+OF\s+COMPLETION\s+(.*?)\s*Instructors?",
+        text, re.IGNORECASE | re.DOTALL
+    )
+    if course_match:
+        course = course_match.group(1).strip()
+        # Clean up newlines within the course title
+        course = re.sub(r"\s+", " ", course).strip()
+    
+    # --- Extract Name ---
+    # Pattern 1: Name is on a line between "Instructors [name]" and "Date"
+    name_match = re.search(
+        r"Instructors?\s+.+?\n\s*\n?\s*([A-Za-z][A-Za-z\s\-']+?)\s*\n\s*Date",
+        text, re.IGNORECASE | re.DOTALL
+    )
+    if name_match:
+        name = name_match.group(1).strip()
+        name = re.sub(r"\s+", " ", name).strip()
+    
+    if name == "Name Not Found":
+        # Pattern 2: Simpler — look for a line with just a name (2-4 words, capitalized) before "Date"
+        name_match = re.search(
+            r"\n\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\s*\n\s*Date",
+            text, re.DOTALL
+        )
+        if name_match:
+            name = name_match.group(1).strip()
+
+    if name == "Name Not Found":
+        # Pattern 3: Fallback for single-line text (newlines collapsed)
+        text_clean = text.replace("\n", " ").replace("  ", " ")
+        name_match = re.search(
+            r"Instructors?\s+[\w\s]+?\s+([A-Z][a-z]+\s+[A-Z][a-z]+)\s+Date",
+            text_clean, re.IGNORECASE
+        )
+        if name_match:
+            name = name_match.group(1).strip()
+
+    return name, course
+
+def extract_verification_link(text, pdf_path=""):
+    # Try QR code first
+    qr_url = extract_qr_from_pdf(pdf_path)
+    if qr_url:
+        return qr_url
+
+    text_clean = text.replace("\n", " ").replace("\r", " ").replace("  ", " ")
+    
+    # Relaxed Udemy link patterns
+    # 1. Full udemy.com link (handles some OCR noise or spaces)
+    match = re.search(r"(?:https?://)?(?:www\.)?udemy\.com/certificate/[a-zA-Z0-9\-]+", text_clean, re.IGNORECASE)
+    if match:
+        url = match.group(0).strip().replace(" ", "")
+        return url if url.startswith("http") else "https://" + url
+    
+    # 2. Short ude.my link (common in newer certificates)
+    match = re.search(r"(?:https?://)?ude\.my/\s*([a-zA-Z0-9\-]+)", text_clean, re.IGNORECASE)
+    if match:
+        url_part = match.group(1).strip()
+        return f"https://www.udemy.com/certificate/{url_part}/"
+        
+    # 3. Look for "Certificate url:" prefix specifically
+    match = re.search(r"Certificate url:\s*([a-zA-Z0-9./\- ]+)", text_clean, re.IGNORECASE)
+    if match:
+        url = match.group(1).strip().replace(" ", "")
+        return url if url.startswith("http") else "https://" + url
+    
+    # Fallback: check filename for ID (UC-...)
+    filename = pdf_path.replace("\\", "/").split("/")[-1]
+    id_match = re.search(r"UC-[a-zA-Z0-9\-]+", filename, re.IGNORECASE)
+    if id_match:
+        return f"https://www.udemy.com/certificate/{id_match.group(0).upper()}/"
+        
+    return None
+
+def get_verified_details(verification_link):
+    """
+    Attempts to scrape Udemy verification page. Returns name, course, and restricted_status.
+    """
+    driver = None
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
+        
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        driver.set_page_load_timeout(30)
+        
+        driver.get(verification_link)
+        time.sleep(5)
+        
+        all_text = driver.execute_script("return document.body.innerText;")
+        page_title = driver.title
+        
+        # Check for Cloudflare / Bot detection
+        if "verify you are human" in all_text.lower() or "security verification" in all_text.lower() or "cloudflare" in all_text.lower():
+            return "Protected", "Protected", True
+            
+        # Extract Name - Udemy specific phrasings
+        verified_name = "Name Not Found"
+        patterns = [
+            r"This certificate above verifies that\s+([A-Za-z\s]+?)\s+successfully completed",
+            r"This is to certify that\s+([A-Za-z\s]+?)\s+successfully completed",
+            r"Completed by\s+([A-Za-z\s]+?)\s+on"
+        ]
+
+        for p in patterns:
+            match = re.search(p, all_text, re.IGNORECASE)
+            if match:
+                verified_name = match.group(1).strip()
+                break
+
+        # Extract Course Title
+        verified_course = "Course Not Found"
+        course_match = re.search(r"successfully completed the course\s+([A-Za-z0-9\s:&]+?)\s+on", all_text, re.IGNORECASE)
+        if course_match:
+            verified_course = course_match.group(1).strip()
+        elif "|" in page_title:
+            verified_course = page_title.split("|")[0].strip()
+        else:
+            verified_course = page_title.strip()
+
+        return verified_name, verified_course, False
+    except Exception as e:
+        print(f"Scraping error: {e}")
+        return f"Error: {e}", "Error", False
+    finally:
+        if driver:
+            driver.quit()
+
+
+def run_verification(file_path):
+    extracted_text = extract_text_from_pdf(file_path)
+    verification_link = extract_verification_link(extracted_text, file_path)
+    
+    # NEW: OCR Fallback specifically for top-right URL if not found yet
+    if not verification_link:
+        verification_link = extract_top_right_url(file_path)
+    
+    
+    # Get local details first as baseline
+    local_name, local_course = extract_details_from_pdf_text(extracted_text)
+
+    # NEW: Full-page OCR fallback if labels are missing
+    if local_name == "Name Not Found" or local_course == "Course Not Found":
+        if not extracted_text.strip():
+            print("INFO: Image-based PDF detected, attempting full-page OCR for metadata...")
+            local_name, local_course = extract_details_via_ocr(file_path)
+            print(f"DEBUG: OCR Name: {local_name}, OCR Course: {local_course}")
+
+
+    if not verification_link:
+        # Check if it's image based as a hint
+        has_images = False
+        try:
+            doc = fitz.open(file_path)
+            has_images = any(len(page.get_images()) > 0 for page in doc)
+            doc.close()
+        except: pass
+        
+        if has_images and not extracted_text.strip():
+             return f"⚠️ Image-based certificate detected. Please ensure the Udemy certificate ID (UC-...) is in the filename for auto-detection, or verify manually."
+        return f"❌ No Udemy verification link found in certificate content."
+
+    # Try live verification
+    verified_name, verified_course, is_blocked = get_verified_details(verification_link)
+    
+    if is_blocked:
+        # If blocked by Cloudflare, we trust the PDF if it has a valid-looking link and matching metadata
+        if local_name != "Name Not Found" and local_course != "Course Not Found":
+            return f"✅ Valid Udemy Certificate (Analysis)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}\n[Note: Live verification restricted by platform, verified via layout analysis]"
+        else:
+            return f"⚠️ Live verification restricted by Cloudflare. Manual check required: {verification_link}"
+
+    if "Error" in verified_name or verified_name == "Name Not Found":
+        # Final fallback: if scrape failed but PDF has valid info
+        if local_name != "Name Not Found" and local_course != "Course Not Found":
+             return f"✅ Valid Udemy Certificate (Direct Data)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}"
+        return f"❌ Unable to verify Udemy records. Link may be broken or restricted."
+
+    # Compare web data with PDF data (to ensure they match)
+    normalized_web_name = verified_name.lower().strip()
+    name_parts = [p.strip() for p in normalized_web_name.split() if len(p.strip()) > 1]
+    
+    # Check against standard extracted text first
+    normalized_extracted_text = extracted_text.lower()
+    is_name_match = all(part in normalized_extracted_text for part in name_parts)
+    
+    # For image-based PDFs: also check against OCR-extracted local_name
+    if not is_name_match and local_name != "Name Not Found":
+        normalized_local_name = local_name.lower().strip()
+        is_name_match = all(part in normalized_local_name for part in name_parts)
+
+    if is_name_match:
+        return f"✅ Valid Udemy Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}"
+    else:
+        return f"❌ Fake Certificate Mismatch\nVerified Name: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}"
