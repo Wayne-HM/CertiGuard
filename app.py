@@ -54,7 +54,7 @@ def extract_text_from_pdf(pdf_path):
             reader = PyPDF2.PdfReader(file)
             return "".join(page.extract_text() for page in reader.pages if page.extract_text())
     except Exception as e:
-        return None
+        return ""
 
 def extract_images_from_pdf(pdf_path):
     try:
