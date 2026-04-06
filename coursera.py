@@ -5,6 +5,22 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urlparse
+from PIL import Image, ImageOps, ImageEnhance
+import io
+import pytesseract
+import os
+
+# --- TESSERACT CONFIGURATION ---
+TESSERACT_PATHS = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe",
+    r"/usr/bin/tesseract"
+]
+
+for path in TESSERACT_PATHS:
+    if os.path.exists(path):
+        pytesseract.pytesseract.tesseract_cmd = path
+        break
 
 TRUSTED_DOMAINS = {
     "coursera.org": "coursera",
@@ -78,6 +94,28 @@ def extract_details_from_pdf_text(text):
                 break
                 
     return name, course
+
+def extract_text_via_ocr(pdf_path):
+    """
+    Performs OCR on the entire first page of the PDF.
+    """
+    try:
+        doc = fitz.open(pdf_path)
+        page = doc[0]
+        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+        img_data = pix.tobytes("png")
+        pil_img = Image.open(io.BytesIO(img_data))
+        
+        gray = ImageOps.grayscale(pil_img)
+        enhancer = ImageEnhance.Contrast(gray)
+        high_contrast = enhancer.enhance(2.0)
+        
+        ocr_text = pytesseract.image_to_string(high_contrast).strip()
+        doc.close()
+        return ocr_text
+    except Exception as e:
+        print(f"Full-page OCR error: {e}")
+        return ""
 
 def extract_verification_link(text, pdf_path=""):
     text = text.replace("\n", " ").replace("  ", " ")
@@ -172,6 +210,12 @@ def get_verified_details(all_text, page_title):
 
 def run_verification(file_path):
     extracted_text = extract_text_from_pdf(file_path)
+    
+    # NEW: Full-page OCR fallback if native text is empty (image-based PDF)
+    if not extracted_text.strip():
+        print("INFO: Coursera Image-based PDF detected, attempting OCR...")
+        extracted_text = extract_text_via_ocr(file_path)
+
     verification_link = extract_verification_link(extracted_text, file_path)
 
     # Get local details first as baseline
