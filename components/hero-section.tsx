@@ -42,7 +42,7 @@ export function HeroSection() {
         <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={isInView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.8, cubicBezier: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="relative z-10 text-left"
         >
           {/* Badge */}
@@ -54,7 +54,7 @@ export function HeroSection() {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-neon-blue/20">
               <Sparkles className="w-4 h-4 text-neon-cyan animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mr-2">New Release</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mr-2">CertiGuard PRO</span>
               <div className="h-4 w-px bg-glass-border mr-2" />
               <span className="text-xs text-foreground font-medium">Next-Gen AI Verification Engine</span>
             </div>
@@ -127,7 +127,7 @@ export function HeroSection() {
         <motion.div
           initial={{ opacity: 0, scale: 0.8, rotateY: 30 }}
           animate={isInView ? { opacity: 1, scale: 1, rotateY: 0 } : {}}
-          transition={{ duration: 1.2, cubicBezier: [0.16, 1, 0.3, 1], delay: 0.2 }}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
           className="relative flex items-center justify-center lg:justify-end"
         >
           {/* Floating UI Elements */}

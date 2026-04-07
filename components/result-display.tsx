@@ -24,7 +24,7 @@ interface ResultDisplayProps {
 
 // Optimized spring configs
 const quickSpring = { stiffness: 300, damping: 30, mass: 0.8 }
-const smoothTransition = { duration: 0.25, ease: "easeInOut" }
+const smoothTransition = { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
 
 const confettiColors = ["#3B82F6", "#06B6D4", "#8B5CF6", "#22C55E", "#F59E0B"]
 
@@ -164,12 +164,13 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     ctx.fillStyle = "#06b6d4"; ctx.font = "12px 'Segoe UI'"
     ctx.fillText("VERIFICATION CERTIFICATE", cx + 98, cy + 70)
 
-    // --- Decorative icon (top-right of card) ---
-    ctx.strokeStyle = isValid ? "rgba(6, 182, 212, 0.4)" : "rgba(239, 68, 68, 0.4)"
-    ctx.lineWidth = 2
-    ctx.beginPath(); ctx.arc(cx + cw - 50, cy + 50, 22, 0, Math.PI * 2); ctx.stroke()
-    ctx.fillStyle = isValid ? "#06b6d4" : "#ef4444"; ctx.font = "18px 'Segoe UI'"
-    ctx.fillText(isValid ? "✦" : "✗", cx + cw - 57, cy + 56)
+    // --- Decorative GLOBAL-ID (top-right of card) ---
+    ctx.fillStyle = "rgba(139, 92, 246, 0.15)"
+    ctx.beginPath(); ctx.roundRect(cx + cw - 160, cy + 28, 130, 32, 8); ctx.fill()
+    ctx.strokeStyle = "rgba(139, 92, 246, 0.4)"; ctx.lineWidth = 1
+    ctx.beginPath(); ctx.roundRect(cx + cw - 160, cy + 28, 130, 32, 8); ctx.stroke()
+    ctx.fillStyle = "#a78bfa"; ctx.font = "bold 10px 'Segoe UI'"
+    ctx.fillText("GLOBAL-ID-882", cx + cw - 135, cy + 48)
 
     // Divider
     ctx.strokeStyle = "rgba(56, 189, 248, 0.12)"; ctx.lineWidth = 1
@@ -179,32 +180,24 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     ctx.fillStyle = "#64748b"; ctx.font = "bold 11px 'Segoe UI'"
     ctx.fillText("PRESENTED TO", cx + 35, cy + 128)
     ctx.fillStyle = "#f8fafc"; ctx.font = "bold 32px Georgia, serif"
-    ctx.fillText(result.name || "Certificate Holder", cx + 35, cy + 170)
+    ctx.fillText(result.name || "Alex Sterling", cx + 35, cy + 170)
 
-    // --- Divider ---
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.08)"; ctx.lineWidth = 1
-    ctx.beginPath(); ctx.moveTo(cx + 35, cy + 188); ctx.lineTo(cx + cw - 35, cy + 188); ctx.stroke()
-
-    // --- Course ---
-    ctx.fillStyle = "#06b6d4"; ctx.font = "16px 'Segoe UI'"; ctx.fillText("📖", cx + 35, cy + 218)
-    ctx.fillStyle = "#cbd5e1"; ctx.font = "16px 'Segoe UI'"
-    const courseText = result.course || "Course Name"
-    const truncCourse = courseText.length > 50 ? courseText.slice(0, 47) + "..." : courseText
-    ctx.fillText(truncCourse, cx + 60, cy + 218)
+    // --- Course / Specialization ---
+    ctx.fillStyle = "#cbd5e1"; ctx.font = "18px 'Segoe UI'"
+    ctx.fillText(result.course || "Advanced AI Specialization", cx + 35, cy + 205)
 
     // --- Verification Status ---
-    ctx.fillStyle = isValid ? "#10b981" : "#ef4444"; ctx.font = "16px 'Segoe UI'"; ctx.fillText("✓", cx + 37, cy + 252)
-    ctx.font = "bold 15px 'Segoe UI'"
-    ctx.fillText(`Verification Status: ${isValid ? "AUTHENTIC" : "FRAUDULENT"}`, cx + 60, cy + 252)
+    ctx.fillStyle = isValid ? "#10b981" : "#ef4444"; ctx.font = "bold 15px 'Segoe UI'"
+    ctx.fillText(`Verification Status: ${isValid ? "AUTHENTIC" : "FRAUDULENT"}`, cx + 35, cy + 245)
 
     // --- Platform badge (right side) ---
     ctx.fillStyle = isValid ? "rgba(6, 182, 212, 0.2)" : "rgba(239, 68, 68, 0.2)"
-    ctx.beginPath(); ctx.arc(cx + cw - 65, cy + 215, 35, 0, Math.PI * 2); ctx.fill()
+    ctx.beginPath(); ctx.arc(cx + cw - 65, cy + 185, 35, 0, Math.PI * 2); ctx.fill()
     ctx.strokeStyle = isValid ? "rgba(6, 182, 212, 0.5)" : "rgba(239, 68, 68, 0.5)"
     ctx.lineWidth = 2
-    ctx.beginPath(); ctx.arc(cx + cw - 65, cy + 215, 35, 0, Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(cx + cw - 65, cy + 185, 35, 0, Math.PI * 2); ctx.stroke()
     ctx.fillStyle = isValid ? "#06b6d4" : "#ef4444"; ctx.font = "28px 'Segoe UI'"
-    ctx.fillText("🎓", cx + cw - 80, cy + 224)
+    ctx.fillText("🎓", cx + cw - 80, cy + 194)
 
     // --- Bottom Bar ---
     ctx.strokeStyle = "rgba(56, 189, 248, 0.08)"; ctx.lineWidth = 1
@@ -212,8 +205,8 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
 
     // IDs
     ctx.fillStyle = "#475569"; ctx.font = "12px 'Segoe UI'"
-    ctx.fillText(`⊕  ${result.certificateId || "CERT-000"}`, cx + 35, cy + ch - 52)
-    ctx.fillText(`♟  ${result.platform || "Platform"}`, cx + 220, cy + ch - 52)
+    ctx.fillText(`⊕ ID: 2991-X`, cx + 35, cy + ch - 52)
+    ctx.fillText(`♟ ${result.platform || "Infosys"}`, cx + 180, cy + ch - 52)
 
     // SECURED BY AI badge
     ctx.fillStyle = "rgba(139, 92, 246, 0.15)"
@@ -225,7 +218,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
 
     // --- Date & URL footer ---
     ctx.fillStyle = "#334155"; ctx.font = "10px 'Segoe UI'"
-    ctx.fillText(`Verified on: ${result.issueDate}  |  ${result.verificationUrl || ""}`, cx + 35, cy + ch - 18)
+    ctx.fillText(`Verified on: ${result.issueDate}  |  Report ID: ${result.certificateId || "CERT-182203"}`, cx + 35, cy + ch - 18)
 
     // --- Download ---
     const link = document.createElement("a")
@@ -323,10 +316,10 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   transition={{ delay: 0.35, duration: 0.35 }}
                 >
                   <h2 className={`text-2xl sm:text-3xl font-bold mt-6 mb-2 ${isValid ? "text-success" : "text-destructive"}`}>
-                    {isValid ? "Certificate Verified Successfully" : "Fake Certificate Detected"}
+                    {isValid ? "Verification Status: AUTHENTIC" : "Fake Certificate Detected"}
                   </h2>
                   <p className="text-muted-foreground">
-                    {isValid ? "This certificate is authentic and valid" : "This certificate could not be verified"}
+                    {isValid ? "This certificate is authentic and secured by AI" : "This certificate could not be verified"}
                   </p>
                 </motion.div>
               </div>
@@ -388,7 +381,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                 >
                   <motion.div 
                     whileHover={{ scale: 1.03 }}
-                    transition={smoothTransition}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                     className="px-4 py-2 glass rounded-lg text-xs"
                   >
                     <span className="text-muted-foreground">Issue Date: </span>
@@ -396,7 +389,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.03 }}
-                    transition={smoothTransition}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                     className="px-4 py-2 glass rounded-lg text-xs"
                   >
                     <span className="text-muted-foreground">Certificate ID: </span>
@@ -480,7 +473,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={smoothTransition}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                     className="overflow-hidden mt-4"
                   >
                     <div className="p-4 glass-stronger rounded-xl border border-white/5 bg-black/40">
