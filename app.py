@@ -76,6 +76,8 @@ def detect_qr_platform(pdf_path):
 
             if qr_data.startswith("http"):
                 return "alison"
+            if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
+                return "infosys"
     return None
 
 def is_image_based_pdf(pdf_path):
@@ -88,6 +90,10 @@ def detect_certification_platform(pdf_path):
     # 1. Check for Coursera
     if any(k in text or k in filename for k in ["coursera", "google cloud", "university of"]):
         return "coursera"
+    
+    # 2. Check for Infosys
+    if any(k in text or k in filename for k in ["infosys", "springboard", "knowledge institute"]):
+        return "infosys"
     
     # 2. Check for Saylor
     saylor_keywords = ["saylor", "academy", "jeffery daubs", "verification code", "direct credit", "saylor.org"]
@@ -180,6 +186,9 @@ def execute_script(platform, pdf_path):
         elif platform == "saylor":
             import saylor
             return saylor.run_verification(pdf_path)
+        elif platform == "infosys":
+            import infosys
+            return infosys.run_verification(pdf_path)
 
         else:
             return "❌ No matching script found for platform."
@@ -319,7 +328,7 @@ def chat():
     user_message = data.get('message', '').lower()
     
     if 'platform' in user_message or 'supported' in user_message:
-        reply = "Currently, I support verification for Coursera, Udemy, Alison, and Saylor Academy certificates."
+        reply = "Currently, I support verification for Coursera, Udemy, Alison, Saylor Academy, and Infosys Springboard certificates."
     elif 'how' in user_message and 'work' in user_message:
         reply = "I use advanced AI to extract key details like the student name and certificate ID from your PDF, then I cross-reference them with the official platform's records using real-time validation!"
     elif 'fake' in user_message:

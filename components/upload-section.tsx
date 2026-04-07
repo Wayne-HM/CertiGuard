@@ -16,6 +16,7 @@ const selectPlatforms = [
   { id: "udemy", name: "Udemy", icon: BookOpen, color: "text-purple-500" },
   { id: "alison", name: "Alison", icon: Award, color: "text-emerald-500" },
   { id: "saylor", name: "Saylor", icon: Building, color: "text-orange-500" },
+  { id: "infosys", name: "Infosys", icon: Laptop, color: "text-blue-400" },
 ]
 
 // Optimized spring configs

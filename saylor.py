@@ -16,38 +16,78 @@ def normalize_text(text):
     return re.sub(r'\s+|\.', ' ', text).strip().upper()
 
 def verify_certificate(cert_url, extracted_text):
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1280,720")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--disable-extensions")
-    import os
-    if os.path.exists("/usr/bin/chromium"):
-        options.binary_location = "/usr/bin/chromium"
-        driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
-    else:
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    })
 
     try:
-        driver.get(cert_url)
-        time.sleep(3)
+        # Step 1: GET the verification page to obtain the sesskey
+        response = session.get("https://learn.saylor.org/admin/tool/certificate/index.php")
+        if response.status_code != 200:
+            return f"❌ Saylor verification page unavailable ({response.status_code})."
 
-        verify_button = driver.find_element(By.XPATH, "//input[@type='submit' and @value='Verify']")
-        verify_button.click()
-        time.sleep(3)
+        # Extract sesskey using regex from the page source
+        # Usually found in "sesskey":"..." in JS config or hidden inputs
+        sesskey_match = re.search(r'\"sesskey\":\"(.*?)\"', response.text)
+        if not sesskey_match:
+            # Fallback to looking for hidden input
+            soup = BeautifulSoup(response.text, 'html.parser')
+            sesskey_input = soup.find('input', {'name': 'sesskey'})
+            sesskey = sesskey_input['value'] if sesskey_input else None
+        else:
+            sesskey = sesskey_match.group(1)
 
-        verified_name = driver.find_element(By.XPATH, "//td[text()='Full name']/following-sibling::td").text.strip()
-        verified_course = driver.find_element(By.XPATH, "//td[text()='Certificate']/following-sibling::td").text.strip()
+        if not sesskey:
+            return "❌ Unable to establish a secure session with Saylor Academy."
+
+        # Extract cert_id from URL
+        cert_id = cert_url.split("code=")[-1]
+
+        # Step 2: POST to verify
+        payload = {
+            "code": cert_id,
+            "sesskey": sesskey,
+            "_qf__tool_certificate_verify_certificate_form": "1",
+            "mform_is_submitted_tool_certificate_verify_certificate_form": "1",
+            "verify": "Verify"
+        }
+
+        post_response = session.post("https://learn.saylor.org/admin/tool/certificate/index.php", data=payload)
+        
+        if post_response.status_code != 200:
+            return f"❌ Saylor verification failed with status {post_response.status_code}."
+
+        soup = BeautifulSoup(post_response.text, 'html.parser')
+        
+        # Check if verification results exist
+        result_table = soup.find('table', {'class': 'generaltable'})
+        if not result_table:
+            if "Verification failed" in post_response.text or "not found" in post_response.text.lower():
+                return f"❌ Saylor reported this Certificate ID as invalid: {cert_id}"
+            return "❌ Could not parse Saylor verification results."
+
+        # Extract name and course from the table
+        rows = result_table.find_all('tr')
+        details = {}
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) == 2:
+                key = cols[0].text.strip().lower()
+                val = cols[1].text.strip()
+                details[key] = val
+
+        verified_name = details.get('full name', 'Name Not Found')
+        verified_course = details.get('certificate', 'Course Not Found')
 
         normalized_web_name = verified_name.lower().strip()
-        normalized_web_course = verified_course.lower().strip()
         normalized_extracted_text = extracted_text.lower()
         
-        name_match = (normalized_web_name in normalized_extracted_text) or all(part in normalized_extracted_text for part in normalized_web_name.split() if len(part) > 2)
-        course_match = normalized_web_course in normalized_extracted_text
+        # Name matching logic
+        name_parts = [p.strip() for p in normalized_web_name.split() if len(p.strip()) > 2]
+        if not name_parts: name_parts = [p.strip() for p in normalized_web_name.split() if len(p.strip()) > 1]
+        
+        name_match = all(part in normalized_extracted_text for part in name_parts)
 
         if name_match:
             return (
@@ -65,9 +105,7 @@ def verify_certificate(cert_url, extracted_text):
             )
 
     except Exception as e:
-        return f"❌ Error during verification: {e}"
-    finally:
-        driver.quit()
+        return f"❌ Error during requests verification: {e}"
 
 def run_verification(pdf_path):
     extracted_text = extract_text_from_pdf(pdf_path)

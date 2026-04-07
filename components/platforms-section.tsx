@@ -2,7 +2,7 @@
 
 import { useRef } from "react"
 import { motion, useInView, useMotionValue, useSpring, useTransform } from "framer-motion"
-import { BookOpen, GraduationCap, Award, Building, ArrowRight, Sparkles } from "lucide-react"
+import { BookOpen, GraduationCap, Award, Building, ArrowRight, Sparkles, Laptop } from "lucide-react"
 
 const platforms = [
   {
@@ -32,6 +32,13 @@ const platforms = [
     icon: Building,
     gradient: "from-orange-500 to-orange-600",
     url: "https://www.saylor.org",
+  },
+  {
+    name: "Infosys Springboard",
+    description: "Digital learning for every learner",
+    icon: Laptop,
+    gradient: "from-blue-400 to-cyan-500",
+    url: "https://infyspringboard.onwingspan.com",
   },
 ]
 
