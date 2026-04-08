@@ -134,8 +134,13 @@ def parse_verification_output(output, platform, text, forensic_result=None):
     if forensic_result:
         is_suspicious, metadata_msg = forensic_result
 
-    # Check for failure indicators
-    has_error = "❌" in output or "error" in output_lower or "mismatch" in output_lower or "fake" in output_lower
+    # Remove metadata notes before checking for failure indicators to avoid false positives 
+    # (e.g., "[Note: Minor mismatch...]" in a success message)
+    clean_output = re.sub(r"\[Note:.*?\]", "", output, flags=re.DOTALL | re.IGNORECASE)
+    clean_output_lower = clean_output.lower()
+    
+    # Check for failure indicators in the clean output
+    has_error = "❌" in clean_output or "error" in clean_output_lower or "mismatch" in clean_output_lower or "fake" in clean_output_lower
     
     # Check for success indicators
     has_success = "✅" in output or "valid" in output_lower or "authentic" in output_lower or "verified" in output_lower

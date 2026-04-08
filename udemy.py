@@ -377,10 +377,24 @@ def get_verified_details(verification_link):
 
         # Clean "Udemy Course Completion Certificate" generic title
         if verified_course.lower() == "udemy course completion certificate":
-            # Try to find a more specific heading in the text
-            heading_match = re.search(r"COURSE\n(.*?)\n", all_text, re.I)
-            if heading_match:
-                verified_course = heading_match.group(1).strip()
+            # Try to get the specific H1 from the page (usually contains the course title)
+            specific_h1 = driver.execute_script("""
+                var h1s = document.getElementsByTagName('h1');
+                for(var i=0; i<h1s.length; i++){
+                    var text = h1s[i].innerText.trim();
+                    if(text && text.toLowerCase().indexOf('udemy') === -1 && text.length > 5){
+                        return text;
+                    }
+                }
+                return null;
+            """)
+            if specific_h1:
+                verified_course = specific_h1
+            else:
+                # Fallback to text searching for "COURSE" label
+                heading_match = re.search(r"(?:COURSE|Course)\n(.*?)\n", all_text, re.I)
+                if heading_match:
+                    verified_course = heading_match.group(1).strip()
 
         return verified_name, verified_course, False
     except Exception as e:
