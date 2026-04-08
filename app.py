@@ -12,6 +12,7 @@ import re
 import datetime
 import uuid
 from werkzeug.utils import secure_filename
+import time
 
 app = Flask(__name__)
 # Enable CORS for the Next.js frontend (default dev port 3000)
@@ -123,10 +124,16 @@ def detect_certification_platform(pdf_path):
 
 # ====== Parsing Logic ======
 
-def parse_verification_output(output, platform, text):
+def parse_verification_output(output, platform, text, forensic_result=None):
     # Failure-First Rule: if there's a red X or specific error words, it's NOT valid
     output_lower = output.lower()
     
+    # Check for forensic findings
+    is_suspicious = False
+    metadata_msg = ""
+    if forensic_result:
+        is_suspicious, metadata_msg = forensic_result
+
     # Check for failure indicators
     has_error = "❌" in output or "error" in output_lower or "mismatch" in output_lower or "fake" in output_lower
     
@@ -146,6 +153,10 @@ def parse_verification_output(output, platform, text):
     else:
         status = "fake"
     
+    # Status Adjustment: downgrade if forensic analysis is suspicious
+    if status == "valid" and is_suspicious:
+        status = "manual_check"
+
     # Precise extraction for standardized labels
     name_match = re.search(r"^(?:Verified )?Name:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
     name = name_match.group(1).strip() if name_match else ""
@@ -169,31 +180,59 @@ def parse_verification_output(output, platform, text):
         "issueDate": datetime.datetime.now().strftime("%B %d, %Y"),
         "certificateId": f"CERT-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')[-6:]}",
         "rawOutput": output,
-        "status": status
+        "status": status,
+        "isSuspicious": is_suspicious,
+        "metadataMessage": metadata_msg
     }
 
 def execute_script(platform, pdf_path):
-    try:
-        if platform == "coursera":
-            import coursera
-            return coursera.run_verification(pdf_path)
-        elif platform == "udemy":
-            import udemy
-            return udemy.run_verification(pdf_path)
-        elif platform == "alison":
-            import alison
-            return alison.run_verification(pdf_path)
-        elif platform == "saylor":
-            import saylor
-            return saylor.run_verification(pdf_path)
-        elif platform == "infosys":
-            import infosys
-            return infosys.run_verification(pdf_path)
+    max_retries = 3
+    last_result = ""
+    
+    for attempt in range(max_retries):
+        try:
+            if platform == "coursera":
+                import coursera
+                result = coursera.run_verification(pdf_path)
+            elif platform == "udemy":
+                import udemy
+                result = udemy.run_verification(pdf_path)
+            elif platform == "alison":
+                import alison
+                result = alison.run_verification(pdf_path)
+            elif platform == "saylor":
+                import saylor
+                result = saylor.run_verification(pdf_path)
+            elif platform == "infosys":
+                import infosys
+                result = infosys.run_verification(pdf_path)
+            else:
+                return "❌ No matching script found for platform."
 
-        else:
-            return "❌ No matching script found for platform."
-    except Exception as e:
-        return f"❌ Error running verification for {platform}: {str(e)}"
+            # If the result is a success (✅), return immediately
+            if "✅" in result:
+                return result
+            
+            # If the result is a failure indicator, we retry if attempts are left
+            # We retry for "❌", "fake", or "error" results
+            is_failure = "❌" in result or "fake" in result.lower() or "error" in result.lower()
+            
+            if is_failure and attempt < max_retries - 1:
+                print(f"DEBUG: Smart Manager - Attempt {attempt + 1} failed for {platform}. Retrying in 2s...")
+                time.sleep(2)
+                continue
+            
+            return result
+                
+        except Exception as e:
+            last_result = f"❌ Error running verification for {platform}: {str(e)}"
+            if attempt < max_retries - 1:
+                print(f"DEBUG: Smart Manager - Exception on attempt {attempt + 1}: {str(e)}. Retrying...")
+                time.sleep(2)
+                continue
+            return last_result
+    
+    return last_result
 
 # ====== Routes ======
 
@@ -275,6 +314,30 @@ def session_check():
         
     return jsonify({"error": "Session invalid"}), 401
 
+# ====== Forensic Logic ======
+
+def check_pdf_metadata(file_path):
+    """
+    Analyzes PDF metadata to detect suspicious creation tools (Photoshop, Canva, etc.)
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            reader = PyPDF2.PdfReader(f)
+            metadata = reader.metadata
+            if not metadata:
+                return False, "No forensic metadata available"
+            
+            suspicious_tools = ["photoshop", "illustrator", "canva", "gimp", "pdfeditor", "inkscape", "affinity"]
+            creator = str(metadata.get('/Creator', '')).lower()
+            producer = str(metadata.get('/Producer', '')).lower()
+            
+            found_tools = [tool for tool in suspicious_tools if tool in creator or tool in producer]
+            if found_tools:
+                return True, f"Possible tampering: Document metadata reveals use of {', '.join(found_tools)}"
+            return False, ""
+    except Exception as e:
+        return False, f"Forensic check skipped: {str(e)}"
+
 # ------ Verification Routes ------
 
 @app.route('/verify', methods=['POST'])
@@ -299,9 +362,10 @@ def verify():
         platform = selected_platform
 
     raw_output = execute_script(platform, filepath)
+    forensic_result = check_pdf_metadata(filepath)
     
     text = extract_text_from_pdf(filepath) or ""
-    result = parse_verification_output(raw_output, platform, text)
+    result = parse_verification_output(raw_output, platform, text, forensic_result)
     
     save_history(result)
     return jsonify(result)
