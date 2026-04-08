@@ -1,11 +1,10 @@
 # Start with Python slim image
 FROM python:3.11-slim-bullseye
 
-# Install system packages (Removed tesseract, added libgl1 for EasyOCR/OpenCV)
-# Install system packages
+# Install system packages (Restored tesseract-ocr, moved from easyocr)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libzbar0 \
-    libgl1-mesa-glx \
+    tesseract-ocr \
     libglib2.0-0 \
     curl \
     unzip \
@@ -23,15 +22,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install base Python packages
+# Copy requirements and install Python packages
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# --- AI Optimization Segment ---
-# Force CPU-only installation of PyTorch to save >1GB of disk space 
-# and prevent build memory spikes.
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir easyocr
 
 # Copy all other files
 COPY . .

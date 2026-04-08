@@ -11,16 +11,22 @@ import io
 import os
 import gc
 
-# --- OCR CONFIGURATION ---
-_EASY_READER = None
+import pytesseract
+import io
+import os
+import gc
 
-def get_reader():
-    global _EASY_READER
-    if _EASY_READER is None:
-        import easyocr
-        import torch
-        _EASY_READER = easyocr.Reader(['en'], gpu=False)
-    return _EASY_READER
+# --- TESSERACT CONFIGURATION ---
+TESSERACT_PATHS = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe",
+    r"/usr/bin/tesseract"
+]
+
+for path in TESSERACT_PATHS:
+    if os.path.exists(path):
+        pytesseract.pytesseract.tesseract_cmd = path
+        break
 
 TRUSTED_DOMAINS = {
     "coursera.org": "coursera",
@@ -97,20 +103,26 @@ def extract_details_from_pdf_text(text):
 
 def extract_text_via_ocr(pdf_path):
     """
-    Performs OCR on the entire first page using EasyOCR.
+    Performs OCR on the entire first page using High-Precision Tesseract.
     """
     try:
         doc = fitz.open(pdf_path)
         page = doc[0]
-        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-        img_bytes = pix.tobytes("png")
+        # High resolution pixmap
+        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
         
-        reader = get_reader()
-        results = reader.readtext(img_bytes, detail=0)
-        ocr_text = "\n".join(results).strip()
+        # High-Precision Pipeline
+        img = Image.open(io.BytesIO(pix.tobytes("png")))
+        w, h = img.size
+        img = img.resize((w * 2, h * 2), Image.Resampling.LANCZOS)
+        img = ImageOps.grayscale(img)
+        img = ImageEnhance.Sharpness(img).enhance(2.0)
+        img = img.point(lambda p: 255 if p > 140 else 0)
+        
+        ocr_text = pytesseract.image_to_string(img, config='--oem 3 --psm 6').strip()
         
         doc.close()
-        del pix, img_bytes
+        del pix
         gc.collect()
         
         return ocr_text

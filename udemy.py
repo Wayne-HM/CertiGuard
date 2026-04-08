@@ -12,18 +12,49 @@ import io
 import os
 import gc
 
-# --- OCR CONFIGURATION ---
-_EASY_READER = None
+import pytesseract
+import io
+import os
+import gc
 
-def get_reader():
-    global _EASY_READER
-    if _EASY_READER is None:
-        # Lazy import to save RAM on startup
-        import easyocr
-        import torch
-        # Initialize reader once (cached singleton)
-        _EASY_READER = easyocr.Reader(['en'], gpu=False)
-    return _EASY_READER
+# --- TESSERACT CONFIGURATION ---
+TESSERACT_PATHS = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe",
+    r"/usr/bin/tesseract"
+]
+
+for path in TESSERACT_PATHS:
+    if os.path.exists(path):
+        pytesseract.pytesseract.tesseract_cmd = path
+        break
+
+def perform_high_precision_ocr(pix):
+    """
+    Enhanced OCR pipeline:
+    1. 2x Upscaling (LANCZOS)
+    2. Grayscale + Sharpness Enhancement
+    3. Binary Thresholding
+    4. Tesseract OEM 3 / PSM 6
+    """
+    try:
+        img = Image.open(io.BytesIO(pix.tobytes("png")))
+        # Upscale for better character definition
+        w, h = img.size
+        img = img.resize((w * 2, h * 2), Image.Resampling.LANCZOS)
+        
+        # Grayscale and Sharpness
+        img = ImageOps.grayscale(img)
+        img = ImageEnhance.Sharpness(img).enhance(2.0)
+        
+        # Adaptive-style thresholding
+        img = img.point(lambda p: 255 if p > 140 else 0)
+        
+        text = pytesseract.image_to_string(img, config='--oem 3 --psm 6').strip()
+        return text
+    except Exception as e:
+        print(f"High-precision OCR error: {e}")
+        return ""
 
 
 TRUSTED_DOMAINS = {
@@ -134,11 +165,9 @@ def extract_top_right_url(pdf_path):
         
         # Render high-DPI image of this area
         pix = page.get_pixmap(matrix=fitz.Matrix(4, 4), clip=crop_rect)
-        img_bytes = pix.tobytes("png")
         
-        reader = get_reader()
-        results = reader.readtext(img_bytes, detail=0)
-        ocr_text = "".join(results).strip().replace(" ", "")
+        # Use High-Precision Tesseract
+        ocr_text = perform_high_precision_ocr(pix).replace(" ", "")
         
         # Look for the URL pattern
         match = re.search(r"(?:ude\.my/|udemy\.com/certificate/)([a-zA-Z0-9\-]+)", ocr_text, re.IGNORECASE)
@@ -167,16 +196,13 @@ def extract_details_via_ocr(pdf_path):
         page = doc[0]
         
         # Render high-DPI image of the page
-        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-        img_bytes = pix.tobytes("png")
+        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
         
-        # Extract text via EasyOCR
-        reader = get_reader()
-        results = reader.readtext(img_bytes, detail=0)
-        ocr_text = "\n".join(results).strip()
+        # Extract text via High-Precision Tesseract
+        ocr_text = perform_high_precision_ocr(pix)
         
         doc.close()
-        del pix, img_bytes
+        del pix
         gc.collect()
         
         # Use existing parsing logic on OCR results
