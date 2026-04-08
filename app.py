@@ -170,12 +170,18 @@ def parse_verification_output(output, platform, text, forensic_result=None):
     name_match = re.search(r"^(?:Verified )?Name:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
     name = name_match.group(1).strip() if name_match else ""
     if not name:
-        # Fallback to older format (Stricter matching to avoid error message words)
         name_match = re.search(r"Name:\s+([A-Za-z\s]+?)(?=\n|$)", output)
         name = name_match.group(1).strip() if name_match else "Extracted from Certificate"
     
     course_match = re.search(r"^Course:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
     course = course_match.group(1).strip() if course_match else "Extracted from Certificate"
+    
+    # NEW: Hours and Date extraction
+    hours_match = re.search(r"^Hours:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
+    hours = hours_match.group(1).strip() if hours_match else "N/A"
+    
+    date_match = re.search(r"^Date:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
+    extracted_date = date_match.group(1).strip() if date_match else ""
     
     url_match = re.search(r"(https?://[^\s]+)", output)
     url = url_match.group(1).strip() if url_match else ""
@@ -186,7 +192,8 @@ def parse_verification_output(output, platform, text, forensic_result=None):
         "course": course,
         "platform": platform.capitalize(),
         "verificationUrl": url,
-        "issueDate": datetime.datetime.now().strftime("%B %d, %Y"),
+        "issueDate": extracted_date if extracted_date else datetime.datetime.now().strftime("%B %d, %Y"),
+        "totalHours": hours,
         "certificateId": f"CERT-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')[-6:]}",
         "rawOutput": output,
         "status": status,

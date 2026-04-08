@@ -42,6 +42,10 @@ def verify_infosys_qr(qr_data):
 
         student_name = get_nested_value(subject, name_keys) if subject else None
         course_data = get_nested_value(subject, course_keys) if subject else None
+        
+        # Extraction of date/hours from payload
+        issuance_date = get_nested_value(data, ["issuanceDate", "issuedOn", "date"]) or "N/A"
+        total_hours = get_nested_value(data, ["duration", "total_hours", "hours", "learningHours"]) or "N/A"
 
         # 2. Global Fallback: Search entire JSON if not found in subject
         if not student_name:
@@ -61,6 +65,8 @@ def verify_infosys_qr(qr_data):
                 f"✅ Authenticated via Infosys Digital Ledger\n"
                 f"Name: {str(student_name).strip()}\n"
                 f"Course: {str(course_name).strip()}\n"
+                f"Hours: {str(total_hours)}\n"
+                f"Date: {str(issuance_date)}\n"
                 f"Status: Authentic"
             )
         

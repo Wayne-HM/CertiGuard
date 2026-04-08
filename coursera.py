@@ -222,6 +222,18 @@ def get_verified_details(all_text, page_title):
     except Exception as e:
         return f"Error: {e}", "Error"
 
+def extract_hours_and_date(text):
+    hours = "N/A"
+    date = "N/A"
+    # Coursera Date: "Completed on Month Day, Year" or "on Month Day, Year"
+    d_match = re.search(r"(?:on|Completed on)\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})", text)
+    if d_match: date = d_match.group(1).strip()
+    
+    # Hours: "approx. 15 hours" or "15 total hours"
+    h_match = re.search(r"(\d+)\s*(?:total\s*hours|hours)", text, re.I)
+    if h_match: hours = h_match.group(1).strip()
+    return hours, date
+
 def run_verification(file_path):
     extracted_text = extract_text_from_pdf(file_path)
     
@@ -234,6 +246,10 @@ def run_verification(file_path):
 
     # Get local details first as baseline
     local_name, local_course = extract_details_from_pdf_text(extracted_text)
+    
+    # Extract Hours/Date baseline from PDF
+    hours, date = extract_hours_and_date(extracted_text)
+    details_suffix = f"\nHours: {hours}\nDate: {date}"
 
     if not verification_link:
         return f"❌ No Coursera verification link found in certificate."
@@ -243,20 +259,26 @@ def run_verification(file_path):
     if is_blocked:
         # If blocked by Cloudflare, we trust the PDF if it has a valid-looking link and matching metadata
         if local_name != "Name Not Found" and local_course != "Course Not Found":
-            return f"✅ Valid Coursera Certificate (Analysis)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}\n[Note: Live verification restricted by platform, verified via layout analysis]"
+            return f"✅ Valid Coursera Certificate (Analysis)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}\n[Note: Live verification restricted by platform, verified via layout analysis]"
         else:
             return f"⚠️ Live verification restricted by Cloudflare. Manual check required: {verification_link}"
 
     if "Error" in all_text or not all_text:
         if local_name != "Name Not Found" and local_course != "Course Not Found":
-             return f"✅ Valid Coursera Certificate (Direct Data)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}"
+             return f"✅ Valid Coursera Certificate (Direct Data)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}"
         return f"❌ Unable to verify Coursera records. Link may be broken or restricted."
 
     verified_name, verified_course = get_verified_details(all_text, page_title)
     
+    # Refresh hours/date from web content if available
+    web_hours, web_date = extract_hours_and_date(all_text)
+    if web_hours != "N/A": hours = web_hours
+    if web_date != "N/A": date = web_date
+    details_suffix = f"\nHours: {hours}\nDate: {date}"
+
     if verified_name == "Name Not Found":
         if local_name != "Name Not Found":
-             return f"✅ Valid Coursera Certificate (Structure)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}"
+             return f"✅ Valid Coursera Certificate (Structure)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}"
         return f"❌ Unable to locate student name on Coursera verification page."
 
     normalized_web_name = verified_name.lower().strip()
@@ -268,6 +290,6 @@ def run_verification(file_path):
     is_name_match = all(part in normalized_extracted_text for part in name_parts)
 
     if is_name_match:
-        return f"✅ Valid Coursera Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}"
+        return f"✅ Valid Coursera Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}{details_suffix}"
     else:
-        return f"❌ Fake Certificate Mismatch\nVerified Name: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}"
+        return f"❌ Fake Certificate Mismatch\nVerified Name: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}{details_suffix}"

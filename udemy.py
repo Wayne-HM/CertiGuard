@@ -200,13 +200,27 @@ def extract_details_via_ocr(pdf_path):
 
 def clean_text_noise(text):
     if not text: return text
-    # Remove weird characters from OCR/Bad font rendering
-    text = re.sub(r'\|_\||\[_\]|\|_|_\$|___', '', text)
+    # More aggressive removal of OCR/Font artifacts like |_| |_| or [_]
+    text = re.sub(r'[|_\[\]]{2,}', '', text)
+    # Remove single pipes/underscores that look like artifacts
+    text = re.sub(r'\| _| _\||_\$|___', '', text)
     # Remove leading/trailing pipes and underscores
     text = text.strip('|').strip('_').strip()
     # Normalize spaces
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
+
+def extract_hours_and_date(text):
+    hours = "N/A"
+    date = "N/A"
+    # Hours patterns: "28.5 total hours", "28 hours", etc.
+    h_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:total\s*hours|hours\s*total|hours)", text, re.I)
+    if h_match: hours = h_match.group(1).strip()
+    
+    # Date patterns: "on January 1, 2024", "Date: January 1, 2024"
+    d_match = re.search(r"(?:on|Date:)\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})", text)
+    if d_match: date = d_match.group(1).strip()
+    return hours, date
 
 def extract_details_from_pdf_text(text):
     """
@@ -224,7 +238,7 @@ def extract_details_from_pdf_text(text):
         course = clean_text_noise(course_match.group(1).strip())
     
     # --- Extract Name ---
-    name_blacklist = ["Web Coding", "Coding", "Bootcamp", "Academy", "Development", "Learning", "Udemy", "Certificate", "Instructor"]
+    name_blacklist = ["Web Coding", "Coding", "Bootcamp", "Academy", "Development", "Learning", "Udemy", "Certificate", "Instructor", "Course"]
     
     # Pattern 1: Multi-line matching
     name_match = re.search(
@@ -237,11 +251,8 @@ def extract_details_from_pdf_text(text):
             name = candidate
             
     if name == "Name Not Found":
-        # Regex often fails on complex Udemy certificates due to missing newlines.
-        # Fallback: Extract everything between Instructor names and Date
         text_clean = text.replace("\n", " ").replace("  ", " ")
         if "Instructor" in text_clean and "Date" in text_clean:
-            # Get the chunk between the last occurrence of Instructor and the first occurrence of Date
             parts = text_clean.split("Date")
             if parts:
                 before_date = parts[0]
@@ -249,17 +260,13 @@ def extract_details_from_pdf_text(text):
                 if len(instructor_parts) > 1:
                     after_instructors = instructor_parts[-1].strip()
                     words = after_instructors.split()
-                    
                     if len(words) >= 2:
-                        candidate = " ".join(words[-3:]) if len(words) >= 3 else " ".join(words[-2:])
-                        candidate = clean_text_noise(candidate)
-                        
-                        # Filter out known instructor keywords/blacklist
-                        if not any(word.lower() in candidate.lower() for word in name_blacklist):
+                        candidate = clean_text_noise(" ".join(words[-3:]) if len(words) >= 3 else " ".join(words[-2:]))
+                        if not any(word.lower() == candidate.lower() for word in name_blacklist):
                             name = candidate
                         elif len(words) >= 4:
                             candidate_2 = clean_text_noise(" ".join(words[-2:]))
-                            if not any(word.lower() in candidate_2.lower() for word in name_blacklist):
+                            if not any(word.lower() == candidate_2.lower() for word in name_blacklist):
                                 name = candidate_2
 
     return name, course
@@ -379,8 +386,8 @@ def get_verified_details(verification_link):
             # Try to get course title from the page title even if blocked
             if "|" in page_title:
                 likely_course = clean_text_noise(page_title.split("|")[0].strip())
-                return "Protected", likely_course, True
-            return "Protected", "Protected", True
+                return "Protected", likely_course, True, ""
+            return "Protected", "Protected", True, ""
             
         # Extract Name - Udemy specific phrasings
         verified_name = "Name Not Found"
@@ -435,10 +442,10 @@ def get_verified_details(verification_link):
                 if heading_match:
                     verified_course = heading_match.group(1).strip()
 
-        return verified_name, verified_course, False
+        return verified_name, verified_course, False, all_text
     except Exception as e:
         print(f"Scraping error: {e}")
-        return f"Error: {e}", "Error", False
+        return f"Error: {e}", "Error", False, ""
     finally:
         if driver:
             driver.quit()
@@ -478,21 +485,24 @@ def run_verification(file_path):
         return f"❌ No Udemy verification link found in certificate content."
 
     # Try live verification
-    verified_name, verified_course, is_blocked = get_verified_details(verification_link)
+    verified_name, verified_course, is_blocked, all_text = get_verified_details(verification_link)
     
     # --- TRUST ANALYSIS LOGIC ---
     # If the URL is official (udemy.com) and contains a valid ID, we start with high trust
     is_official_url = "udemy.com/certificate" in verification_link or "ude.my" in verification_link
     
+    # Final Details Extraction (Hours/Date) from both sources
+    hours, date = extract_hours_and_date(all_text if not is_blocked else extracted_text)
+    details_suffix = f"\nHours: {hours}\nDate: {date}"
+
     if is_blocked:
         # If blocked by Cloudflare, we trust the PDF if the link is official 
-        # and we find ANY matching fragments or valid structural markers
         if local_name != "Name Not Found" or is_official_url:
             status_note = "[Note: Live verification restricted by platform. URL structure and document layout validated.]"
             if local_name == "Name Not Found": local_name = "Extracted from Link"
             if verified_course == "Protected": verified_course = "Udemy Course"
             
-            return f"✅ Valid Udemy Certificate (Analysis)\nName: {local_name}\nCourse: {verified_course}\nURL: {verification_link}\n{status_note}"
+            return f"✅ Valid Udemy Certificate (Analysis)\nName: {local_name}\nCourse: {verified_course}\nURL: {verification_link}{details_suffix}\n{status_note}"
 
     # If scraping found a name but standard match failed
     if verified_name and verified_name != "Name Not Found" and "Error" not in verified_name:
@@ -530,15 +540,17 @@ def run_verification(file_path):
             status_suffix = ""
 
         if is_name_match:
-            return f"✅ Valid Udemy Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}{status_suffix}"
+            return f"✅ Valid Udemy Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}{details_suffix}{status_suffix}"
         else:
-            return f"❌ Fake Certificate Mismatch\nVerified Name: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}"
+            return f"❌ Fake Certificate Mismatch\nVerified Name: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}{details_suffix}"
 
     # Fallback for scenarios where web scraping failed to get a name but URL is valid
     if is_official_url:
+        hours, date = extract_hours_and_date(extracted_text)
+        details_suffix = f"\nHours: {hours}\nDate: {date}"
         if local_name != "Name Not Found":
-            return f"✅ Valid Udemy Certificate (Direct Data)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}"
+            return f"✅ Valid Udemy Certificate (Direct Data)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}"
         else:
-            return f"✅ Valid Udemy Certificate (Analysis)\nName: Validated via Link\nCourse: Udemy Course\nURL: {verification_link}\n[Note: Verification restricted by platform. URL structure is valid.]"
+            return f"✅ Valid Udemy Certificate (Analysis)\nName: Validated via Link\nCourse: Udemy Course\nURL: {verification_link}{details_suffix}\n[Note: Verification restricted by platform. URL structure is valid.]"
 
     return f"❌ Fake Certificate: Verification failed or content mismatch."

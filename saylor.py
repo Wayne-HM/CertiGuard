@@ -79,6 +79,10 @@ def verify_certificate(cert_url, extracted_text):
 
         verified_name = details.get('full name', 'Name Not Found')
         verified_course = details.get('certificate', 'Course Not Found')
+        verified_date = details.get('course completed', 'N/A')
+        
+        # Heuristic for Saylor hours (usually course duration is mentioned in the PDF or table)
+        verified_hours = details.get('duration', 'N/A')
 
         normalized_web_name = verified_name.lower().strip()
         normalized_extracted_text = extracted_text.lower()
@@ -88,20 +92,21 @@ def verify_certificate(cert_url, extracted_text):
         if not name_parts: name_parts = [p.strip() for p in normalized_web_name.split() if len(p.strip()) > 1]
         
         name_match = all(part in normalized_extracted_text for part in name_parts)
+        details_suffix = f"\nHours: {verified_hours}\nDate: {verified_date}"
 
         if name_match:
             return (
                 f"✅ Valid Saylor Certificate\n"
                 f"Name: {verified_name}\n"
                 f"Course: {verified_course}\n"
-                f"URL: {cert_url}"
+                f"URL: {cert_url}{details_suffix}"
             )
         else:
             return (
                 f"❌ Fake Certificate Mismatch\n"
                 f"Verified Name: {verified_name}\n"
                 f"Course: {verified_course}\n"
-                f"URL: {cert_url}"
+                f"URL: {cert_url}{details_suffix}"
             )
 
     except Exception as e:

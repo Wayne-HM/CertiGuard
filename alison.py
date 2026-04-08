@@ -101,6 +101,18 @@ def scrape_with_selenium(url):
     except Exception as e:
         return {"error": f"Selenium failed: {str(e)}"}
 
+def extract_hours_and_date(text):
+    hours = "N/A"
+    date = "N/A"
+    # Alison Date: "on January 1, 2024" or "on 1st January, 2024"
+    d_match = re.search(r"on\s+(\d+(?:st|nd|rd|th)?\s+[A-Z][a-z]+,?\s+\d{4})", text, re.I)
+    if d_match: date = d_match.group(1).strip()
+    
+    # Hours: "Duration: 5 Hours" or "10 hours of learning"
+    h_match = re.search(r"(?:Duration:?\s*)?(\d+)\s*hours?", text, re.I)
+    if h_match: hours = h_match.group(1).strip()
+    return hours, date
+
 def run_verification(pdf_path):
     qr_url = extract_qr_from_pdf(pdf_path)
     
@@ -111,12 +123,15 @@ def run_verification(pdf_path):
         if qr_url and not qr_url.startswith("http"):
             qr_url = "https://" + qr_url
 
-    # Local text extraction for fallback and verification
+    # Local text extraction
     doc = fitz.open(pdf_path)
     extracted_text = "\n".join(page.get_text("text") for page in doc).strip()
     doc.close()
     
-    # Fallback to Text-based ID Search
+    # Extract Hours/Date baseline
+    hours, date = extract_hours_and_date(extracted_text)
+    details_suffix = f"\nHours: {hours}\nDate: {date}"
+
     if not qr_url:
         id_match = re.search(r"\b(\d{4,}-\d{4,})\b", extracted_text)
         if id_match:
@@ -128,10 +143,9 @@ def run_verification(pdf_path):
     page_data = scrape_with_selenium(qr_url)
     local_name, local_course = extract_details_from_text(extracted_text)
 
-    # Handle Scraper Blocks
     if page_data.get("is_blocked"):
         if "alison" in extracted_text.lower():
-            return f"✅ Valid Alison Certificate (Analysis)\nName: {local_name}\nCourse: {local_course}\nURL: {qr_url}\n[Note: Live verification restricted, verified via PDF structure]"
+            return f"✅ Valid Alison Certificate (Analysis)\nName: {local_name}\nCourse: {local_course}\nURL: {qr_url}{details_suffix}\n[Note: Live verification restricted, verified via PDF structure]"
         return f"⚠️ Live verification restricted. Manual check required: {qr_url}"
 
     if "error" in page_data:
@@ -140,14 +154,19 @@ def run_verification(pdf_path):
     verified_name = page_data.get("name")
     verified_course = page_data.get("course_name")
     
-    # If scraper didn't find details, use local ones but confirm page validity
+    # Update Hours/Date from web if possible
+    web_text = page_data.get("content", "")
+    w_hours, w_date = extract_hours_and_date(web_text)
+    if w_hours != "N/A": hours = w_hours
+    if w_date != "N/A": date = w_date
+    details_suffix = f"\nHours: {hours}\nDate: {date}"
+
     if not verified_name or not verified_course:
-        all_text = page_data.get("content", "").lower()
+        all_text = web_text.lower()
         if "verify" in all_text and "completed" in all_text:
-             return f"✅ Valid Alison Certificate (Identity confirmed on page)\nName: {local_name}\nCourse: {local_course}\nURL: {qr_url}"
+             return f"✅ Valid Alison Certificate (Identity confirmed on page)\nName: {local_name}\nCourse: {local_course}\nURL: {qr_url}{details_suffix}"
         return f"❌ Unable to retrieve verification data from platform."
 
-    # Compare name
     normalized_web_name = verified_name.lower().strip()
     full_pdf_text_lower = extracted_text.lower()
     name_parts = [p.strip() for p in normalized_web_name.split() if len(p.strip()) > 2]
@@ -156,6 +175,6 @@ def run_verification(pdf_path):
     is_name_match = (count >= min(len(name_parts), 2)) and (len(name_parts) > 0)
 
     if is_name_match:
-        return f"✅ Valid Alison Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {qr_url}"
+        return f"✅ Valid Alison Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {qr_url}{details_suffix}"
     else:
-        return f"❌ Fake Certificate Mismatch\nVerified Name: {verified_name}\nCourse: {verified_course}\nURL: {qr_url}"
+        return f"❌ Fake Certificate Mismatch\nVerified Name: {verified_name}\nCourse: {verified_course}\nURL: {qr_url}{details_suffix}"
