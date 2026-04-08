@@ -2,7 +2,7 @@
 
 import { useState, memo, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { CheckCircle2, XCircle, User, BookOpen, Building2, ExternalLink, Download, RotateCcw, Sparkles, AlertTriangle, Terminal } from "lucide-react"
+import { CheckCircle2, XCircle, User, BookOpen, Building2, ExternalLink, Download, RotateCcw, Sparkles, AlertTriangle, Terminal, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -15,6 +15,7 @@ export interface VerificationResult {
   issueDate: string
   certificateId: string
   rawOutput: string
+  totalHours?: string
 }
 
 interface ResultDisplayProps {
@@ -101,7 +102,8 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     { icon: User, label: "Name", value: result.name },
     { icon: BookOpen, label: "Course", value: result.course },
     { icon: Building2, label: "Platform", value: result.platform },
-  ], [result.name, result.course, result.platform])
+    { icon: Clock, label: "Total Hours", value: result.totalHours || "N/A" },
+  ], [result.name, result.course, result.platform, result.totalHours])
 
   const downloadReport = () => {
     const canvas = document.createElement("canvas")
