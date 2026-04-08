@@ -10,3 +10,5 @@ webdriver-manager
 beautifulsoup4
 flask-cors
 pytesseract
+playwright
+

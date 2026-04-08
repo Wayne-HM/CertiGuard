@@ -17,7 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb \
     chromium \
     chromium-driver \
+    libgbm1 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 
 # Set working directory
 WORKDIR /app
@@ -25,6 +27,8 @@ WORKDIR /app
 # Copy requirements and install Python packages
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN playwright install chromium
+
 
 # Copy all other files
 COPY . .
