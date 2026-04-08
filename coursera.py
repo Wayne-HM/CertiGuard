@@ -7,7 +7,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urlparse
 from PIL import Image, ImageOps, ImageEnhance
 import io
-import easyocr
 import io
 import os
 import gc
@@ -18,6 +17,8 @@ _EASY_READER = None
 def get_reader():
     global _EASY_READER
     if _EASY_READER is None:
+        import easyocr
+        import torch
         _EASY_READER = easyocr.Reader(['en'], gpu=False)
     return _EASY_READER
 
@@ -136,11 +137,13 @@ def scrape_page(verification_link):
         options = webdriver.ChromeOptions()
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1280,720")
         options.add_argument("--disable-software-rasterizer")
         options.add_argument("--disable-extensions")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--js-flags='--max-old-space-size=256'")
+        
         import os
         if os.path.exists("/usr/bin/chromium"):
             options.binary_location = "/usr/bin/chromium"

@@ -2,13 +2,14 @@
 FROM python:3.11-slim-bullseye
 
 # Install system packages (Removed tesseract, added libgl1 for EasyOCR/OpenCV)
-RUN apt-get update && apt-get install -y \
+# Install system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libzbar0 \
-    libgl1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     curl \
     unzip \
     wget \
-    libglib2.0-0 \
     libnss3 \
     libxss1 \
     libasound2 \
@@ -17,7 +18,7 @@ RUN apt-get update && apt-get install -y \
     xvfb \
     chromium \
     chromium-driver \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app

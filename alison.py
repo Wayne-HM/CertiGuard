@@ -63,7 +63,9 @@ def scrape_with_selenium(url):
         options.add_argument("--window-size=1280,720")
         options.add_argument("--disable-software-rasterizer")
         options.add_argument("--disable-extensions")
-
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--js-flags='--max-old-space-size=256'")
+        
         import os
         if os.path.exists("/usr/bin/chromium"):
             options.binary_location = "/usr/bin/chromium"

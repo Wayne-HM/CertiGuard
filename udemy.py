@@ -8,7 +8,6 @@ from urllib.parse import urlparse
 from PIL import Image, ImageOps, ImageEnhance
 import io
 from pyzbar.pyzbar import decode
-import easyocr
 import io
 import os
 import gc
@@ -19,8 +18,10 @@ _EASY_READER = None
 def get_reader():
     global _EASY_READER
     if _EASY_READER is None:
+        # Lazy import to save RAM on startup
+        import easyocr
+        import torch
         # Initialize reader once (cached singleton)
-        # Using gpu=False for compatibility on CPU-only workers
         _EASY_READER = easyocr.Reader(['en'], gpu=False)
     return _EASY_READER
 
@@ -141,13 +142,16 @@ def extract_top_right_url(pdf_path):
         
         # Look for the URL pattern
         match = re.search(r"(?:ude\.my/|udemy\.com/certificate/)([a-zA-Z0-9\-]+)", ocr_text, re.IGNORECASE)
+        
+        found_url = None
         if match:
             url_part = match.group(1).strip()
             found_url = f"https://www.udemy.com/certificate/{url_part}/"
-            doc.close()
-            return found_url
         
         doc.close()
+        del pix, img_bytes
+        gc.collect()
+        return found_url
     except Exception as e:
         print(f"Top-right OCR error: {e}")
     return None
