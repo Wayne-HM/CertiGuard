@@ -204,70 +204,67 @@ def clean_text_noise(text):
     text = re.sub(r'[|_\[\]]{2,}', '', text)
     # Remove single pipes/underscores that look like artifacts
     text = re.sub(r'\| _| _\||_\$|___', '', text)
+    # Remove fragments often present at line ends
+    text = re.sub(r'\s{2,}', ' ', text)
     # Remove leading/trailing pipes and underscores
     text = text.strip('|').strip('_').strip()
-    # Normalize spaces
-    text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
 def extract_hours_and_date(text):
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
     hours = "N/A"
     date = "N/A"
-    # Hours patterns: "28.5 total hours", "28 hours", etc.
-    h_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:total\s*hours|hours\s*total|hours)", text, re.I)
-    if h_match: hours = h_match.group(1).strip()
     
-    # Date patterns: "on January 1, 2024", "Date: January 1, 2024"
-    d_match = re.search(r"(?:on|Date:)\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})", text)
-    if d_match: date = d_match.group(1).strip()
-    return hours, date
+    # Priority Rule: Last line is Hours, 2nd to last is Date
+    if len(lines) >= 2:
+        hours_cand = clean_text_noise(lines[-1])
+        date_cand = clean_text_noise(lines[-2])
+        if re.search(r"\d", hours_cand): hours = hours_cand
+        if re.search(r"\d", date_cand) or any(m in date_cand.lower() for m in ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]):
+            date = date_cand
+
+    # Regex fallback if positional extraction failed
+    if "n/a" in hours.lower():
+        h_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:total\s*hours|hours\s*total|hours)", text, re.I)
+        if h_match: hours = h_match.group(1).strip()
+    
+    if "n/a" in date.lower():
+        d_match = re.search(r"(?:on|Date:)\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})", text)
+        if d_match: date = d_match.group(1).strip()
+        
+    return clean_text_noise(hours), clean_text_noise(date)
 
 def extract_details_from_pdf_text(text):
     """
     Extracts student name and course name directly from the PDF text.
+    Modified to prioritize the 'Last 3 lines' rule for Udemy.
     """
+    lines = [l.strip() for l in text.split('\n') if l.strip()]
+    
+    # --- Priority Rule: 3rd from bottom is Name ---
     name = "Name Not Found"
-    course = "Course Not Found"
+    if len(lines) >= 3:
+        name = clean_text_noise(lines[-3])
     
     # --- Extract Course ---
+    course = "Course Not Found"
+    # Strict regex to stop before metadata words
     course_match = re.search(
-        r"CERTIFICATE\s+OF\s+COMPLETION\s+(.*?)\s*Instructors?",
+        r"CERTIFICATE\s+OF\s+COMPLETION\s+(.*?)\s*(?:Instructors?|URL:|Date:|on\s+[A-Z][a-z]+|$)",
         text, re.IGNORECASE | re.DOTALL
     )
     if course_match:
         course = clean_text_noise(course_match.group(1).strip())
     
-    # --- Extract Name ---
-    name_blacklist = ["Web Coding", "Coding", "Bootcamp", "Academy", "Development", "Learning", "Udemy", "Certificate", "Instructor", "Course"]
-    
-    # Pattern 1: Multi-line matching
-    name_match = re.search(
-        r"Instructors?\s+.+?\n\s*\n?\s*([A-Za-z][A-Za-z\s\-']+?)\s*\n\s*Date",
-        text, re.IGNORECASE | re.DOTALL
-    )
-    if name_match:
-        candidate = clean_text_noise(name_match.group(1).strip())
-        if not any(word.lower() in candidate.lower() for word in name_blacklist) and len(candidate.split()) < 5:
-            name = candidate
-            
-    if name == "Name Not Found":
-        text_clean = text.replace("\n", " ").replace("  ", " ")
-        if "Instructor" in text_clean and "Date" in text_clean:
-            parts = text_clean.split("Date")
-            if parts:
-                before_date = parts[0]
-                instructor_parts = re.split(r"Instructors?", before_date, flags=re.IGNORECASE)
-                if len(instructor_parts) > 1:
-                    after_instructors = instructor_parts[-1].strip()
-                    words = after_instructors.split()
-                    if len(words) >= 2:
-                        candidate = clean_text_noise(" ".join(words[-3:]) if len(words) >= 3 else " ".join(words[-2:]))
-                        if not any(word.lower() == candidate.lower() for word in name_blacklist):
-                            name = candidate
-                        elif len(words) >= 4:
-                            candidate_2 = clean_text_noise(" ".join(words[-2:]))
-                            if not any(word.lower() == candidate_2.lower() for word in name_blacklist):
-                                name = candidate_2
+    # Fallback name logic if 3rd from bottom is blacklisted
+    name_blacklist = ["Web Coding", "Coding", "Bootcamp", "Academy", "Development", "Learning", "Udemy", "Certificate", "Instructor", "Course", "Date"]
+    if not name or any(word.lower() == name.lower() for word in name_blacklist):
+        # Scan last few lines for something that looks like a name
+        for line in lines[-5:]:
+            candidate = clean_text_noise(line)
+            if len(candidate.split()) >= 2 and not any(w.lower() in candidate.lower() for w in name_blacklist):
+                name = candidate
+                break
 
     return name, course
 
@@ -304,14 +301,17 @@ def extract_verification_link(text, pdf_path=""):
     # Check standard UC- string pattern first
     id_match = re.search(r"UC-[a-zA-Z0-9\-]+", filename, re.IGNORECASE)
     if id_match:
-        return f"https://www.udemy.com/certificate/{id_match.group(0).lower()}/"
+        uid = id_match.group(0).lower()
+        if uid.startswith("uc-"):
+            uid = "UC-" + uid[3:]
+        return f"https://www.udemy.com/certificate/{uid}/"
         
     # Check for standard UUID pattern in the filename (Udemy's newer format)
     uuid_match = re.search(r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})", filename, re.IGNORECASE)
     if uuid_match:
         # Prepend UC- to the UUID if it's not already there
         uid = uuid_match.group(1).lower()
-        return f"https://www.udemy.com/certificate/uc-{uid}/"
+        return f"https://www.udemy.com/certificate/UC-{uid}/"
         
     return None
 
