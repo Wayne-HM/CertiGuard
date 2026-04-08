@@ -198,6 +198,16 @@ def extract_details_via_ocr(pdf_path):
         return "Name Not Found", "Course Not Found", ""
 
 
+def clean_text_noise(text):
+    if not text: return text
+    # Remove weird characters from OCR/Bad font rendering
+    text = re.sub(r'\|_\||\[_\]|\|_|_\$|___', '', text)
+    # Remove leading/trailing pipes and underscores
+    text = text.strip('|').strip('_').strip()
+    # Normalize spaces
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
 def extract_details_from_pdf_text(text):
     """
     Extracts student name and course name directly from the PDF text.
@@ -211,19 +221,19 @@ def extract_details_from_pdf_text(text):
         text, re.IGNORECASE | re.DOTALL
     )
     if course_match:
-        course = course_match.group(1).strip()
-        course = re.sub(r"\s+", " ", course).strip()
+        course = clean_text_noise(course_match.group(1).strip())
     
     # --- Extract Name ---
+    name_blacklist = ["Web Coding", "Coding", "Bootcamp", "Academy", "Development", "Learning", "Udemy", "Certificate", "Instructor"]
+    
     # Pattern 1: Multi-line matching
     name_match = re.search(
         r"Instructors?\s+.+?\n\s*\n?\s*([A-Za-z][A-Za-z\s\-']+?)\s*\n\s*Date",
         text, re.IGNORECASE | re.DOTALL
     )
     if name_match:
-        candidate = name_match.group(1).strip()
-        candidate = re.sub(r"\s+", " ", candidate).strip()
-        if "Bootcamp" not in candidate and "Instructor" not in candidate and len(candidate.split()) < 5:
+        candidate = clean_text_noise(name_match.group(1).strip())
+        if not any(word.lower() in candidate.lower() for word in name_blacklist) and len(candidate.split()) < 5:
             name = candidate
             
     if name == "Name Not Found":
@@ -238,20 +248,18 @@ def extract_details_from_pdf_text(text):
                 instructor_parts = re.split(r"Instructors?", before_date, flags=re.IGNORECASE)
                 if len(instructor_parts) > 1:
                     after_instructors = instructor_parts[-1].strip()
-                    # The chunk 'after_instructors' contains the instructor name AND the student name
-                    # e.g., "Toppers Bootcamp Jane Doe"
                     words = after_instructors.split()
                     
-                    # Assuming student name is usually the last 2-3 words before 'Date'
                     if len(words) >= 2:
                         candidate = " ".join(words[-3:]) if len(words) >= 3 else " ".join(words[-2:])
-                        # Filter out known instructor keywords
-                        if "Bootcamp" not in candidate and "Academy" not in candidate:
+                        candidate = clean_text_noise(candidate)
+                        
+                        # Filter out known instructor keywords/blacklist
+                        if not any(word.lower() in candidate.lower() for word in name_blacklist):
                             name = candidate
                         elif len(words) >= 4:
-                            # Try just the last two words if the 3rd word was Bootcamp
-                            candidate_2 = " ".join(words[-2:])
-                            if "Bootcamp" not in candidate_2 and "Academy" not in candidate_2:
+                            candidate_2 = clean_text_noise(" ".join(words[-2:]))
+                            if not any(word.lower() in candidate_2.lower() for word in name_blacklist):
                                 name = candidate_2
 
     return name, course
@@ -289,14 +297,14 @@ def extract_verification_link(text, pdf_path=""):
     # Check standard UC- string pattern first
     id_match = re.search(r"UC-[a-zA-Z0-9\-]+", filename, re.IGNORECASE)
     if id_match:
-        return f"https://www.udemy.com/certificate/{id_match.group(0).upper()}/"
+        return f"https://www.udemy.com/certificate/{id_match.group(0).lower()}/"
         
     # Check for standard UUID pattern in the filename (Udemy's newer format)
     uuid_match = re.search(r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})", filename, re.IGNORECASE)
     if uuid_match:
         # Prepend UC- to the UUID if it's not already there
         uid = uuid_match.group(1).lower()
-        return f"https://www.udemy.com/certificate/UC-{uid}/"
+        return f"https://www.udemy.com/certificate/uc-{uid}/"
         
     return None
 
@@ -336,10 +344,41 @@ def get_verified_details(verification_link):
             "just a moment", "checking your browser", "turnstile", 
             "performance & security", "waiting for udemy.com"
         ]
+        
+        if any(k in all_text.lower() for k in block_keywords):
+            # Attempt to solve Cloudflare/Turnstile checkbox if present
+            try:
+                # Look for the turnstile checkbox iframe
+                iframes = driver.find_elements("tag name", "iframe")
+                solved = False
+                for iframe in iframes:
+                    src = str(iframe.get_attribute("src")).lower()
+                    if "cloudflare" in src or "turnstile" in src:
+                        driver.switch_to.frame(iframe)
+                        # Try to find input checkbox OR the specific turnstile clickable div
+                        checkbox = driver.find_elements("css selector", "input[type='checkbox']")
+                        if checkbox:
+                            checkbox[0].click()
+                            solved = True
+                        else:
+                            # Sometimes it's a div with class 'cb-i' or similar
+                            label = driver.find_elements("tag name", "label")
+                            if label:
+                                label[0].click()
+                                solved = True
+                        
+                        driver.switch_to.default_content()
+                        if solved:
+                            time.sleep(5) # Wait for re-direct after solve
+                            all_text = driver.execute_script("return document.body.innerText;")
+                            break
+            except:
+                driver.switch_to.default_content()
+
         if any(k in all_text.lower() for k in block_keywords):
             # Try to get course title from the page title even if blocked
             if "|" in page_title:
-                likely_course = page_title.split("|")[0].strip()
+                likely_course = clean_text_noise(page_title.split("|")[0].strip())
                 return "Protected", likely_course, True
             return "Protected", "Protected", True
             
@@ -369,11 +408,11 @@ def get_verified_details(verification_link):
         verified_course = "Course Not Found"
         course_match = re.search(r"successfully completed the course\s+([A-Za-z0-9\s:&]+?)\s+on", all_text, re.IGNORECASE)
         if course_match:
-            verified_course = course_match.group(1).strip()
+            verified_course = clean_text_noise(course_match.group(1).strip())
         elif "|" in page_title:
-            verified_course = page_title.split("|")[0].strip()
+            verified_course = clean_text_noise(page_title.split("|")[0].strip())
         else:
-            verified_course = page_title.strip()
+            verified_course = clean_text_noise(page_title.strip())
 
         # Clean "Udemy Course Completion Certificate" generic title
         if verified_course.lower() == "udemy course completion certificate":
