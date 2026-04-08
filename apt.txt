@@ -1,2 +1,6 @@
 libzbar0
 libzbar-dev
+tesseract-ocr
+libtesseract-dev
+chromium-browser
+chromium-chromedriver
