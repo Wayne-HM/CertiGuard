@@ -8,21 +8,21 @@ from urllib.parse import urlparse
 from PIL import Image, ImageOps, ImageEnhance
 import io
 from pyzbar.pyzbar import decode
-import pytesseract
+import easyocr
+import io
 import os
 import gc
 
-# --- TESSERACT CONFIGURATION ---
-TESSERACT_PATHS = [
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-    r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe", # Local user path
-    r"/usr/bin/tesseract" # Linux path
-]
+# --- OCR CONFIGURATION ---
+_EASY_READER = None
 
-for path in TESSERACT_PATHS:
-    if os.path.exists(path):
-        pytesseract.pytesseract.tesseract_cmd = path
-        break
+def get_reader():
+    global _EASY_READER
+    if _EASY_READER is None:
+        # Initialize reader once (cached singleton)
+        # Using gpu=False for compatibility on CPU-only workers
+        _EASY_READER = easyocr.Reader(['en'], gpu=False)
+    return _EASY_READER
 
 
 TRUSTED_DOMAINS = {
@@ -128,39 +128,28 @@ def extract_top_right_url(pdf_path):
         page = doc[0]
         
         # Define top-right area (Udemy standard: x > 60%, y < 15%)
-        # For a standard PDF resolution, x from 350 to end, y from 0 to 120
         rect = page.rect
-        # Create a crop box for the top right (roughly 40% width from right, 20% height from top)
         crop_rect = fitz.Rect(rect.width * 0.55, 0, rect.width, rect.height * 0.2)
         
         # Render high-DPI image of this area
         pix = page.get_pixmap(matrix=fitz.Matrix(4, 4), clip=crop_rect)
-        img_data = pix.tobytes("png")
-        pil_img = Image.open(io.BytesIO(img_data))
+        img_bytes = pix.tobytes("png")
         
-        # Preprocessing for OCR
-        gray = ImageOps.grayscale(pil_img)
-        # Apply binary thresholding for cleaner text
-        thresh = gray.point(lambda p: 255 if p > 180 else 0)
-        
-        # Use Tesseract to get text
-        ocr_text = pytesseract.image_to_string(thresh).strip()
-        
-        # Clean specific misreads (like spaces, or misread 'ude.my')
-        ocr_text = ocr_text.replace(" ", "")
+        reader = get_reader()
+        results = reader.readtext(img_bytes, detail=0)
+        ocr_text = "".join(results).strip().replace(" ", "")
         
         # Look for the URL pattern
         match = re.search(r"(?:ude\.my/|udemy\.com/certificate/)([a-zA-Z0-9\-]+)", ocr_text, re.IGNORECASE)
         if match:
             url_part = match.group(1).strip()
             found_url = f"https://www.udemy.com/certificate/{url_part}/"
-            print(f"DEBUG: Found Udemy URL via OCR: {found_url}")
             doc.close()
             return found_url
         
         doc.close()
     except Exception as e:
-        print(f"OCR Extraction error: {e}")
+        print(f"Top-right OCR error: {e}")
     return None
 
 
@@ -175,19 +164,15 @@ def extract_details_via_ocr(pdf_path):
         
         # Render high-DPI image of the page
         pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-        img_data = pix.tobytes("png")
-        pil_img = Image.open(io.BytesIO(img_data))
+        img_bytes = pix.tobytes("png")
         
-        # Preprocessing: Grayscale and contrast enhancement
-        gray = ImageOps.grayscale(pil_img)
-        high_contrast = ImageEnhance.Contrast(gray).enhance(2.0)
+        # Extract text via EasyOCR
+        reader = get_reader()
+        results = reader.readtext(img_bytes, detail=0)
+        ocr_text = "\n".join(results).strip()
         
-        # Extract text via Tesseract
-        custom_config = r'--oem 3 --psm 6'
-        ocr_text = pytesseract.image_to_string(high_contrast, config=custom_config).strip()
         doc.close()
-        
-        del pix, img_data, pil_img, gray, high_contrast
+        del pix, img_bytes
         gc.collect()
         
         # Use existing parsing logic on OCR results

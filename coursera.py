@@ -7,20 +7,19 @@ from webdriver_manager.chrome import ChromeDriverManager
 from urllib.parse import urlparse
 from PIL import Image, ImageOps, ImageEnhance
 import io
-import pytesseract
+import easyocr
+import io
 import os
+import gc
 
-# --- TESSERACT CONFIGURATION ---
-TESSERACT_PATHS = [
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-    r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe",
-    r"/usr/bin/tesseract"
-]
+# --- OCR CONFIGURATION ---
+_EASY_READER = None
 
-for path in TESSERACT_PATHS:
-    if os.path.exists(path):
-        pytesseract.pytesseract.tesseract_cmd = path
-        break
+def get_reader():
+    global _EASY_READER
+    if _EASY_READER is None:
+        _EASY_READER = easyocr.Reader(['en'], gpu=False)
+    return _EASY_READER
 
 TRUSTED_DOMAINS = {
     "coursera.org": "coursera",
@@ -97,29 +96,25 @@ def extract_details_from_pdf_text(text):
 
 def extract_text_via_ocr(pdf_path):
     """
-    Performs OCR on the entire first page of the PDF.
+    Performs OCR on the entire first page using EasyOCR.
     """
     try:
         doc = fitz.open(pdf_path)
         page = doc[0]
         pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-        img_data = pix.tobytes("png")
-        pil_img = Image.open(io.BytesIO(img_data))
+        img_bytes = pix.tobytes("png")
         
-        gray = ImageOps.grayscale(pil_img)
-        enhancer = ImageEnhance.Contrast(gray)
-        high_contrast = enhancer.enhance(2.0)
+        reader = get_reader()
+        results = reader.readtext(img_bytes, detail=0)
+        ocr_text = "\n".join(results).strip()
         
-        ocr_text = pytesseract.image_to_string(high_contrast).strip()
         doc.close()
-        
-        del pix, img_data, pil_img, gray, enhancer, high_contrast
-        import gc
+        del pix, img_bytes
         gc.collect()
         
         return ocr_text
     except Exception as e:
-        print(f"Full-page OCR error: {e}")
+        print(f"OCR Error: {e}")
         return ""
 
 def extract_verification_link(text, pdf_path=""):
