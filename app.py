@@ -381,40 +381,64 @@ def check_pdf_metadata(file_path):
 
 @app.route('/verify', methods=['POST'])
 def verify():
-    # Force garbage collection at the start to ensure maximum RAM for the browser
-    gc.collect()
+    filepath = None
+    try:
+        # Force garbage collection at the start
+        gc.collect()
 
-    if 'certificate' not in request.files:
-        return jsonify({"error": "No file part"}), 400
+        if 'certificate' not in request.files:
+            return jsonify({"error": "No file part"}), 400
+            
+        file = request.files['certificate']
+        if not file or not file.filename.endswith('.pdf'):
+            return jsonify({"error": "Please upload a valid PDF"}), 400
+
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        # Get optional platform from form data (default to 'auto')
+        selected_platform = request.form.get('platform', 'auto').lower()
         
-    file = request.files['certificate']
-    if not file or not file.filename.endswith('.pdf'):
-        return jsonify({"error": "Please upload a valid PDF"}), 400
+        if selected_platform == 'auto' or not selected_platform:
+            platform = detect_certification_platform(filepath)
+        else:
+            platform = selected_platform
 
-    filename = secure_filename(file.filename)
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(filepath)
+        print(f"DEBUG: Verifying {filename} as platform={platform}")
 
-    # Get optional platform from form data (default to 'auto')
-    selected_platform = request.form.get('platform', 'auto').lower()
-    
-    if selected_platform == 'auto' or not selected_platform:
-        platform = detect_certification_platform(filepath)
-    else:
-        platform = selected_platform
+        raw_output = execute_script(platform, filepath)
+        forensic_result = check_pdf_metadata(filepath)
+        
+        text = extract_text_from_pdf(filepath) or ""
+        result = parse_verification_output(raw_output, platform, text, forensic_result)
+        
+        save_history(result)
+        
+        return jsonify(result)
 
-    raw_output = execute_script(platform, filepath)
-    forensic_result = check_pdf_metadata(filepath)
-    
-    text = extract_text_from_pdf(filepath) or ""
-    result = parse_verification_output(raw_output, platform, text, forensic_result)
-    
-    save_history(result)
-    
-    # Explicit memory cleanup after processing
-    gc.collect()
-    
-    return jsonify(result)
+    except Exception as e:
+        print(f"CRITICAL ERROR in /verify: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "error": f"Server error: {str(e)}",
+            "isValid": False,
+            "status": "error",
+            "name": "Upload Failed",
+            "course": "Server Error",
+            "platform": "Error",
+            "totalHours": "N/A"
+        }), 500
+    finally:
+        # Always clean up
+        gc.collect()
+        if filepath and os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except:
+                pass
+
 
 
 @app.route('/history', methods=['GET'])

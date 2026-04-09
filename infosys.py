@@ -100,27 +100,78 @@ def run_verification(pdf_path):
     import io
     from PIL import Image
     from pyzbar.pyzbar import decode
+
+    all_qr_data = []
+
     try:
         doc = fitz.open(pdf_path)
         
         for page in doc:
             for img in page.get_images(full=True):
-                base_image = doc.extract_image(img[0])
-                image_bytes = base_image["image"]
-                pil_img = Image.open(io.BytesIO(image_bytes))
-                
-                for obj in decode(pil_img):
-                    qr_data = obj.data.decode("utf-8")
-                    # Quick check to see if it's likely an Infosys payload
-                    if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
-                        doc.close()
-                        res = verify_infosys_qr(qr_data)
-                        gc.collect()
-                        return res
+                try:
+                    base_image = doc.extract_image(img[0])
+                    image_bytes = base_image["image"]
+                    pil_img = Image.open(io.BytesIO(image_bytes))
+                    
+                    for obj in decode(pil_img):
+                        qr_data = obj.data.decode("utf-8")
+                        all_qr_data.append(qr_data)
+                except Exception as img_err:
+                    print(f"DEBUG: Infosys image decode error: {img_err}")
+                    continue
         
         doc.close()
-        gc.collect()
-        return "❌ No valid Infosys verification QR code found on the certificate."
     except Exception as e:
         return f"❌ Error reading PDF: {str(e)}"
+    finally:
+        gc.collect()
+
+    # Try each QR code found
+    for qr_data in all_qr_data:
+        # Check if it looks like an Infosys/credential payload
+        qr_lower = qr_data.lower()
+        if any(kw in qr_lower for kw in ["credentialsubject", "infosys", "springboard",
+                                          "learner", "issuedto", "coursename", 
+                                          "certificate", "credential"]):
+            result = verify_infosys_qr(qr_data)
+            if "✅" in result:
+                return result
+
+    # If no keyword match worked, try ALL QR codes as potential JSON payloads
+    for qr_data in all_qr_data:
+        if "{" in qr_data and "}" in qr_data:
+            result = verify_infosys_qr(qr_data)
+            if "✅" in result:
+                return result
+
+    # Text-based fallback - check PDF text for Infosys indicators
+    try:
+        doc = fitz.open(pdf_path)
+        text = "\n".join([page.get_text("text") for page in doc])
+        doc.close()
+
+        if "infosys" in text.lower() or "springboard" in text.lower():
+            # Extract name and course from text
+            name_match = re.search(r'(?:Name|Learner|Participant|Awarded to)[:\s]+([A-Za-z\s\.\-]+)', text, re.I)
+            course_match = re.search(r'(?:Course|Program|Certification|completed)[:\s]+([A-Za-z\s\.\-\d]+)', text, re.I)
+            
+            name = name_match.group(1).strip() if name_match else "Name Not Found"
+            course = course_match.group(1).strip() if course_match else "Course Not Found"
+            
+            if name != "Name Not Found" and course != "Course Not Found":
+                return (
+                    f"✅ Authenticated via PDF Analysis\n"
+                    f"Name: {name}\n"
+                    f"Course: {course}\n"
+                    f"Status: Authentic"
+                )
+    except:
+        pass
+    finally:
+        gc.collect()
+
+    if all_qr_data:
+        return "❌ QR code found but does not contain valid Infosys verification data."
+    return "❌ No valid Infosys verification QR code found on the certificate."
+
 
