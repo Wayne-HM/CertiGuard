@@ -13,14 +13,13 @@ import datetime
 import uuid
 from werkzeug.utils import secure_filename
 import time
+import gc
+
 
 app = Flask(__name__)
 # Enable CORS for the Next.js frontend (default dev port 3000)
-CORS(app, resources={r"/*": {
-    "origins": ["*", "https://certiguardofficial.vercel.app"],
-    "methods": ["GET", "POST", "OPTIONS"],
-    "allow_headers": ["Content-Type", "Authorization"]
-}})
+CORS(app, resources={r"/*": {"origins": "*"}})
+
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -384,7 +383,12 @@ def verify():
     result = parse_verification_output(raw_output, platform, text, forensic_result)
     
     save_history(result)
+    
+    # Explicit memory cleanup after processing
+    gc.collect()
+    
     return jsonify(result)
+
 
 @app.route('/history', methods=['GET'])
 def get_history():
@@ -421,4 +425,12 @@ def chat():
     return jsonify({"reply": reply})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Startup check for Chromium binary
+    linux_path = "/usr/bin/chromium"
+    if os.path.exists(linux_path):
+        print(f"STARTUP: Found system chromium at {linux_path}")
+    else:
+        print("STARTUP WARNING: System chromium not found at /usr/bin/chromium")
+        
+    app.run(host='0.0.0.0', port=10000)
+

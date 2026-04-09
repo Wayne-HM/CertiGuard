@@ -1,7 +1,8 @@
 # Start with Python slim image
 FROM python:3.11-slim-bullseye
 
-# Install system packages (Restored tesseract-ocr, moved from easyocr)
+# Install system packages
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libzbar0 \
     tesseract-ocr \
@@ -24,10 +25,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
+# Set environment variables for Playwright/Puppeteer
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
+
 # Copy requirements and install Python packages
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install chromium
+
 
 
 # Copy all other files

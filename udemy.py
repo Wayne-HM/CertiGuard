@@ -2,9 +2,10 @@ import fitz  # PyMuPDF
 import re
 import time
 import os
-import io
 import gc
+import io
 import pytesseract
+
 from PIL import Image, ImageOps, ImageEnhance
 from pyzbar.pyzbar import decode
 from playwright.sync_api import sync_playwright
@@ -228,6 +229,7 @@ def extract_details_via_ocr(pdf_path):
 
 # --- LIVE VERIFICATION ENGINE (USER PROVIDED) ---
 
+    
 def verifyUdemy(certId):
     """Core verification logic using Playwright and Tesseract"""
     certId = certId.replace('ude.my/', '').strip()
@@ -240,20 +242,39 @@ def verifyUdemy(certId):
                  certId = cert_id_clean
         else:
             certId = 'UC-' + certId
-        
+            
+    # --- System Binary Detection ---
+    linux_paths = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
+    win_paths = [r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]
+    
+    executable_path = None
+    for path in (linux_paths + win_paths):
+        if os.path.exists(path):
+            executable_path = path
+            break
+            
     url = f"https://www.udemy.com/certificate/{certId}/"
+
+
     
     studentName = ""
     courseName = ""
     issueDate = ""
     hours = ""
     htmlCourseName = ""
-    
     max_retries = 3
     
     for attempt in range(max_retries):
+
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # Use system executable path if found to avoid downloading separate binaries
+            launch_args = {"headless": True}
+            if executable_path:
+                launch_args["executable_path"] = executable_path
+                print(f"DEBUG: Using system chromium at {executable_path}")
+            
+            browser = p.chromium.launch(**launch_args)
+
             context = browser.new_context(
                 viewport={'width': 1920, 'height': 1080},
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -313,6 +334,8 @@ def verifyUdemy(certId):
                 print(f"Playwright error: {e}")
                 
             browser.close()
+            gc.collect()
+
             
         if studentName and courseName:
             break
