@@ -1,30 +1,34 @@
-import fitz  # PyMuPDF
-from pyzbar.pyzbar import decode
-from PIL import Image
-import io
 import re
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
 import time
+import os
+import gc
+
 
 def extract_qr_from_pdf(pdf_path):
-    doc = fitz.open(pdf_path)
-    for i in range(len(doc)):
-        page = doc.load_page(i)
-        img_list = page.get_images(full=True)
-        for img in img_list:
-            xref = img[0]
-            base_image = doc.extract_image(xref)
-            image_bytes = base_image["image"]
-            image = Image.open(io.BytesIO(image_bytes))
-            decoded_objects = decode(image)
-            for obj in decoded_objects:
-                if obj.type == 'QRCODE':
-                    return obj.data.decode('utf-8')
+    import fitz
+    import io
+    from PIL import Image
+    from pyzbar.pyzbar import decode
+    try:
+        doc = fitz.open(pdf_path)
+        for i in range(len(doc)):
+            page = doc.load_page(i)
+            img_list = page.get_images(full=True)
+            for img in img_list:
+                xref = img[0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                image = Image.open(io.BytesIO(image_bytes))
+                decoded_objects = decode(image)
+                for obj in decoded_objects:
+                    if obj.type == 'QRCODE':
+                        doc.close()
+                        return obj.data.decode('utf-8')
+        doc.close()
+    except Exception as e:
+        print(f"DEBUG: Alison QR Extraction error: {e}")
     return None
+
 
 def extract_details_from_text(text):
     """
@@ -53,55 +57,73 @@ def extract_details_from_text(text):
                 
     return name, course
 
-def scrape_with_selenium(url):
+def scrape_with_playwright(url):
+    # --- System Binary Detection ---
+    linux_paths = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
+    win_paths = [r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]
+    
+    executable_path = None
+    for path in (linux_paths + win_paths):
+        if os.path.exists(path):
+            executable_path = path
+            break
+
+    from playwright.sync_api import sync_playwright
     try:
-        options = Options()
-        options.add_argument("--headless=new")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1280,720")
-        options.add_argument("--disable-software-rasterizer")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--js-flags='--max-old-space-size=256'")
-        
-        import os
-        if os.path.exists("/usr/bin/chromium"):
-            options.binary_location = "/usr/bin/chromium"
-            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
-        else:
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-        driver.get(url)
-        time.sleep(8)
+        with sync_playwright() as p:
+            launch_args = {
+                "headless": True,
+                "args": [
+                    "--disable-dev-shm-usage", 
+                    "--no-sandbox", 
+                    "--disable-setuid-sandbox",
+                    "--disable-gpu"
+                ]
+            }
+            if executable_path:
+                launch_args["executable_path"] = executable_path
+            
+            browser = p.chromium.launch(**launch_args)
+            context = browser.new_context(
+                viewport={'width': 800, 'height': 600},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+            page = context.new_page()
+            
+            page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            
+            # Wait for content
+            page.wait_for_timeout(5000)
+            
+            page_text = page.inner_text("body")
+            page_title = page.title()
+            
+            # Check for Cloudflare / Bot detection
+            is_blocked = "verify you are human" in page_text.lower() or "security verification" in page_text.lower() or "cloudflare" in page_text.lower()
+            
+            if is_blocked:
+                browser.close()
+                return {"error": "Blocked", "is_blocked": True}
 
-        page_text = driver.find_element(By.TAG_NAME, "body").text
-        page_title = driver.title
-        
-        # Check for Cloudflare / Bot detection
-        is_blocked = "verify you are human" in page_text.lower() or "security verification" in page_text.lower() or "cloudflare" in page_text.lower()
-        
-        if is_blocked:
-            driver.quit()
-            return {"error": "Blocked", "is_blocked": True}
+            # Updated Alison specific phrasings with more flexible regex
+            name_match = re.search(r"(?:verify that|This identifies that)\s+([A-Za-z\s.\-]+?)\s+has (?:successfully )?completed", page_text, re.IGNORECASE)
+            course_match = re.search(r"(?:course|Learning Path|Diploma)\s+[\"']?(.+?)[\"']?\s+on Alison", page_text, re.IGNORECASE)
 
-        # Updated Alison specific phrasings with more flexible regex
-        name_match = re.search(r"(?:verify that|This identifies that)\s+([A-Za-z\s.\-]+?)\s+has (?:successfully )?completed", page_text, re.IGNORECASE)
-        course_match = re.search(r"(?:course|Learning Path|Diploma)\s+[\"']?(.+?)[\"']?\s+on Alison", page_text, re.IGNORECASE)
+            if not name_match:
+                name_match = re.search(r"Certificate Learner\s*:\s*([A-Za-z\s.\-]+)", page_text, re.IGNORECASE)
+            
+            if not course_match:
+                course_match = re.search(r"Certificate Course\s*:\s*(.+)", page_text, re.IGNORECASE)
 
-        if not name_match:
-            name_match = re.search(r"Certificate Learner\s*:\s*([A-Za-z\s.\-]+)", page_text, re.IGNORECASE)
-        
-        if not course_match:
-            course_match = re.search(r"Certificate Course\s*:\s*(.+)", page_text, re.IGNORECASE)
+            name = name_match.group(1).strip() if name_match else None
+            course_name = course_match.group(1).strip() if course_match else None
 
-        name = name_match.group(1).strip() if name_match else None
-        course_name = course_match.group(1).strip() if course_match else None
-
-        driver.quit()
-        return {"title": page_title, "content": page_text, "name": name, "course_name": course_name}
+            browser.close()
+            gc.collect()
+            return {"title": page_title, "content": page_text, "name": name, "course_name": course_name}
     except Exception as e:
-        return {"error": f"Selenium failed: {str(e)}"}
+        return {"error": f"Playwright failed: {str(e)}"}
+
 
 def extract_hours_and_date(text):
     hours = "N/A"
@@ -125,10 +147,12 @@ def run_verification(pdf_path):
         if qr_url and not qr_url.startswith("http"):
             qr_url = "https://" + qr_url
 
+    import fitz
     # Local text extraction
     doc = fitz.open(pdf_path)
     extracted_text = "\n".join(page.get_text("text") for page in doc).strip()
     doc.close()
+
     
     # Extract Hours/Date baseline
     hours, date = extract_hours_and_date(extracted_text)
@@ -142,7 +166,8 @@ def run_verification(pdf_path):
     if not qr_url:
         return "❌ No QR code, Verification Link, or Certificate ID found."
 
-    page_data = scrape_with_selenium(qr_url)
+    page_data = scrape_with_playwright(qr_url)
+
     local_name, local_course = extract_details_from_text(extracted_text)
 
     if page_data.get("is_blocked"):

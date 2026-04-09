@@ -1,19 +1,23 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
-import os
-import PyPDF2
-import fitz
-from pyzbar.pyzbar import decode
-from PIL import Image
-import io
-import json
-import re
-import datetime
-import uuid
 from werkzeug.utils import secure_filename
+import os
+import re
 import time
 import gc
+
+# Log memory usage if psutil is available
+try:
+    import psutil
+    def log_mem(tag):
+        process = psutil.Process(os.getpid())
+        mem = process.memory_info().rss / 1024 / 1024
+        print(f"DEBUG MEM [{tag}]: {mem:.2f} MB")
+except ImportError:
+    def log_mem(tag):
+        pass
+
 
 
 app = Flask(__name__)
@@ -30,6 +34,7 @@ os.makedirs('data', exist_ok=True)
 # ====== Storage Logic ======
 
 def load_json(file_path):
+    import json
     if os.path.exists(file_path):
         try:
             with open(file_path, 'r') as f:
@@ -39,10 +44,13 @@ def load_json(file_path):
     return []
 
 def save_json(file_path, data):
+    import json
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=2)
 
+
 def save_history(record):
+    import datetime
     history = load_json(HISTORY_FILE)
     record['id'] = f"CERT-{len(history) + 1:03d}"
     record['date'] = datetime.datetime.now().strftime("%b %d, %Y")
@@ -50,9 +58,11 @@ def save_history(record):
     save_json(HISTORY_FILE, history[:50])
     return record
 
+
 # ====== Utility Functions ======
 
 def extract_text_from_pdf(pdf_path):
+    import PyPDF2
     try:
         with open(pdf_path, "rb") as file:
             reader = PyPDF2.PdfReader(file)
@@ -60,7 +70,11 @@ def extract_text_from_pdf(pdf_path):
     except Exception as e:
         return ""
 
+
 def extract_images_from_pdf(pdf_path):
+    import fitz
+    import io
+    from PIL import Image
     try:
         doc = fitz.open(pdf_path)
         images = []
@@ -73,7 +87,9 @@ def extract_images_from_pdf(pdf_path):
     except:
         return []
 
+
 def detect_qr_platform(pdf_path):
+    from pyzbar.pyzbar import decode
     for image in extract_images_from_pdf(pdf_path):
         for obj in decode(image):
             qr_data = obj.data.decode("utf-8").strip()
@@ -83,6 +99,7 @@ def detect_qr_platform(pdf_path):
             if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
                 return "infosys"
     return None
+
 
 def is_image_based_pdf(pdf_path):
     return not extract_text_from_pdf(pdf_path) and bool(extract_images_from_pdf(pdf_path))
@@ -185,6 +202,7 @@ def parse_verification_output(output, platform, text, forensic_result=None):
     url_match = re.search(r"(https?://[^\s]+)", output)
     url = url_match.group(1).strip() if url_match else ""
 
+    import datetime
     return {
         "isValid": is_valid,
         "name": name,
@@ -199,6 +217,7 @@ def parse_verification_output(output, platform, text, forensic_result=None):
         "isSuspicious": is_suspicious,
         "metadataMessage": metadata_msg
     }
+
 
 def execute_script(platform, pdf_path):
     max_retries = 3
@@ -259,6 +278,8 @@ def home():
 
 @app.route('/register', methods=['POST'])
 def register():
+    import uuid
+    import datetime
     data = request.json
     name = data.get('name')
     email = data.get('email')
@@ -281,6 +302,7 @@ def register():
         "password": hashed_password,
         "created_at": datetime.datetime.now().isoformat()
     }
+
     
     users.append(new_user)
     save_json(USERS_FILE, users)
@@ -335,6 +357,7 @@ def check_pdf_metadata(file_path):
     """
     Analyzes PDF metadata to detect suspicious creation tools (Photoshop, Canva, etc.)
     """
+    import PyPDF2
     try:
         with open(file_path, 'rb') as f:
             reader = PyPDF2.PdfReader(f)
@@ -353,10 +376,14 @@ def check_pdf_metadata(file_path):
     except Exception as e:
         return False, f"Forensic check skipped: {str(e)}"
 
+
 # ------ Verification Routes ------
 
 @app.route('/verify', methods=['POST'])
 def verify():
+    # Force garbage collection at the start to ensure maximum RAM for the browser
+    gc.collect()
+
     if 'certificate' not in request.files:
         return jsonify({"error": "No file part"}), 400
         

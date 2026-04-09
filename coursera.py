@@ -1,32 +1,24 @@
-import fitz  # PyMuPDF
 import re
 import time
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+import os
+import gc
 from urllib.parse import urlparse
-from PIL import Image, ImageOps, ImageEnhance
-import io
-import io
-import os
-import gc
 
-import pytesseract
-import io
-import os
-import gc
+# --- HELPERS FOR PDF EXTRACTION ---
 
-# --- TESSERACT CONFIGURATION ---
-TESSERACT_PATHS = [
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-    r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe",
-    r"/usr/bin/tesseract"
-]
 
-for path in TESSERACT_PATHS:
-    if os.path.exists(path):
-        pytesseract.pytesseract.tesseract_cmd = path
-        break
+def get_tesseract_path():
+    TESSERACT_PATHS = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe",
+        r"/usr/bin/tesseract"
+    ]
+
+    for path in TESSERACT_PATHS:
+        if os.path.exists(path):
+            return path
+    return None
+
 
 TRUSTED_DOMAINS = {
     "coursera.org": "coursera",
@@ -34,6 +26,7 @@ TRUSTED_DOMAINS = {
 }
 
 def extract_text_from_pdf(pdf_path):
+    import fitz
     text = ""
     try:
         doc = fitz.open(pdf_path)
@@ -45,6 +38,7 @@ def extract_text_from_pdf(pdf_path):
     except Exception as e:
         print(f"Error extracting text: {e}")
     return text.strip()
+
 
 def extract_details_from_pdf_text(text):
     # Normalize text: collapse multiple spaces and remove extra newlines
@@ -102,9 +96,15 @@ def extract_details_from_pdf_text(text):
     return name, course
 
 def extract_text_via_ocr(pdf_path):
-    """
-    Performs OCR on the entire first page using High-Precision Tesseract.
-    """
+    import fitz
+    import pytesseract
+    import io
+    from PIL import Image, ImageOps, ImageEnhance
+    
+    tess_path = get_tesseract_path()
+    if tess_path:
+        pytesseract.pytesseract.tesseract_cmd = tess_path
+        
     try:
         doc = fitz.open(pdf_path)
         page = doc[0]
@@ -130,6 +130,7 @@ def extract_text_via_ocr(pdf_path):
         print(f"OCR Error: {e}")
         return ""
 
+
 def extract_verification_link(text, pdf_path=""):
     text = text.replace("\n", " ").replace("  ", " ")
     # Relaxed Coursera link patterns
@@ -145,37 +146,60 @@ def extract_verification_link(text, pdf_path=""):
     return None
 
 def scrape_page(verification_link):
-    try:
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless=new")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--window-size=1280,720")
-        options.add_argument("--disable-software-rasterizer")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--js-flags='--max-old-space-size=256'")
-        
-        import os
-        if os.path.exists("/usr/bin/chromium"):
-            options.binary_location = "/usr/bin/chromium"
-            driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=options)
-        else:
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    # --- System Binary Detection ---
+    linux_paths = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
+    win_paths = [r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]
+    
+    executable_path = None
+    for path in (linux_paths + win_paths):
+        if os.path.exists(path):
+            executable_path = path
+            break
 
-        driver.get(verification_link)
-        time.sleep(10)
-        all_text = driver.execute_script("return document.body.innerText;")
-        page_title = driver.title
-        
-        # Check for Cloudflare / Bot detection
-        is_blocked = "verify you are human" in all_text.lower() or "security verification" in all_text.lower() or "cloudflare" in all_text.lower()
-        
-        driver.quit()
+    from playwright.sync_api import sync_playwright
+    all_text = ""
+    page_title = ""
+    is_blocked = False
+
+    try:
+        with sync_playwright() as p:
+            launch_args = {
+                "headless": True,
+                "args": [
+                    "--disable-dev-shm-usage", 
+                    "--no-sandbox", 
+                    "--disable-setuid-sandbox",
+                    "--disable-gpu"
+                ]
+            }
+            if executable_path:
+                launch_args["executable_path"] = executable_path
+            
+            browser = p.chromium.launch(**launch_args)
+            context = browser.new_context(
+                viewport={'width': 800, 'height': 600},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+            page = context.new_page()
+            
+            page.goto(verification_link, wait_until="domcontentloaded", timeout=20000)
+            
+            # Wait for content
+            page.wait_for_timeout(3000)
+            
+            all_text = page.inner_text("body")
+            page_title = page.title()
+            
+            is_blocked = "verify you are human" in all_text.lower() or "security verification" in all_text.lower() or "cloudflare" in all_text.lower()
+            
+            browser.close()
+            gc.collect()
+            
         return all_text, page_title, is_blocked
     except Exception as e:
-        if 'driver' in locals() and driver: driver.quit()
+        print(f"Playwright error in scrape_page: {e}")
         return f"Error: {e}", "Error", False
+
 
 def get_verified_details(all_text, page_title):
     try:

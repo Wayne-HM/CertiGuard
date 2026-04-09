@@ -5,8 +5,6 @@ PyPDF2
 PyMuPDF
 Pillow
 requests
-selenium
-webdriver-manager
 beautifulsoup4
 flask-cors
 pytesseract

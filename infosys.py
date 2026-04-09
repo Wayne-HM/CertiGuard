@@ -1,9 +1,7 @@
-import json
 import re
-import fitz  # PyMuPDF
-from pyzbar.pyzbar import decode
-from PIL import Image
-import io
+import os
+import gc
+
 
 def get_nested_value(data, target_keys):
     """Recursively search for any of the target keys in a dictionary or list."""
@@ -20,6 +18,7 @@ def get_nested_value(data, target_keys):
     return None
 
 def verify_infosys_qr(qr_data):
+    import json
     if not qr_data:
         return "❌ No QR Data found in certificate."
 
@@ -31,6 +30,7 @@ def verify_infosys_qr(qr_data):
 
     try:
         data = json.loads(json_str)
+
         
         # 1. Try Target Keys specifically in credentialSubject first (preferred logic)
         subject = data.get("credentialSubject", {})
@@ -96,6 +96,10 @@ def verify_infosys_qr(qr_data):
 
 def run_verification(pdf_path):
     """Integrates with CertiGuard app.py workflow"""
+    import fitz
+    import io
+    from PIL import Image
+    from pyzbar.pyzbar import decode
     try:
         doc = fitz.open(pdf_path)
         
@@ -110,9 +114,13 @@ def run_verification(pdf_path):
                     # Quick check to see if it's likely an Infosys payload
                     if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
                         doc.close()
-                        return verify_infosys_qr(qr_data)
+                        res = verify_infosys_qr(qr_data)
+                        gc.collect()
+                        return res
         
         doc.close()
+        gc.collect()
         return "❌ No valid Infosys verification QR code found on the certificate."
     except Exception as e:
         return f"❌ Error reading PDF: {str(e)}"
+
