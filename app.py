@@ -89,58 +89,55 @@ def extract_images_from_pdf(pdf_path):
 
 
 def detect_qr_platform(pdf_path):
-    from pyzbar.pyzbar import decode
-    for image in extract_images_from_pdf(pdf_path):
-        for obj in decode(image):
-            qr_data = obj.data.decode("utf-8").strip()
-
-            if qr_data.startswith("http"):
-                return "alison"
-            if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
-                return "infosys"
+    try:
+        from pyzbar.pyzbar import decode
+        for image in extract_images_from_pdf(pdf_path):
+            for obj in decode(image):
+                qr_data = obj.data.decode("utf-8").strip()
+                if qr_data.startswith("http"):
+                    return "alison"
+                if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
+                    return "infosys"
+    except Exception as e:
+        print(f"DEBUG: QR detection error: {e}")
     return None
 
-
-def is_image_based_pdf(pdf_path):
-    return not extract_text_from_pdf(pdf_path) and bool(extract_images_from_pdf(pdf_path))
 
 def detect_certification_platform(pdf_path):
     text = extract_text_from_pdf(pdf_path).lower()
     filename = pdf_path.split("/")[-1].split("\\")[-1].lower()
     
-    # 1. Check for Coursera
+    # 1. Check for Coursera (text only — no heavy libs needed)
     if any(k in text or k in filename for k in ["coursera", "google cloud", "university of"]):
         return "coursera"
     
-    # 2. Check for Infosys
-    if any(k in text or k in filename for k in ["infosys", "springboard", "knowledge institute"]):
-        return "infosys"
-    
-    # 2. Check for Saylor
-    saylor_keywords = ["saylor", "academy", "jeffery daubs", "verification code", "direct credit", "saylor.org"]
-    if any(k in text or k in filename for k in saylor_keywords) or re.search(r"\b[A-Z0-9]{8,15}\b", text + filename):
-        return "saylor"
-    
-
-
-    # 4. Check for Alison
-    qr = detect_qr_platform(pdf_path)
-    if qr == "alison" or "alison" in text or "alison" in filename:
-        return "alison"
-    
-    # 5. Check for Udemy
+    # 2. Check for Udemy (BEFORE Saylor to avoid false matches)
     udemy_keywords = ["udemy", "certificate of completion", "instructor", "udemy certified", "has successfully completed the course", "a online course"]
     if any(k in text or k in filename for k in udemy_keywords) or "uc-" in text or "uc-" in filename:
         return "udemy"
     
-    # 6. QR Fallback
+    # 3. Check for Infosys
+    if any(k in text or k in filename for k in ["infosys", "springboard", "knowledge institute"]):
+        return "infosys"
+    
+    # 4. Check for Saylor (strict keywords only — removed overly broad regex)
+    saylor_keywords = ["saylor", "jeffery daubs", "verification code", "direct credit", "saylor.org"]
+    if any(k in text or k in filename for k in saylor_keywords):
+        return "saylor"
+    
+    # 5. Check for Alison (text-based first, then QR only if needed)
+    if "alison" in text or "alison" in filename:
+        return "alison"
+    
+    # 6. QR Fallback — only load heavy QR libs if text detection failed
+    qr = detect_qr_platform(pdf_path)
     if qr:
         return qr
         
     # Final Resort Fallback
     if "coursera" in text: return "coursera"
     if "udemy" in text: return "udemy"
-    return "saylor" if text else "udemy"
+    return "udemy"
 
 # ====== Parsing Logic ======
 
@@ -220,7 +217,7 @@ def parse_verification_output(output, platform, text, forensic_result=None):
 
 
 def execute_script(platform, pdf_path):
-    max_retries = 3
+    max_retries = 1
     last_result = ""
     
     for attempt in range(max_retries):
@@ -272,7 +269,7 @@ def execute_script(platform, pdf_path):
 
 @app.route('/')
 def home():
-    return jsonify({"message": "TechStorm API is running", "endpoints": ["/verify", "/history", "/chat", "/register", "/login", "/session"]})
+    return jsonify({"message": "TechStorm API is running", "version": "3.0-noBrowser", "endpoints": ["/verify", "/history", "/chat", "/register", "/login", "/session"]})
 
 # ------ Auth Routes ------
 

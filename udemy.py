@@ -198,9 +198,7 @@ def extract_details_from_pdf_text(text):
     return name, course
 
 def extract_verification_link(text, pdf_path=""):
-    qr_url = extract_qr_from_pdf(pdf_path)
-    if qr_url:
-        return qr_url
+    # FAST PATH: Check text first (no heavy libs needed)
     text_clean = text.replace("\n", " ").replace("\r", " ").replace("  ", " ")
     match = re.search(r"(?:https?://)?(?:www\.)?udemy\.com/certificate/[a-zA-Z0-9\-]+", text_clean, re.IGNORECASE)
     if match:
@@ -214,17 +212,30 @@ def extract_verification_link(text, pdf_path=""):
     if match:
         url = match.group(1).strip().replace(" ", "")
         return url if url.startswith("http") else "https://" + url
-    filename = pdf_path.replace("\\", "/").split("/")[-1]
-    id_match = re.search(r"UC-[a-zA-Z0-9\-]+", filename, re.IGNORECASE)
-    if id_match:
-        uid = id_match.group(0).lower()
-        if uid.startswith("uc-"):
-            uid = "UC-" + uid[3:]
-        return f"https://www.udemy.com/certificate/{uid}/"
-    uuid_match = re.search(r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})", filename, re.IGNORECASE)
-    if uuid_match:
-        uid = uuid_match.group(1).lower()
-        return f"https://www.udemy.com/certificate/UC-{uid}/"
+
+    # FAST PATH: Check filename
+    if pdf_path:
+        filename = pdf_path.replace("\\", "/").split("/")[-1]
+        id_match = re.search(r"UC-[a-zA-Z0-9\-]+", filename, re.IGNORECASE)
+        if id_match:
+            uid = id_match.group(0)
+            if uid.lower().startswith("uc-"):
+                uid = "UC-" + uid[3:]
+            return f"https://www.udemy.com/certificate/{uid}/"
+        uuid_match = re.search(r"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})", filename, re.IGNORECASE)
+        if uuid_match:
+            uid = uuid_match.group(1).lower()
+            return f"https://www.udemy.com/certificate/UC-{uid}/"
+
+    # SLOW PATH: QR code scan (loads fitz+PIL+pyzbar)
+    if pdf_path:
+        try:
+            qr_url = extract_qr_from_pdf(pdf_path)
+            if qr_url:
+                return qr_url
+        except Exception as e:
+            print(f"DEBUG: QR scan failed: {e}")
+
     return None
 
 def extract_details_via_ocr(pdf_path):
