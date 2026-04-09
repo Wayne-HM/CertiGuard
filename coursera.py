@@ -146,59 +146,34 @@ def extract_verification_link(text, pdf_path=""):
     return None
 
 def scrape_page(verification_link):
-    # --- System Binary Detection ---
-    linux_paths = ["/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/google-chrome"]
-    win_paths = [r"C:\Program Files\Google\Chrome\Application\chrome.exe", r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"]
-    
-    executable_path = None
-    for path in (linux_paths + win_paths):
-        if os.path.exists(path):
-            executable_path = path
-            break
+    """Lightweight page scraping using requests + BeautifulSoup. No browser needed."""
+    import requests
+    from bs4 import BeautifulSoup
 
-    from playwright.sync_api import sync_playwright
-    all_text = ""
-    page_title = ""
-    is_blocked = False
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
 
     try:
-        with sync_playwright() as p:
-            launch_args = {
-                "headless": True,
-                "args": [
-                    "--disable-dev-shm-usage", 
-                    "--no-sandbox", 
-                    "--disable-setuid-sandbox",
-                    "--disable-gpu"
-                ]
-            }
-            if executable_path:
-                launch_args["executable_path"] = executable_path
-            
-            browser = p.chromium.launch(**launch_args)
-            context = browser.new_context(
-                viewport={'width': 800, 'height': 600},
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            )
-            page = context.new_page()
-            
-            page.goto(verification_link, wait_until="domcontentloaded", timeout=20000)
-            
-            # Wait for content
-            page.wait_for_timeout(3000)
-            
-            all_text = page.inner_text("body")
-            page_title = page.title()
-            
-            is_blocked = "verify you are human" in all_text.lower() or "security verification" in all_text.lower() or "cloudflare" in all_text.lower()
-            
-            browser.close()
-            gc.collect()
-            
+        response = requests.get(verification_link, headers=headers, timeout=15)
+
+        if response.status_code != 200:
+            return f"Error: HTTP {response.status_code}", "Error", False
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        all_text = soup.get_text(separator="\n")
+        page_title = soup.title.string.strip() if soup.title and soup.title.string else ""
+
+        is_blocked = any(kw in all_text.lower() for kw in [
+            "verify you are human", "security verification", "cloudflare"
+        ])
+
         return all_text, page_title, is_blocked
     except Exception as e:
-        print(f"Playwright error in scrape_page: {e}")
+        print(f"DEBUG: Coursera scrape error: {e}")
         return f"Error: {e}", "Error", False
+
 
 
 def get_verified_details(all_text, page_title):

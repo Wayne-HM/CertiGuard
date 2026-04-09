@@ -476,12 +476,7 @@ def chat():
     return jsonify({"reply": reply})
 
 if __name__ == '__main__':
-    # Startup check for Chromium binary
-    linux_path = "/usr/bin/chromium"
-    if os.path.exists(linux_path):
-        print(f"STARTUP: Found system chromium at {linux_path}")
-    else:
-        print("STARTUP WARNING: System chromium not found at /usr/bin/chromium")
-        
+    print("STARTUP: CertiGuard API starting (browser-free mode)")
     app.run(host='0.0.0.0', port=10000)
+
 

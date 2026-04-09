@@ -8,5 +8,3 @@ requests
 beautifulsoup4
 flask-cors
 pytesseract
-playwright
-

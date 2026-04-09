@@ -1,34 +1,19 @@
 # Start with Python slim image
 FROM python:3.11-slim-bullseye
 
-# Install system packages
-
+# Install only essential system packages (no browser needed)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libzbar0 \
     tesseract-ocr \
     libglib2.0-0 \
-    libnss3 \
-    libxss1 \
-    libasound2 \
-    libxtst6 \
-    libx11-xcb1 \
-    chromium \
-    libgbm1 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-
 
 # Set working directory
 WORKDIR /app
 
-# Set environment variables for Playwright/Puppeteer
-ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=1
-
 # Copy requirements and install Python packages
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-
 
 # Copy all other files
 COPY . .
