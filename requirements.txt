@@ -1,7 +1,6 @@
 Flask
 gunicorn
 PyPDF2
-PyMuPDF
 Pillow
 requests
 beautifulsoup4
