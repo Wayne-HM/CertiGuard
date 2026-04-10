@@ -25,19 +25,11 @@ TRUSTED_DOMAINS = {
     "www.coursera.org": "coursera"
 }
 
-def extract_text_from_pdf(pdf_path):
-    import fitz
-    text = ""
-    try:
-        doc = fitz.open(pdf_path)
-        for page in doc:
-            text += page.get_text("text") + "\n"
-            if not text.strip():
-                text += "\n".join(b[4] for b in page.get_text("blocks"))
-        doc.close()
-    except Exception as e:
-        print(f"Error extracting text: {e}")
-    return text.strip()
+def extract_text_from_pdf(pdf_path, worker_data=None):
+    if worker_data and worker_data.get("text"):
+        return worker_data["text"]
+    # Local extraction disabled to save memory
+    return ""
 
 
 def extract_details_from_pdf_text(text):
@@ -95,40 +87,11 @@ def extract_details_from_pdf_text(text):
                 
     return name, course
 
-def extract_text_via_ocr(pdf_path):
-    import fitz
-    import pytesseract
-    import io
-    from PIL import Image, ImageOps, ImageEnhance
-    
-    tess_path = get_tesseract_path()
-    if tess_path:
-        pytesseract.pytesseract.tesseract_cmd = tess_path
-        
-    try:
-        doc = fitz.open(pdf_path)
-        page = doc[0]
-        # High resolution pixmap
-        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
-        
-        # High-Precision Pipeline
-        img = Image.open(io.BytesIO(pix.tobytes("png")))
-        w, h = img.size
-        img = img.resize((w * 2, h * 2), Image.Resampling.LANCZOS)
-        img = ImageOps.grayscale(img)
-        img = ImageEnhance.Sharpness(img).enhance(2.0)
-        img = img.point(lambda p: 255 if p > 140 else 0)
-        
-        ocr_text = pytesseract.image_to_string(img, config='--oem 3 --psm 6').strip()
-        
-        doc.close()
-        del pix
-        gc.collect()
-        
-        return ocr_text
-    except Exception as e:
-        print(f"OCR Error: {e}")
-        return ""
+def extract_text_via_ocr(pdf_path, worker_data=None):
+    if worker_data and worker_data.get("ocr_text"):
+        return worker_data["ocr_text"]
+    # Local OCR disabled to save memory
+    return ""
 
 
 def extract_verification_link(text, pdf_path=""):
@@ -243,13 +206,17 @@ def extract_hours_and_date(text):
     if h_match: hours = h_match.group(1).strip()
     return hours, date
 
-def run_verification(file_path):
-    extracted_text = extract_text_from_pdf(file_path)
+def run_verification(file_path, worker_data=None):
+    extracted_text = ""
+    if worker_data and worker_data.get("text"):
+        extracted_text = worker_data["text"]
+    else:
+        # Fallback to worker OCR
+        if worker_data and worker_data.get("ocr_text"):
+            extracted_text = worker_data["ocr_text"]
     
-    # NEW: Full-page OCR fallback if native text is empty (image-based PDF)
-    if not extracted_text.strip():
-        print("INFO: Coursera Image-based PDF detected, attempting OCR...")
-        extracted_text = extract_text_via_ocr(file_path)
+    if not extracted_text:
+        return "❌ Skipping Coursera verification: Worker data unavailable and local processing disabled."
 
     verification_link = extract_verification_link(extracted_text, file_path)
 

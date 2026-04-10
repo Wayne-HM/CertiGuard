@@ -77,20 +77,8 @@ def extract_text_from_pdf(pdf_path):
 
 
 def extract_images_from_pdf(pdf_path):
-    import fitz
-    import io
-    from PIL import Image
-    try:
-        doc = fitz.open(pdf_path)
-        images = []
-        for page in doc:
-            for img in page.get_images(full=True):
-                base_image = doc.extract_image(img[0])
-                image_bytes = base_image["image"]
-                images.append(Image.open(io.BytesIO(image_bytes)))
-        return images
-    except:
-        return []
+    # LOCAL IMAGE EXTRACTION DISABLED: Use Worker
+    return []
 
 
 def detect_qr_platform(pdf_path, worker_data=None):
@@ -102,18 +90,7 @@ def detect_qr_platform(pdf_path, worker_data=None):
             if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
                 return "infosys"
 
-    # Fallback to local scan ONLY if no worker data (risk of OOM)
-    try:
-        from pyzbar.pyzbar import decode
-        for image in extract_images_from_pdf(pdf_path):
-            for obj in decode(image):
-                qr_data = obj.data.decode("utf-8").strip()
-                if qr_data.startswith("http"):
-                    return "alison"
-                if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
-                    return "infosys"
-    except Exception as e:
-        print(f"DEBUG: QR detection error: {e}")
+    # Local scan disabled to prevent crashes
     return None
 
 
@@ -255,7 +232,7 @@ def execute_script(platform, pdf_path, worker_data=None):
                 result = alison.run_verification(pdf_path, worker_data=worker_data)
             elif platform == "saylor":
                 import saylor
-                result = saylor.run_verification(pdf_path)
+                result = saylor.run_verification(pdf_path, worker_data=worker_data)
             elif platform == "infosys":
                 import infosys
                 result = infosys.run_verification(pdf_path, worker_data=worker_data)

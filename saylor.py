@@ -4,12 +4,11 @@ import os
 import gc
 
 
-def extract_text_from_pdf(pdf_path):
-    import fitz
-    doc = fitz.open(pdf_path)
-    text = "\n".join([page.get_text("text") for page in doc])
-    doc.close()
-    return text
+def extract_text_from_pdf(pdf_path, worker_data=None):
+    if worker_data and worker_data.get("text"):
+        return worker_data["text"]
+    # Local extraction disabled to save memory
+    return ""
 
 
 def normalize_text(text):
@@ -97,42 +96,9 @@ def verify_saylor(saylorId, pdfUrl):
             if m2:
                 courseName = m2.group(1).strip()
 
-        # Step 2: Try to fetch official PDF for grade/hours/date
-        if studentName and courseName:
-            try:
-                import fitz
-                pdf_url = f"https://learn.saylor.org/admin/tool/certificate/view.php?code={saylorId}"
-                pdf_response = session.get(pdf_url, timeout=12)
-
-                if pdf_response.status_code == 200 and b"%PDF" in pdf_response.content[:5]:
-                    tempPdfPath = f"temp_saylor_{saylorId}.pdf"
-                    with open(tempPdfPath, "wb") as f:
-                        f.write(pdf_response.content)
-
-                    doc = fitz.open(tempPdfPath)
-                    officialText = ""
-                    for i in range(len(doc)):
-                        officialText += doc.load_page(i).get_text() + " \n "
-                    doc.close()
-
-                    if os.path.exists(tempPdfPath):
-                        os.remove(tempPdfPath)
-
-                    gradeMatches = re.findall(r'\b\d{1,3}\.\d{2}\b', officialText)
-                    if gradeMatches:
-                        grade = gradeMatches[-1]
-
-                    hoursMatch = re.search(r'(\d+(?:\.\d+)?)\s*Hours', officialText, re.IGNORECASE)
-                    if hoursMatch:
-                        hours = hoursMatch.group(1).strip()
-
-                    dateMatch = re.search(r'(\d{1,2}\s+[A-Za-z]+\s+\d{4}|[A-Za-z]+\s+\d{1,2},\s+\d{4})', officialText)
-                    if dateMatch:
-                        issueDate = dateMatch.group(1).strip()
-            except Exception as e:
-                print(f"DEBUG: Saylor PDF extraction error: {e}")
-            finally:
-                gc.collect()
+        # Step 2: PDF extraction for grade/hours/date disabled locally
+        # Use worker data if we were to support this, or fallback to web scraping
+        pass
 
     except Exception as e:
         print(f"DEBUG: Saylor verification error: {e}")
@@ -157,11 +123,17 @@ def verify_saylor(saylorId, pdfUrl):
     return "❌ Could not parse Name/Course from official Saylor verification records."
 
 
-def run_verification(pdf_path):
-    import fitz
-    doc = fitz.open(pdf_path)
-    extracted_text = "\n".join([page.get_text("text") for page in doc])
-    doc.close()
+def run_verification(pdf_path, worker_data=None):
+    extracted_text = ""
+    if worker_data and worker_data.get("text"):
+        extracted_text = worker_data["text"]
+    else:
+        # Fallback to worker OCR if text is empty
+        if worker_data and worker_data.get("ocr_text"):
+            extracted_text = worker_data["ocr_text"]
+
+    if not extracted_text:
+        return "❌ Skipping Saylor verification: Worker data unavailable and local processing disabled."
 
     # Alphanumeric ID detection (e.g. 5382377942SM)
     cert_id_match = re.search(r"\b([A-Z0-9]{8,15})\b", extracted_text)
@@ -173,6 +145,6 @@ def run_verification(pdf_path):
         cert_id = cert_id_match.group(1).strip() if cert_id_match else None
 
     if not cert_id:
-        return "❌ Could not find a valid Saylor Certificate ID in the PDF or Filename."
+        return "❌ Could not find a valid Saylor Certificate ID in the PDF data."
 
     return verify_saylor(cert_id, pdf_path)
