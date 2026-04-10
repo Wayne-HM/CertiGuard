@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+__pycache__
+*.pdf
+*.png
+uploads
+CertiGuard
+techstorm_nexus
+node_modules
+dist
+build
+.env
+.env.local

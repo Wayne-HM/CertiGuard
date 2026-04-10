@@ -4,6 +4,8 @@ FROM python:3.11-slim-bullseye
 # Install only essential runtime packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
+    libjpeg-dev \
+    zlib1g-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -13,8 +15,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all other files
+# Copy all other files (respect .dockerignore)
 COPY . .
 
-# Run app with 1 worker to stay within the 512MB RAM limit of Render free tier
+# Run app with 1 worker to stay within the 512MB RAM limit
 CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000", "--timeout", "180", "--workers", "1"]
