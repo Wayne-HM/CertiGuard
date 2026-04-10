@@ -24,51 +24,15 @@ def perform_high_precision_ocr(pix):
     return ""
 
 
-def extract_text_from_pdf(pdf_path):
-    import fitz
-    text = ""
-    try:
-        doc = fitz.open(pdf_path)
-        for page in doc:
-            text += page.get_text("text") + "\n"
-            if not text.strip():
-                text += "\n".join(b[4] for b in page.get_text("blocks"))
-        doc.close()
-    except Exception as e:
-        print(f"Error extracting text: {e}")
-    return text.strip()
+def extract_text_from_pdf(pdf_path, worker_data=None):
+    if worker_data and worker_data.get("text"):
+        return worker_data["text"]
+    # Local extraction disabled to save memory
+    return ""
 
 
 def extract_qr_from_pdf(pdf_path):
-    import fitz
-    import io
-    from PIL import Image
-    try:
-        doc = fitz.open(pdf_path)
-        for page in doc:
-            images = page.get_images(full=True)
-            if not images:
-                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-                img_data = pix.tobytes("png")
-                pil_img = Image.open(io.BytesIO(img_data))
-                qr_url = decode_qr_with_preprocessing(pil_img)
-                if qr_url:
-                    doc.close()
-                    return qr_url
-                continue
-
-            for img in images:
-                xref = img[0]
-                base_image = doc.extract_image(xref)
-                image_bytes = base_image["image"]
-                pil_img = Image.open(io.BytesIO(image_bytes))
-                qr_url = decode_qr_with_preprocessing(pil_img)
-                if qr_url:
-                    doc.close()
-                    return qr_url
-        doc.close()
-    except Exception as e:
-        print(f"QR Extraction error: {e}")
+    # LOCAL IMAGE/QR EXTRACTION DISABLED: Use Worker
     return None
 
 
@@ -77,26 +41,8 @@ def decode_qr_with_preprocessing(pil_img):
     return None
 
 
-def extract_top_right_url(pdf_path):
-    import fitz
-    try:
-        doc = fitz.open(pdf_path)
-        page = doc[0]
-        rect = page.rect
-        crop_rect = fitz.Rect(rect.width * 0.55, 0, rect.width, rect.height * 0.2)
-        pix = page.get_pixmap(matrix=fitz.Matrix(4, 4), clip=crop_rect)
-        ocr_text = perform_high_precision_ocr(pix).replace(" ", "")
-        match = re.search(r"(?:ude\.my/|udemy\.com/certificate/)([a-zA-Z0-9\-]+)", ocr_text, re.IGNORECASE)
-        found_url = None
-        if match:
-            url_part = match.group(1).strip()
-            found_url = f"https://www.udemy.com/certificate/{url_part}/"
-        doc.close()
-        del pix
-        gc.collect()
-        return found_url
-    except Exception as e:
-        print(f"Top-right OCR error: {e}")
+def extract_top_right_url(pdf_path, worker_data=None):
+    # LOCAL OCR DISABLED: Use Worker
     return None
 
 
@@ -209,21 +155,9 @@ def extract_verification_link(text, pdf_path="", worker_data=None):
 
     return None
 
-def extract_details_via_ocr(pdf_path):
-    import fitz
-    try:
-        doc = fitz.open(pdf_path)
-        page = doc[0]
-        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
-        ocr_text = perform_high_precision_ocr(pix)
-        doc.close()
-        del pix
-        gc.collect()
-        extracted_name, extracted_course = extract_details_from_pdf_text(ocr_text)
-        return extracted_name, extracted_course, ocr_text
-    except Exception as e:
-        print(f"Full-page OCR error: {e}")
-        return "Name Not Found", "Course Not Found", ""
+def extract_details_via_ocr(pdf_path, worker_data=None):
+    # LOCAL OCR DISABLED: Use Worker
+    return "Name Not Found", "Course Not Found", ""
 
 
 # --- LIGHTWEIGHT VERIFICATION ENGINE (requests-based, no browser needed) ---
@@ -233,6 +167,7 @@ def verifyUdemy(certId):
     """Lightweight verification using requests + BeautifulSoup. No Chromium needed."""
     import requests
     from bs4 import BeautifulSoup
+    import worker_client
 
     certId = certId.replace('ude.my/', '').strip()
     if not certId.startswith('UC-'):
@@ -409,8 +344,7 @@ def run_verification(file_path, worker_data=None):
                 url_part = match.group(1).strip()
                 verification_link = f"https://www.udemy.com/certificate/{url_part}/"
         
-        if not verification_link and not worker_data:
-            verification_link = extract_top_right_url(file_path)
+        # Local OCR/QR fallback disabled
 
     # Get local details first
     local_name, local_course = extract_details_from_pdf_text(extracted_text)
