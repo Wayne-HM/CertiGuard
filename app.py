@@ -17,7 +17,9 @@ try:
         print(f"DEBUG MEM [{tag}]: {mem:.2f} MB")
 except ImportError:
     def log_mem(tag):
-        pass
+        import gc
+        gc.collect()
+        print(f"DEBUG MEM [{tag}]: GC executed (psutil missing)")
 
 
 
@@ -427,9 +429,11 @@ def verify():
         
         save_history(result)
         
+        log_mem("Before Response")
         return jsonify(result)
 
     except Exception as e:
+        log_mem("On Error")
         print(f"CRITICAL ERROR in /verify: {str(e)}")
         import traceback
         traceback.print_exc()
@@ -444,12 +448,19 @@ def verify():
         }), 500
     finally:
         # Always clean up
-        gc.collect()
         if filepath and os.path.exists(filepath):
             try:
                 os.remove(filepath)
             except:
                 pass
+        
+        # Explicitly delete big objects
+        if 'worker_data' in locals(): del worker_data
+        if 'raw_output' in locals(): del raw_output
+        if 'text' in locals(): del text
+        
+        gc.collect()
+        log_mem("After Final Cleanup")
 
 
 
