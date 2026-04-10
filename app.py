@@ -197,16 +197,21 @@ def parse_verification_output(output, platform, text, forensic_result=None):
         status = "manual_check"
 
     # Precise extraction for standardized labels
+    # 1. Name Extraction
     name_match = re.search(r"^(?:Verified )?Name:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
     name = name_match.group(1).strip() if name_match else ""
-    if not name:
-        name_match = re.search(r"Name:\s+([A-Za-z\s]+?)(?=\n|$)", output)
+    if not name or name == "Name Not Found":
+        name_match = re.search(r"(?:name|student):\s+([A-Za-z\s]+?)(?=\n|$)", output, re.IGNORECASE)
         name = name_match.group(1).strip() if name_match else "Extracted from Certificate"
     
+    # 2. Course Extraction
     course_match = re.search(r"^Course:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
-    course = course_match.group(1).strip() if course_match else "Extracted from Certificate"
+    course = course_match.group(1).strip() if course_match else ""
+    if not course or course == "Course Not Found":
+        course_match = re.search(r"course:\s*(.+?)(?=\n|$)", output, re.IGNORECASE)
+        course = course_match.group(1).strip() if course_match else "Extracted from Certificate"
     
-    # NEW: Hours and Date extraction
+    # 3. Hours and Date
     hours_match = re.search(r"^Hours:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
     hours = hours_match.group(1).strip() if hours_match else "N/A"
     
