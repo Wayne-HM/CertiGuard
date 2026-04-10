@@ -1,5 +1,2 @@
-libzbar0
-libzbar-dev
-libgl1
-chromium-browser
-chromium-chromedriver
+# No heavy system libs needed on main server anymore
+# Everything is offloaded to the serverless worker

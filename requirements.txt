@@ -1,10 +1,8 @@
 Flask
 gunicorn
-pyzbar
 PyPDF2
 PyMuPDF
 Pillow
 requests
 beautifulsoup4
 flask-cors
-pytesseract
