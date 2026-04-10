@@ -134,8 +134,6 @@ def run_verification(pdf_path, worker_data=None):
         # Manual extraction disabled to prevent OOM
         pass
         
-    try:
-
     if "infosys" in text.lower() or "springboard" in text.lower():
         # Extract name and course from text
         name_match = re.search(r'(?:Name|Learner|Participant|Awarded to)[:\s]+([A-Za-z\s\.\-]+)', text, re.I)
