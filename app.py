@@ -204,11 +204,11 @@ def parse_verification_output(output, platform, text, forensic_result=None):
         name_match = re.search(r"(?:name|student):\s+([A-Za-z\s]+?)(?=\n|$)", output, re.IGNORECASE)
         name = name_match.group(1).strip() if name_match else "Extracted from Certificate"
     
-    # 2. Course Extraction
-    course_match = re.search(r"^Course:\s*(.+)$", output, re.MULTILINE | re.IGNORECASE)
+    # 2. Course Extraction - Greedier capture
+    course_match = re.search(r"^Course:\s*(.*)$", output, re.MULTILINE | re.IGNORECASE)
     course = course_match.group(1).strip() if course_match else ""
-    if not course or course == "Course Not Found":
-        course_match = re.search(r"course:\s*(.+?)(?=\n|$)", output, re.IGNORECASE)
+    if not course or course == "Course Not Found" or len(course) < 5:
+        course_match = re.search(r"course:\s*(.+?)(?=\n|URL:|$)", output, re.IGNORECASE)
         course = course_match.group(1).strip() if course_match else "Extracted from Certificate"
     
     # 3. Hours and Date

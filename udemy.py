@@ -132,8 +132,9 @@ def extract_details_from_pdf_text(text):
     course = "Course Not Found"
     
     # Try to find the Course first (it's usually in a standard format)
+    # Changed to be more greedy to avoid truncation like 'Pyth'
     course_match = re.search(
-        r"CERTIFICATE\s+OF\s+COMPLETION\s+(.*?)\s*(?:Instructors?|URL:|Date:|on\s+[A-Z][a-z]+|as\s+taught\s+by|$)",
+        r"CERTIFICATE\s+OF\s+COMPLETION\s+(.*?)\s*(?=Instructors?|URL:|Date:|Date\s+Issued:|on\s+[A-Z][a-z]+|as\s+taught\s+by|\d{1,2}\s+total\s+hours|$)",
         text, re.IGNORECASE | re.DOTALL
     )
     if course_match:
