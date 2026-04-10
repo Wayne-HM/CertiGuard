@@ -197,8 +197,14 @@ def extract_details_from_pdf_text(text):
                 break
     return name, course
 
-def extract_verification_link(text, pdf_path=""):
-    # FAST PATH: Check text first (no heavy libs needed)
+def extract_verification_link(text, pdf_path="", worker_data=None):
+    # FAST PATH: Check worker data first
+    if worker_data and worker_data.get("qr_codes"):
+        for qr in worker_data["qr_codes"]:
+            if "udemy.com/certificate" in qr or "ude.my" in qr:
+                return qr
+
+    # FAST PATH: Check text second (no heavy libs needed)
     text_clean = text.replace("\n", " ").replace("\r", " ").replace("  ", " ")
     match = re.search(r"(?:https?://)?(?:www\.)?udemy\.com/certificate/[a-zA-Z0-9\-]+", text_clean, re.IGNORECASE)
     if match:
@@ -228,7 +234,7 @@ def extract_verification_link(text, pdf_path=""):
             return f"https://www.udemy.com/certificate/UC-{uid}/"
 
     # SLOW PATH: QR code scan (loads fitz+PIL+pyzbar)
-    if pdf_path:
+    if pdf_path and not worker_data:
         try:
             qr_url = extract_qr_from_pdf(pdf_path)
             if qr_url:
@@ -419,19 +425,38 @@ def verifyUdemy(certId):
 
 # --- MAIN RUNNER ---
 
-def run_verification(file_path):
+def run_verification(file_path, worker_data=None):
     """Bridge between PDF extraction and live verification"""
-    extracted_text = extract_text_from_pdf(file_path)
-    verification_link = extract_verification_link(extracted_text, file_path)
+    extracted_text = ""
+    if worker_data and worker_data.get("text"):
+        extracted_text = worker_data["text"]
+    else:
+        extracted_text = extract_text_from_pdf(file_path)
+        
+    verification_link = extract_verification_link(extracted_text, file_path, worker_data=worker_data)
 
     if not verification_link:
-        verification_link = extract_top_right_url(file_path)
+        if worker_data and worker_data.get("ocr_text"):
+            # Check worker OCR for the URL
+            ocr_text = worker_data["ocr_text"].replace(" ", "")
+            match = re.search(r"(?:ude\.my/|udemy\.com/certificate/)([a-zA-Z0-9\-]+)", ocr_text, re.IGNORECASE)
+            if match:
+                url_part = match.group(1).strip()
+                verification_link = f"https://www.udemy.com/certificate/{url_part}/"
+        
+        if not verification_link and not worker_data:
+            verification_link = extract_top_right_url(file_path)
 
     # Get local details first
     local_name, local_course = extract_details_from_pdf_text(extracted_text)
 
     if local_name == "Name Not Found" or local_course == "Course Not Found":
-        if not extracted_text.strip() or len(extracted_text) < 50:
+        if worker_data and worker_data.get("ocr_text"):
+            ocr_name, ocr_course = extract_details_from_pdf_text(worker_data["ocr_text"])
+            if ocr_name != "Name Not Found": local_name = ocr_name
+            if ocr_course != "Course Not Found": local_course = ocr_course
+            extracted_text += "\n" + worker_data["ocr_text"]
+        elif not extracted_text.strip() or len(extracted_text) < 50:
             ocr_name, ocr_course, raw_ocr = extract_details_via_ocr(file_path)
             if ocr_name != "Name Not Found": local_name = ocr_name
             if ocr_course != "Course Not Found": local_course = ocr_course

@@ -116,8 +116,18 @@ def extract_hours_and_date(text):
     if h_match: hours = h_match.group(1).strip()
     return hours, date
 
-def run_verification(pdf_path):
-    qr_url = extract_qr_from_pdf(pdf_path)
+def run_verification(pdf_path, worker_data=None):
+    qr_url = None
+    
+    # 1. Check worker data first
+    if worker_data and worker_data.get("qr_codes"):
+        for qr in worker_data["qr_codes"]:
+            if "alison.com" in qr:
+                qr_url = qr
+                break
+    
+    if not qr_url and not worker_data:
+        qr_url = extract_qr_from_pdf(pdf_path)
     
     if not qr_url:
         filename = pdf_path.split("/")[-1].split("\\")[-1]
@@ -126,13 +136,17 @@ def run_verification(pdf_path):
         if qr_url and not qr_url.startswith("http"):
             qr_url = "https://" + qr_url
 
-    import fitz
-    # Local text extraction
-    doc = fitz.open(pdf_path)
-    extracted_text = "\n".join(page.get_text("text") for page in doc).strip()
-    doc.close()
+    extracted_text = ""
+    if worker_data and worker_data.get("text"):
+        extracted_text = worker_data["text"]
+    else:
+        try:
+            import fitz
+            doc = fitz.open(pdf_path)
+            extracted_text = "\n".join(page.get_text("text") for page in doc).strip()
+            doc.close()
+        except: pass
 
-    
     # Extract Hours/Date baseline
     hours, date = extract_hours_and_date(extracted_text)
     details_suffix = f"\nHours: {hours}\nDate: {date}"

@@ -94,37 +94,37 @@ def verify_infosys_qr(qr_data):
     except Exception as e:
         return f"❌ Verification Error: {str(e)}"
 
-def run_verification(pdf_path):
+def run_verification(pdf_path, worker_data=None):
     """Integrates with CertiGuard app.py workflow"""
-    import fitz
-    import io
-    from PIL import Image
-    from pyzbar.pyzbar import decode
-
     all_qr_data = []
 
-    try:
-        doc = fitz.open(pdf_path)
-        
-        for page in doc:
-            for img in page.get_images(full=True):
-                try:
-                    base_image = doc.extract_image(img[0])
-                    image_bytes = base_image["image"]
-                    pil_img = Image.open(io.BytesIO(image_bytes))
-                    
-                    for obj in decode(pil_img):
-                        qr_data = obj.data.decode("utf-8")
-                        all_qr_data.append(qr_data)
-                except Exception as img_err:
-                    print(f"DEBUG: Infosys image decode error: {img_err}")
-                    continue
-        
-        doc.close()
-    except Exception as e:
-        return f"❌ Error reading PDF: {str(e)}"
-    finally:
-        gc.collect()
+    # 1. Check worker data first
+    if worker_data and worker_data.get("qr_codes"):
+        all_qr_data = worker_data["qr_codes"]
+    
+    # 2. Local fallback if no worker data is available
+    if not all_qr_data and not worker_data:
+        import fitz
+        import io
+        from PIL import Image
+        from pyzbar.pyzbar import decode
+        try:
+            doc = fitz.open(pdf_path)
+            for page in doc:
+                for img in page.get_images(full=True):
+                    try:
+                        base_image = doc.extract_image(img[0])
+                        image_bytes = base_image["image"]
+                        pil_img = Image.open(io.BytesIO(image_bytes))
+                        for obj in decode(pil_img):
+                            qr_data = obj.data.decode("utf-8")
+                            all_qr_data.append(qr_data)
+                    except: continue
+            doc.close()
+        except Exception as e:
+            return f"❌ Error reading PDF: {str(e)}"
+        finally:
+            gc.collect()
 
     # Try each QR code found
     for qr_data in all_qr_data:
@@ -145,26 +145,32 @@ def run_verification(pdf_path):
                 return result
 
     # Text-based fallback - check PDF text for Infosys indicators
-    try:
-        doc = fitz.open(pdf_path)
-        text = "\n".join([page.get_text("text") for page in doc])
-        doc.close()
+    text = ""
+    if worker_data and worker_data.get("text"):
+        text = worker_data["text"]
+    else:
+        try:
+            import fitz
+            doc = fitz.open(pdf_path)
+            text = "\n".join([page.get_text("text") for page in doc])
+            doc.close()
+        except: pass
 
-        if "infosys" in text.lower() or "springboard" in text.lower():
-            # Extract name and course from text
-            name_match = re.search(r'(?:Name|Learner|Participant|Awarded to)[:\s]+([A-Za-z\s\.\-]+)', text, re.I)
-            course_match = re.search(r'(?:Course|Program|Certification|completed)[:\s]+([A-Za-z\s\.\-\d]+)', text, re.I)
-            
-            name = name_match.group(1).strip() if name_match else "Name Not Found"
-            course = course_match.group(1).strip() if course_match else "Course Not Found"
-            
-            if name != "Name Not Found" and course != "Course Not Found":
-                return (
-                    f"✅ Authenticated via PDF Analysis\n"
-                    f"Name: {name}\n"
-                    f"Course: {course}\n"
-                    f"Status: Authentic"
-                )
+    if "infosys" in text.lower() or "springboard" in text.lower():
+        # Extract name and course from text
+        name_match = re.search(r'(?:Name|Learner|Participant|Awarded to)[:\s]+([A-Za-z\s\.\-]+)', text, re.I)
+        course_match = re.search(r'(?:Course|Program|Certification|completed)[:\s]+([A-Za-z\s\.\-\d]+)', text, re.I)
+        
+        name = name_match.group(1).strip() if name_match else "Name Not Found"
+        course = course_match.group(1).strip() if course_match else "Course Not Found"
+        
+        if name != "Name Not Found" and course != "Course Not Found":
+            return (
+                f"✅ Authenticated via PDF Analysis\n"
+                f"Name: {name}\n"
+                f"Course: {course}\n"
+                f"Status: Authentic"
+            )
     except:
         pass
     finally:

@@ -6,6 +6,7 @@ import os
 import re
 import time
 import gc
+import worker_client
 
 # Log memory usage if psutil is available
 try:
@@ -21,8 +22,12 @@ except ImportError:
 
 
 app = Flask(__name__)
-# Enable CORS for the Next.js frontend (default dev port 3000)
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Enable CORS for both local development and the production Vercel frontend
+CORS(app, resources={r"/*": {
+    "origins": ["*", "https://certiguardofficial.vercel.app"],
+    "methods": ["GET", "POST", "OPTIONS"],
+    "allow_headers": ["Content-Type", "Authorization"]
+}})
 
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -88,7 +93,16 @@ def extract_images_from_pdf(pdf_path):
         return []
 
 
-def detect_qr_platform(pdf_path):
+def detect_qr_platform(pdf_path, worker_data=None):
+    # If worker already found QR codes, use them! (Zero local memory cost)
+    if worker_data and worker_data.get("qr_codes"):
+        for qr_data in worker_data["qr_codes"]:
+            if qr_data.startswith("http") and "alison" in qr_data:
+                return "alison"
+            if "credentialSubject" in qr_data or "infosys" in qr_data.lower():
+                return "infosys"
+
+    # Fallback to local scan ONLY if no worker data (risk of OOM)
     try:
         from pyzbar.pyzbar import decode
         for image in extract_images_from_pdf(pdf_path):
@@ -103,15 +117,21 @@ def detect_qr_platform(pdf_path):
     return None
 
 
-def detect_certification_platform(pdf_path):
-    text = extract_text_from_pdf(pdf_path).lower()
+def detect_certification_platform(pdf_path, worker_data=None):
+    # 0. Check worker text first (zero cost)
+    text = ""
+    if worker_data and worker_data.get("text"):
+        text = worker_data["text"].lower()
+    else:
+        text = extract_text_from_pdf(pdf_path).lower()
+
     filename = pdf_path.split("/")[-1].split("\\")[-1].lower()
     
-    # 1. Check for Coursera (text only — no heavy libs needed)
+    # 1. Check for Coursera
     if any(k in text or k in filename for k in ["coursera", "google cloud", "university of"]):
         return "coursera"
     
-    # 2. Check for Udemy (BEFORE Saylor to avoid false matches)
+    # 2. Check for Udemy
     udemy_keywords = ["udemy", "certificate of completion", "instructor", "udemy certified", "has successfully completed the course", "a online course"]
     if any(k in text or k in filename for k in udemy_keywords) or "uc-" in text or "uc-" in filename:
         return "udemy"
@@ -120,23 +140,20 @@ def detect_certification_platform(pdf_path):
     if any(k in text or k in filename for k in ["infosys", "springboard", "knowledge institute"]):
         return "infosys"
     
-    # 4. Check for Saylor (strict keywords only — removed overly broad regex)
+    # 4. Check for Saylor
     saylor_keywords = ["saylor", "jeffery daubs", "verification code", "direct credit", "saylor.org"]
     if any(k in text or k in filename for k in saylor_keywords):
         return "saylor"
     
-    # 5. Check for Alison (text-based first, then QR only if needed)
+    # 5. Check for Alison
     if "alison" in text or "alison" in filename:
         return "alison"
     
-    # 6. QR Fallback — only load heavy QR libs if text detection failed
-    qr = detect_qr_platform(pdf_path)
+    # 6. QR Fallback — use worker_data preferred
+    qr = detect_qr_platform(pdf_path, worker_data=worker_data)
     if qr:
         return qr
         
-    # Final Resort Fallback
-    if "coursera" in text: return "coursera"
-    if "udemy" in text: return "udemy"
     return "udemy"
 
 # ====== Parsing Logic ======
@@ -216,7 +233,7 @@ def parse_verification_output(output, platform, text, forensic_result=None):
     }
 
 
-def execute_script(platform, pdf_path):
+def execute_script(platform, pdf_path, worker_data=None):
     max_retries = 1
     last_result = ""
     
@@ -227,16 +244,16 @@ def execute_script(platform, pdf_path):
                 result = coursera.run_verification(pdf_path)
             elif platform == "udemy":
                 import udemy
-                result = udemy.run_verification(pdf_path)
+                result = udemy.run_verification(pdf_path, worker_data=worker_data)
             elif platform == "alison":
                 import alison
-                result = alison.run_verification(pdf_path)
+                result = alison.run_verification(pdf_path, worker_data=worker_data)
             elif platform == "saylor":
                 import saylor
                 result = saylor.run_verification(pdf_path)
             elif platform == "infosys":
                 import infosys
-                result = infosys.run_verification(pdf_path)
+                result = infosys.run_verification(pdf_path, worker_data=worker_data)
             else:
                 return "❌ No matching script found for platform."
 
@@ -394,20 +411,36 @@ def verify():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
-        # Get optional platform from form data (default to 'auto')
+        # --- 1. Worker Offloading (Do this FIRST to avoid local memory usage) ---
+        worker_data = None
+        if worker_client.client.is_available():
+            try:
+                worker_data = worker_client.client.process_pdf(filepath)
+                print(f"DEBUG: Worker data retrieved successfully")
+            except Exception as e:
+                print(f"DEBUG: Worker call failed: {e}")
+
+        # --- 2. Platform Detection (Use worker data if available) ---
         selected_platform = request.form.get('platform', 'auto').lower()
         
         if selected_platform == 'auto' or not selected_platform:
-            platform = detect_certification_platform(filepath)
+            # We can now pass worker_data to the detector to avoid local QR scans
+            platform = detect_certification_platform(filepath, worker_data=worker_data)
         else:
             platform = selected_platform
 
         print(f"DEBUG: Verifying {filename} as platform={platform}")
 
-        raw_output = execute_script(platform, filepath)
+        raw_output = execute_script(platform, filepath, worker_data=worker_data)
         forensic_result = check_pdf_metadata(filepath)
         
-        text = extract_text_from_pdf(filepath) or ""
+        # Use worker text if available to avoid local extraction
+        text = ""
+        if worker_data and worker_data.get("text"):
+            text = worker_data["text"]
+        else:
+            text = extract_text_from_pdf(filepath) or ""
+            
         result = parse_verification_output(raw_output, platform, text, forensic_result)
         
         save_history(result)

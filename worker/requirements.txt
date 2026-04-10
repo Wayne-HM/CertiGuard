@@ -1,0 +1,6 @@
+flask
+pymupdf
+pillow
+pytesseract
+zxing-cpp
+flask-cors
