@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
-# Minimal build script
-echo "Build started..."
+# exit on error
+set -o errexit
+
+pip install --upgrade pip
+pip install -r requirements.txt

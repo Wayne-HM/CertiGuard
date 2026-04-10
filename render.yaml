@@ -1,11 +1,12 @@
 services:
   - type: web
     name: certiguard-api
-    runtime: docker
+    runtime: python
     plan: starter
     envVars:
       - key: PORT
         value: 10000
       - key: PYTHON_VERSION
         value: 3.11.0
-    # The build and start commands are handled by the Dockerfile
+    buildCommand: ./build.sh
+    startCommand: gunicorn app:app --bind 0.0.0.0:10000 --timeout 180 --workers 1
