@@ -5,28 +5,7 @@ import gc
 
 
 def extract_qr_from_pdf(pdf_path):
-    import fitz
-    import io
-    from PIL import Image
-    from pyzbar.pyzbar import decode
-    try:
-        doc = fitz.open(pdf_path)
-        for i in range(len(doc)):
-            page = doc.load_page(i)
-            img_list = page.get_images(full=True)
-            for img in img_list:
-                xref = img[0]
-                base_image = doc.extract_image(xref)
-                image_bytes = base_image["image"]
-                image = Image.open(io.BytesIO(image_bytes))
-                decoded_objects = decode(image)
-                for obj in decoded_objects:
-                    if obj.type == 'QRCODE':
-                        doc.close()
-                        return obj.data.decode('utf-8')
-        doc.close()
-    except Exception as e:
-        print(f"DEBUG: Alison QR Extraction error: {e}")
+    # LOCAL QR EXTRACTION REMOVED: Use Worker to prevent crashes
     return None
 
 
@@ -140,12 +119,8 @@ def run_verification(pdf_path, worker_data=None):
     if worker_data and worker_data.get("text"):
         extracted_text = worker_data["text"]
     else:
-        try:
-            import fitz
-            doc = fitz.open(pdf_path)
-            extracted_text = "\n".join(page.get_text("text") for page in doc).strip()
-            doc.close()
-        except: pass
+        # Local extraction disabled to save memory
+        pass
 
     # Extract Hours/Date baseline
     hours, date = extract_hours_and_date(extracted_text)

@@ -8,7 +8,10 @@ class WorkerClient:
         self.worker_url = worker_url or os.environ.get("WORKER_URL")
 
     def is_available(self):
-        return bool(self.worker_url)
+        if not self.worker_url:
+            print("WARNING: WORKER_URL is NOT set in environment variables. Remote processing is DISABLED.")
+            return False
+        return True
 
     def process_pdf(self, pdf_path):
         """

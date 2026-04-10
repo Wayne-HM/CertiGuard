@@ -102,29 +102,11 @@ def run_verification(pdf_path, worker_data=None):
     if worker_data and worker_data.get("qr_codes"):
         all_qr_data = worker_data["qr_codes"]
     
-    # 2. Local fallback if no worker data is available
+    # 2. Local fallback DISABLED on Render to save memory
     if not all_qr_data and not worker_data:
-        import fitz
-        import io
-        from PIL import Image
-        from pyzbar.pyzbar import decode
-        try:
-            doc = fitz.open(pdf_path)
-            for page in doc:
-                for img in page.get_images(full=True):
-                    try:
-                        base_image = doc.extract_image(img[0])
-                        image_bytes = base_image["image"]
-                        pil_img = Image.open(io.BytesIO(image_bytes))
-                        for obj in decode(pil_img):
-                            qr_data = obj.data.decode("utf-8")
-                            all_qr_data.append(qr_data)
-                    except: continue
-            doc.close()
-        except Exception as e:
-            return f"❌ Error reading PDF: {str(e)}"
-        finally:
-            gc.collect()
+        # Logging for diagnostic - help user see if WORKER_URL is missing
+        print("WARNING: No worker_data and worker is unavailable. Skipping local QR scan.")
+        pass
 
     # Try each QR code found
     for qr_data in all_qr_data:
@@ -149,12 +131,10 @@ def run_verification(pdf_path, worker_data=None):
     if worker_data and worker_data.get("text"):
         text = worker_data["text"]
     else:
-        try:
-            import fitz
-            doc = fitz.open(pdf_path)
-            text = "\n".join([page.get_text("text") for page in doc])
-            doc.close()
-        except: pass
+        # Manual extraction disabled to prevent OOM
+        pass
+        
+    try:
 
     if "infosys" in text.lower() or "springboard" in text.lower():
         # Extract name and course from text

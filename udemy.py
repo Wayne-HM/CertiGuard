@@ -20,26 +20,8 @@ def get_tesseract_path():
 # --- HELPERS FOR PDF EXTRACTION ---
 
 def perform_high_precision_ocr(pix):
-    import pytesseract
-    import io
-    from PIL import Image, ImageOps, ImageEnhance
-    
-    tess_path = get_tesseract_path()
-    if tess_path:
-        pytesseract.pytesseract.tesseract_cmd = tess_path
-
-    try:
-        img = Image.open(io.BytesIO(pix.tobytes("png")))
-        w, h = img.size
-        img = img.resize((w * 2, h * 2), Image.Resampling.LANCZOS)
-        img = ImageOps.grayscale(img)
-        img = ImageEnhance.Sharpness(img).enhance(2.0)
-        img = img.point(lambda p: 255 if p > 140 else 0)
-        text = pytesseract.image_to_string(img, config='--oem 3 --psm 6').strip()
-        return text
-    except Exception as e:
-        print(f"High-precision OCR error: {e}")
-        return ""
+    # LOCAL OCR REMOVED: Use Worker for OCR to save memory and prevent crashes
+    return ""
 
 
 def extract_text_from_pdf(pdf_path):
@@ -91,39 +73,7 @@ def extract_qr_from_pdf(pdf_path):
 
 
 def decode_qr_with_preprocessing(pil_img):
-    from pyzbar.pyzbar import decode
-    from PIL import Image, ImageOps, ImageEnhance
-    def try_decode(img):
-
-        try:
-            decoded = decode(img)
-            for obj in decoded:
-                data = obj.data.decode("utf-8").strip()
-                if "udemy.com/certificate" in data or "ude.my" in data:
-                    return data
-        except: pass
-        return None
-
-    res = try_decode(pil_img)
-    if res: return res
-
-    gray = ImageOps.grayscale(pil_img)
-    enhancer = ImageEnhance.Contrast(gray)
-    high_contrast = enhancer.enhance(2.5)
-    res = try_decode(high_contrast)
-    if res: return res
-
-    width, height = pil_img.size
-    if width < 2000:
-        big = pil_img.resize((width * 2, height * 2), Image.Resampling.LANCZOS)
-        res = try_decode(big)
-        if res: return res
-
-    for angle in [90, 180, 270]:
-        rotated = high_contrast.rotate(angle, expand=True)
-        res = try_decode(rotated)
-        if res: return res
-
+    # LOCAL QR DECODING REMOVED: Use Worker to prevent OOM/Import errors
     return None
 
 
@@ -471,10 +421,9 @@ def run_verification(file_path, worker_data=None):
             if ocr_course != "Course Not Found": local_course = ocr_course
             extracted_text += "\n" + worker_data["ocr_text"]
         elif not extracted_text.strip() or len(extracted_text) < 50:
-            ocr_name, ocr_course, raw_ocr = extract_details_via_ocr(file_path)
-            if ocr_name != "Name Not Found": local_name = ocr_name
-            if ocr_course != "Course Not Found": local_course = ocr_course
-            extracted_text += "\n" + raw_ocr
+            # Local OCR disabled on Render to avoid crashes.
+            # If you see this, ensure WORKER_URL is set in Render.
+            pass
 
     if not verification_link:
         return f"❌ No Udemy verification link found in certificate content."
