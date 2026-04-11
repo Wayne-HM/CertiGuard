@@ -70,19 +70,27 @@ export default function DashboardPage() {
   const fetchDashboardData = useCallback(async () => {
     if (!user?.id) return
     
+    console.log("Fetching dashboard data for user:", user.id)
+    setIsLoading(true)
+
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: user.id }),
-      })
+      // Use GET as verified by manual browser check
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history?id=${user.id}`)
       
-      if (!response.ok) throw new Error("Failed to fetch history")
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`)
+      
       const data = await response.json()
-      setHistory(data?.verifications || [])
-      setStats(data?.stats || null)
-    } catch (error) {
-      console.error("Dashboard error:", error)
+      console.log("Dashboard data received:", data)
+
+      // Strict array check to prevent .map crashes
+      const historyData = Array.isArray(data?.verifications) ? data.verifications : []
+      const statsData = data?.stats || null
+
+      setHistory(historyData)
+      setStats(statsData)
+    } catch (error: any) {
+      console.error("Dashboard Fetch Error:", error)
+      toast.error("Failed to load history")
       setHistory([])
       setStats(null)
     } finally {
