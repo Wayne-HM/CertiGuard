@@ -133,12 +133,14 @@ def verify_saylor(saylorId, pdfUrl):
         extracted_data = {}
         for row in soup.find_all(["tr", "div"]):
             row_text = row.get_text(separator=" ", strip=True)
-            # Match "Label: Value" patterns
-            m = re.search(r"(Full name|Name|Certificate|Course|Date issued|Date|Issued on)[:\s]+(.+)", row_text, re.I)
+            # Match "Label: Value" patterns - specifically anchoring to the start of the word to avoid 'Expiry date'
+            m = re.search(r"\b(Full name|Name|Certificate|Course|Date issued|Issued on)\b[:\s]+(.+)", row_text, re.I)
             if m:
                 label = m.group(1).lower().replace('issued', '').strip() # Normalize to just 'date' or 'name'
                 val = m.group(2).strip()
-                extracted_data[label] = val
+                # Priority: Don't let subsequent 'Date' labels overwrite 'Date issued'
+                if label not in extracted_data:
+                    extracted_data[label] = val
 
         if "full name" in extracted_data: studentName = extracted_data["full name"]
         elif "name" in extracted_data: studentName = extracted_data["name"]
