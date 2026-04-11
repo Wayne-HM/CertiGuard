@@ -28,8 +28,15 @@ TRUSTED_DOMAINS = {
 def extract_text_from_pdf(pdf_path, worker_data=None):
     if worker_data and worker_data.get("text"):
         return worker_data["text"]
-    # Local extraction disabled to save memory
-    return ""
+    
+    # Lightweight local fallback
+    import PyPDF2
+    try:
+        with open(pdf_path, "rb") as file:
+            reader = PyPDF2.PdfReader(file)
+            return "".join(page.extract_text() for page in reader.pages if page.extract_text())
+    except:
+        return ""
 
 
 def extract_details_from_pdf_text(text):
@@ -210,10 +217,11 @@ def run_verification(file_path, worker_data=None):
     extracted_text = ""
     if worker_data and worker_data.get("text"):
         extracted_text = worker_data["text"]
+    elif worker_data and worker_data.get("ocr_text"):
+        extracted_text = worker_data["ocr_text"]
     else:
-        # Fallback to worker OCR
-        if worker_data and worker_data.get("ocr_text"):
-            extracted_text = worker_data["ocr_text"]
+        # Final local fallback
+        extracted_text = extract_text_from_pdf(file_path, worker_data)
     
     if not extracted_text:
         return "❌ Skipping Coursera verification: Worker data unavailable and local processing disabled."

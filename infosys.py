@@ -2,6 +2,16 @@ import re
 import os
 import gc
 
+def extract_text_from_pdf(pdf_path):
+    # Lightweight local fallback
+    import PyPDF2
+    try:
+        with open(pdf_path, "rb") as file:
+            reader = PyPDF2.PdfReader(file)
+            return "".join(page.extract_text() for page in reader.pages if page.extract_text())
+    except:
+        return ""
+
 
 def get_nested_value(data, target_keys):
     """Recursively search for any of the target keys in a dictionary or list."""
@@ -131,8 +141,8 @@ def run_verification(pdf_path, worker_data=None):
     if worker_data and worker_data.get("text"):
         text = worker_data["text"]
     else:
-        # Manual extraction disabled to prevent OOM
-        pass
+        # Final local fallback
+        text = extract_text_from_pdf(pdf_path)
         
     if "infosys" in text.lower() or "springboard" in text.lower():
         # Extract name and course from text
