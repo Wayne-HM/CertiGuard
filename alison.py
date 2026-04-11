@@ -68,14 +68,24 @@ def scrape_with_playwright(url):
         name_match = re.search(r"(?:verify that|This identifies that)\s+([A-Za-z\s.\-]+?)\s+has (?:successfully )?completed", page_text, re.IGNORECASE)
         course_match = re.search(r"(?:course|Learning Path|Diploma)\s+[\"']?(.+?)[\"']?\s+on Alison", page_text, re.IGNORECASE)
 
-        if not name_match:
-            name_match = re.search(r"Certificate Learner\s*:\s*([A-Za-z\s.\-]+)", page_text, re.IGNORECASE)
-
-        if not course_match:
-            course_match = re.search(r"Certificate Course\s*:\s*(.+)", page_text, re.IGNORECASE)
+        # Cleanup: Remove repetitive text and rating garbage
+        def clean_course_name(name):
+            if not name: return name
+            # Remove "Google Filled Star" and similar garbage
+            name = re.sub(r"(?:Google\s+)?(?:Filled\s+)?Star\s*(?:Filled)?", "", name, flags=re.I).strip()
+            # Remove repetitive phrases
+            words = name.split()
+            if len(words) > 4:
+                half = len(words) // 2
+                if " ".join(words[:half]).lower() == " ".join(words[half:]).lower():
+                    name = " ".join(words[:half])
+            return name
 
         name = name_match.group(1).strip() if name_match else None
         course_name = course_match.group(1).strip() if course_match else None
+        
+        if course_name:
+            course_name = clean_course_name(course_name)
 
         return {"title": page_title, "content": page_text, "name": name, "course_name": course_name}
     except Exception as e:
@@ -84,11 +94,30 @@ def scrape_with_playwright(url):
 
 
 def extract_hours_and_date(text):
+    from datetime import datetime
     hours = "N/A"
     date = "N/A"
-    # Alison Date: "on January 1, 2024" or "on 1st January, 2024"
-    d_match = re.search(r"on\s+(\d+(?:st|nd|rd|th)?\s+[A-Z][a-z]+,?\s+\d{4})", text, re.I)
-    if d_match: date = d_match.group(1).strip()
+    today_str = datetime.now().strftime("%B %d, %Y")
+    today_short = datetime.now().strftime("%b %d, %Y")
+
+    # Alison Date: Priority patterns
+    patterns = [
+        r"(?:on|dated:?)\s+([A-Z][a-z]+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})",
+        r"(?:on|dated:?)\s+(\d{1,2}(?:st|nd|rd|th)?\s+[A-Z][a-z]+,?\s+\d{4})",
+        r"\b([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\b"
+    ]
+    
+    found_dates = []
+    for p in patterns:
+        for m in re.finditer(p, text, re.I):
+            d = m.group(1).strip()
+            # Avoid today's verification date
+            if today_str.lower() in d.lower() or today_short.lower() in d.lower():
+                continue
+            found_dates.append(d)
+
+    if found_dates:
+        date = found_dates[0]
     
     # Hours: "Duration: 5 Hours" or "10 hours of learning"
     h_match = re.search(r"(?:Duration:?\s*)?(\d+)\s*hours?", text, re.I)
