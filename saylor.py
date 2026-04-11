@@ -83,8 +83,18 @@ def verify_saylor(saylorId, pdfUrl):
             if js_match:
                 sesskey = js_match.group(1)
 
-        # Check for the "Verify" form
-        form = soup.find("form")
+        # Check for the "Verify" form - specifically search for the one with the verification input
+        form = None
+        all_forms = soup.find_all("form")
+        for f in all_forms:
+            if f.find("input", {"id": "id_code"}) or f.find("button", {"id": "id_verify"}):
+                form = f
+                break
+        
+        # Fallback to current ID if still not found
+        if not form:
+            form = soup.find("form", {"id": "mform1"}) # Common Moodle form ID
+            
         if form and "this certificate is valid" not in page_text.lower():
             # Build form data and POST
             form_data = {}
