@@ -92,10 +92,11 @@ def save_json(file_path, data):
 def save_history(record):
     import datetime
     history = load_json(HISTORY_FILE)
-    record['id'] = f"CERT-{len(history) + 1:03d}"
+    # The record ID should be the current count (0-indexed)
+    record['id'] = f"CERT-{len(history):03d}"
     record['date'] = datetime.datetime.now().strftime("%b %d, %Y")
     history.insert(0, record)
-    save_json(HISTORY_FILE, history[:50])
+    save_json(HISTORY_FILE, history[:100]) # Increased limit to 100 for better tracking
     return record
 
 
@@ -243,12 +244,13 @@ def parse_verification_output(output, platform, text, forensic_result=None):
         "verificationUrl": url,
         "issueDate": format_date(extracted_date) if extracted_date else "N/A",
         "totalHours": hours,
-        "certificateId": f"CERT-{os.urandom(3).hex().upper()}",
+        "certificateId": "PENDING", # Will be set by save_history
         "rawOutput": output,
         "status": status,
         "isSuspicious": is_suspicious,
         "metadataMessage": metadata_msg
     }
+
 
 
 def execute_script(platform, pdf_path, worker_data=None):

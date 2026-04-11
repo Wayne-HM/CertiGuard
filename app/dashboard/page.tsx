@@ -33,7 +33,8 @@ import {
 import { AnimatedBackground } from "@/components/animated-background"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import Link from "next/link"
+import { useAuth } from "@/components/auth-context"
+import { useRouter } from "next/navigation"
 
 interface VerificationRecord {
   id: string
@@ -53,6 +54,8 @@ interface Stats {
 }
 
 export default function DashboardPage() {
+  const { user, isInitialized } = useAuth()
+  const router = useRouter()
   const [history, setHistory] = useState<VerificationRecord[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -74,18 +77,22 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    if (isInitialized && !user) {
+      router.push("/")
+    } else if (isInitialized && user) {
+      fetchDashboardData()
+    }
+  }, [isInitialized, user, router])
 
   const handleRefresh = () => {
     setIsRefreshing(true)
     fetchDashboardData()
   }
 
-  if (isLoading) {
+  if (!isInitialized || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-neon-blue" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -96,14 +103,14 @@ export default function DashboardPage() {
       value: stats?.total || 0, 
       change: "+12%",
       icon: FileText,
-      color: "text-neon-blue"
+      color: "text-primary/80"
     },
     { 
       label: "Valid Certificates", 
       value: stats?.valid || 0, 
       change: "+8%",
       icon: CheckCircle2,
-      color: "text-success"
+      color: "text-emerald-400"
     },
     { 
       label: "Fake Detected", 
@@ -117,7 +124,7 @@ export default function DashboardPage() {
       value: stats?.avgTime || "2.1s", 
       change: "-15%",
       icon: Clock,
-      color: "text-neon-cyan"
+      color: "text-primary"
     },
   ]
 
@@ -139,7 +146,7 @@ export default function DashboardPage() {
             >
               <div>
                 <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-                  <span className="bg-gradient-to-r from-neon-blue to-neon-purple bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-primary via-emerald-400 to-accent bg-clip-text text-transparent italic">
                     Dashboard
                   </span>
                 </h1>

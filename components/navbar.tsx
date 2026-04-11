@@ -72,7 +72,7 @@ const NavLink = memo(function NavLink({
       
       {/* Underline */}
       <motion.div
-        className="absolute bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-neon-blue to-neon-cyan rounded-full"
+        className="absolute bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-primary to-accent rounded-full"
         initial={{ width: 0, x: "-50%" }}
         animate={{ width: isHovered ? "60%" : 0, x: "-50%" }}
         transition={{ duration: 0.15 }}
@@ -125,7 +125,7 @@ export function Navbar() {
             style={{ 
               borderWidth: 1, 
               borderStyle: "solid",
-              borderColor: isScrolled ? "oklch(0.5 0.1 220 / 0.25)" : "oklch(0.5 0.1 220 / 0.15)"
+              borderColor: isScrolled ? "oklch(0.5 0.1 160 / 0.25)" : "oklch(0.5 0.1 160 / 0.15)"
             }}
           >
             {/* Logo */}
@@ -135,11 +135,11 @@ export function Navbar() {
                 transition={{ duration: 0.3 }}
                 className="relative"
               >
-                <div className="absolute inset-0 bg-neon-blue/20 blur-md rounded-full" />
-                <Shield className="w-8 h-8 text-neon-blue relative z-10" />
+                <div className="absolute inset-0 bg-primary/20 blur-md rounded-full" />
+                <Shield className="w-8 h-8 text-primary relative z-10" />
               </motion.div>
               
-              <span className="text-xl font-bold bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple bg-clip-text text-transparent">
+              <span className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent italic">
                 CertiGuard
               </span>
               
@@ -147,10 +147,10 @@ export function Navbar() {
                 initial={{ opacity: 0, scale: 0 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, ...quickSpring }}
-                className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-neon-blue/10 text-[10px] font-medium text-neon-blue border border-neon-blue/20"
+                className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-[10px] font-bold text-primary border border-primary/20"
               >
                 <Sparkles className="w-2.5 h-2.5" />
-                PRO
+                OFFICIAL
               </motion.span>
             </Link>
 
@@ -176,12 +176,12 @@ export function Navbar() {
                   <DropdownMenuTrigger asChild>
                     <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={quickSpring}>
                       <Button variant="ghost" size="icon" className="relative group p-0 overflow-hidden rounded-full">
-                        <Avatar className="w-9 h-9 border-2 border-neon-blue/30 group-hover:border-neon-blue transition-colors">
-                          <AvatarFallback className="bg-neon-blue/10 text-neon-blue text-xs font-bold">
+                        <Avatar className="w-9 h-9 border-2 border-primary/30 group-hover:border-primary transition-colors">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                             {user.name.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-background" />
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-primary rounded-full border-2 border-background" />
                       </Button>
                     </motion.div>
                   </DropdownMenuTrigger>
@@ -229,7 +229,7 @@ export function Navbar() {
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={quickSpring}>
                     <Button 
                       onClick={() => openAuth("signup")}
-                      className="bg-gradient-to-r from-neon-blue to-neon-purple text-white px-5 h-9 rounded-xl shadow-lg shadow-neon-blue/20"
+                      className="bg-gradient-to-r from-primary to-primary/90 text-white px-5 h-9 rounded-xl shadow-lg shadow-primary/10"
                     >
                       Get Started
                     </Button>

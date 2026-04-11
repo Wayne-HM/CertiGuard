@@ -11,12 +11,12 @@ interface UploadSectionProps {
 }
 
 const selectPlatforms = [
-  { id: "auto", name: "Auto-Detect", icon: Sparkles, color: "text-neon-blue" },
-  { id: "coursera", name: "Coursera", icon: GraduationCap, color: "text-blue-500" },
-  { id: "udemy", name: "Udemy", icon: BookOpen, color: "text-purple-500" },
-  { id: "alison", name: "Alison", icon: Award, color: "text-emerald-500" },
-  { id: "saylor", name: "Saylor", icon: Building, color: "text-orange-500" },
-  { id: "infosys", name: "Infosys", icon: Laptop, color: "text-blue-400" },
+  { id: "auto", name: "Auto-Detect", icon: Sparkles, color: "text-primary" },
+  { id: "coursera", name: "Coursera", icon: GraduationCap, color: "text-slate-400" },
+  { id: "udemy", name: "Udemy", icon: BookOpen, color: "text-slate-400" },
+  { id: "alison", name: "Alison", icon: Award, color: "text-primary" },
+  { id: "saylor", name: "Saylor", icon: Building, color: "text-slate-400" },
+  { id: "infosys", name: "Infosys", icon: Laptop, color: "text-slate-400" },
 ]
 
 // Optimized spring configs
@@ -70,8 +70,8 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
   return (
     <section ref={containerRef} id="verify" className="relative py-24 px-4 overflow-hidden">
       {/* Background Orbs */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-neon-blue/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-neon-purple/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="max-w-4xl mx-auto">
         {/* Section Header */}
@@ -81,19 +81,19 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass border-neon-blue/20 mb-6">
-            <Zap className="w-3 h-3 text-neon-blue" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">Process</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">AI Certificate Analysis</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass border-primary/20 mb-6">
+            <Shield className="w-3 h-3 text-primary" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">Trust Layer</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">Secure Verification Portal</span>
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple bg-clip-text text-transparent italic">
-              Ready to Verify?
+            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent italic">
+              Verification Portal
             </span>
           </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto text-lg">
-            Upload any digital credential and let our neural networks scan for authenticity in milliseconds.
+          <p className="text-muted-foreground max-w-xl mx-auto text-lg leading-relaxed">
+            Begin the automated authenticity screening process. Our neural framework cross-references global credential databases in real-time.
           </p>
         </motion.div>
 
@@ -112,7 +112,7 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
               className={`
                 relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300
                 ${selectedPlatform === p.id 
-                  ? "bg-white/10 border-neon-blue/50 text-foreground shadow-lg shadow-neon-blue/10 scale-105" 
+                  ? "bg-white/10 border-primary/50 text-foreground shadow-lg shadow-primary/5 scale-102" 
                   : "bg-white/5 border-transparent text-muted-foreground hover:bg-white/10"
                 }
                 border glass-card disabled:opacity-50 disabled:cursor-not-allowed
@@ -123,7 +123,7 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
               {selectedPlatform === p.id && (
                 <motion.div 
                   layoutId="active-pill"
-                  className="absolute inset-0 border-2 border-neon-blue/30 rounded-2xl pointer-events-none"
+                  className="absolute inset-0 border-2 border-primary/20 rounded-2xl pointer-events-none"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -141,8 +141,8 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
           className={`
             relative glass-strong rounded-[2.5rem] p-12 overflow-hidden
             transition-all duration-500
-            ${isDragging ? "border-neon-blue ring-4 ring-neon-blue/10" : "border-glass-border"}
-            ${file && !isVerifying ? "border-success/30 shadow-2xl shadow-success/5" : ""}
+            ${isDragging ? "border-primary ring-4 ring-primary/5" : "border-glass-border"}
+            ${file && !isVerifying ? "border-primary/30 shadow-2xl shadow-primary/5" : ""}
           `}
         >
           {/* Laser Scan Animation - Only during verification */}
@@ -154,11 +154,11 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 z-20 pointer-events-none"
               >
-                <div className="absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-neon-blue to-transparent filter blur-[2px] animate-scan" />
-                <div className="absolute inset-x-0 h-4 bg-gradient-to-b from-neon-blue/10 to-transparent filter blur-md animate-scan" />
+                <div className="absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-primary to-transparent filter blur-[2px] animate-scan" />
+                <div className="absolute inset-x-0 h-4 bg-gradient-to-b from-primary/10 to-transparent filter blur-md animate-scan" />
                 
                 {/* Glow during scan */}
-                <div className="absolute inset-0 bg-neon-blue/[0.03] animate-pulse" />
+                <div className="absolute inset-0 bg-primary/[0.03] animate-pulse" />
               </motion.div>
             )}
           </AnimatePresence>
@@ -173,21 +173,21 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                 className="text-center py-12"
               >
                 <motion.div
-                  animate={isDragging ? { scale: 1.1 } : { scale: 1 }}
+                  animate={isDragging ? { scale: 1.05 } : { scale: 1 }}
                   className="relative inline-flex mb-8"
                 >
-                  <div className={`absolute inset-0 bg-neon-blue/20 blur-3xl rounded-full transition-opacity duration-300 ${isHovering ? "opacity-100" : "opacity-0"}`} />
-                  <div className="relative glass border-neon-blue/20 rounded-3xl p-8 group">
-                    <Upload className={`w-14 h-14 transition-colors duration-300 ${isDragging ? "text-neon-blue" : "text-muted-foreground group-hover:text-neon-blue"}`} />
-                    <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-neon-cyan animate-pulse" />
+                  <div className={`absolute inset-0 bg-primary/20 blur-3xl rounded-full transition-opacity duration-300 ${isHovering ? "opacity-100" : "opacity-0"}`} />
+                  <div className="relative glass border-primary/20 rounded-3xl p-8 group">
+                    <Upload className={`w-14 h-14 transition-colors duration-300 ${isDragging ? "text-primary" : "text-muted-foreground group-hover:text-primary"}`} />
+                    <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-primary animate-pulse" />
                   </div>
                 </motion.div>
 
                 <h3 className="text-2xl font-bold mb-3 tracking-tight">
-                  {isDragging ? "Release to Scan" : "Drop Certificate Here"}
+                  {isDragging ? "Release to Scan" : "Deploy Document"}
                 </h3>
                 <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
-                  Drag and drop your PDF or images. Multiple file processing is enabled for Pro users.
+                  Drag and drop your PDF or images here. Secure encryption is active.
                 </p>
 
                 <div className="inline-block relative">
@@ -201,10 +201,10 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                   <Button 
                     variant="outline" 
                     onClick={() => document.getElementById('file-upload')?.click()}
-                    className="h-12 px-8 rounded-xl border-glass-border hover:border-neon-blue/50 group hover-scale shadow-lg"
+                    className="h-12 px-8 rounded-xl border-glass-border hover:border-primary/50 group hover-scale shadow-lg"
                   >
                     <Search className="w-4 h-4 mr-2" />
-                    Browse Files
+                    Select Credentials
                   </Button>
                 </div>
               </motion.div>
@@ -218,19 +218,19 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                 <div className="flex flex-col items-center gap-8">
                   <div className="relative">
                     {/* File Icon with Glowing Backdrop */}
-                    <div className="absolute inset-0 bg-neon-blue/20 blur-2xl rounded-3xl" />
+                    <div className="absolute inset-0 bg-primary/10 blur-2xl rounded-3xl" />
                     <motion.div 
                       layoutId="file-icon"
-                      className="relative glass rounded-3xl p-10 border-success/30"
+                      className="relative glass rounded-3xl p-10 border-primary/30"
                     >
-                      <FileText className="w-20 h-20 text-success" />
+                      <FileText className="w-20 h-20 text-primary" />
                       <AnimatePresence>
                         {isVerifying && (
                           <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                             exit={{ scale: 0 }}
-                            className="absolute -top-4 -right-4 w-10 h-10 bg-neon-blue rounded-full flex items-center justify-center border-4 border-background"
+                            className="absolute -top-4 -right-4 w-10 h-10 bg-primary rounded-full flex items-center justify-center border-4 border-background"
                           >
                             <Loader2 className="w-5 h-5 text-white animate-spin" />
                           </motion.div>
@@ -241,24 +241,24 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
 
                   <div className="text-center space-y-2">
                     <h3 className="text-xl font-bold truncate max-w-xs">{file.name}</h3>
-                    <p className="text-sm text-muted-foreground">Ready for AI analysis • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="text-sm text-muted-foreground">Encryption Ready • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
 
                   <div className="flex items-center gap-4">
                     {!isVerifying && (
                       <Button variant="ghost" onClick={removeFile} className="text-muted-foreground hover:text-destructive h-12 px-6">
-                        Remove
+                        Discard
                       </Button>
                     )}
                     <Button
                       size="lg"
                       onClick={handleStartVerification}
                       disabled={isVerifying}
-                      className="relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple text-white px-10 h-14 text-lg rounded-2xl shadow-xl shadow-neon-blue/20 group"
+                      className="relative overflow-hidden bg-gradient-to-r from-primary to-primary/90 text-white px-10 h-14 text-lg rounded-2xl shadow-xl shadow-primary/10 group"
                     >
                       <span className="relative z-10 flex items-center gap-2 font-bold tracking-tight">
-                        {isVerifying ? "Analyzing Logic..." : "Perform AI Scan"}
-                        {!isVerifying && <Zap className="w-5 h-5 fill-current" />}
+                        {isVerifying ? "Processing Forensic Logic..." : "Execute Verification"}
+                        {!isVerifying && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
                       </span>
                       {isVerifying && <div className="absolute inset-0 bg-white/10 animate-pulse" />}
                     </Button>

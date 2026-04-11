@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion"
 import { CheckCircle2, XCircle, User, BookOpen, Building2, ExternalLink, Download, RotateCcw, Sparkles, AlertTriangle, Terminal, Clock, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { jsPDF } from "jspdf"
 import QRCode from "qrcode"
 
 export interface VerificationResult {
@@ -80,18 +79,18 @@ const DetailRow = memo(function DetailRow({
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35, delay: 0.3 + index * 0.08, ease: "easeInOut" }}
       whileHover={{ scale: 1.01, x: 3 }}
-      className="flex items-center gap-4 p-4 glass rounded-xl hover:border-neon-blue/30 transition-colors duration-150 cursor-default group gpu-accelerate"
+      className="flex items-center gap-4 p-4 glass rounded-xl hover:border-primary/30 transition-colors duration-150 cursor-default group gpu-accelerate"
     >
       <motion.div 
-        className="flex-shrink-0 w-10 h-10 rounded-lg bg-secondary flex items-center justify-center group-hover:bg-neon-blue/10 transition-colors duration-150"
+        className="flex-shrink-0 w-10 h-10 rounded-lg bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-150"
         whileHover={{ rotate: [-8, 8, 0] }}
         transition={{ duration: 0.3 }}
       >
-        <Icon className="w-5 h-5 text-neon-blue" />
+        <Icon className="w-5 h-5 text-primary" />
       </motion.div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="font-medium text-foreground break-words whitespace-pre-wrap">{value}</p>
+        <p className="text-xs text-muted-foreground font-bold tracking-wider uppercase opacity-70">{label}</p>
+        <p className="font-bold text-foreground break-words whitespace-pre-wrap">{value}</p>
       </div>
     </motion.div>
   )
@@ -114,169 +113,147 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
   const downloadReport = async () => {
     setIsDownloading(true)
     try {
-      // 1. Generate QR Code
-    const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
-      margin: 1,
-      width: 250,
-      color: {
-        dark: "#06b6d4",
-        light: "#00000000"
+      const { jsPDF } = await import("jspdf")
+      
+      // 1. Generate QR Code (Professional Dark Mode QR)
+      const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
+        margin: 1,
+        width: 300,
+        color: {
+          dark: "#0F172A", // Deep Slate
+          light: "#FFFFFF"
+        }
+      })
+
+      const canvas = document.createElement("canvas")
+      // High-resolution for A4 print quality (300 DPI)
+      const W = 2480, H = 3508 // A4 Vertical at 300DPI
+      canvas.width = W
+      canvas.height = H
+      const ctx = canvas.getContext("2d")!
+
+      // --- ULTRA-CLEAN BACKGROUND ---
+      ctx.fillStyle = "#FFFFFF"
+      ctx.fillRect(0, 0, W, H)
+
+      // Subtle Institutional Watermark
+      ctx.globalAlpha = 0.03
+      ctx.fillStyle = "#0F172A"
+      ctx.font = "bold 200px 'Segoe UI', Arial"
+      ctx.textAlign = "center"
+      ctx.translate(W/2, H/2)
+      ctx.rotate(-Math.PI / 4)
+      for(let i = -3; i < 3; i++) {
+        for(let j = -3; j < 3; j++) {
+          ctx.fillText("CERTIGUARD", i * 1500, j * 400)
+        }
       }
-    })
+      ctx.rotate(Math.PI / 4)
+      ctx.translate(-W/2, -H/2)
+      ctx.globalAlpha = 1.0
 
-    const canvas = document.createElement("canvas")
-    // High-resolution for A4 print quality (300 DPI approx)
-    const W = 2000, H = 1414
-    canvas.width = W
-    canvas.height = H
-    const ctx = canvas.getContext("2d")!
+      // --- HEADER & LOGO ---
+      const margin = 200
+      ctx.fillStyle = "#0F172A"
+      ctx.font = "bold 80px 'Segoe UI', Arial"
+      ctx.textAlign = "left"
+      ctx.fillText("CertiGuard", margin, margin + 80)
+      
+      ctx.fillStyle = "#10B981" // Emerald
+      ctx.font = "bold 30px 'Segoe UI', Arial"
+      ctx.fillText("FORENSIC AUTHENTICATION REPORT", margin, margin + 140)
 
-    // --- Elegant Obsidian Background ---
-    const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W)
-    bgGrad.addColorStop(0, "#0f172a")
-    bgGrad.addColorStop(1, "#020617")
-    ctx.fillStyle = bgGrad
-    ctx.fillRect(0, 0, W, H)
+      // Divider Line
+      ctx.strokeStyle = "#E2E8F0"
+      ctx.lineWidth = 4
+      ctx.beginPath(); ctx.moveTo(margin, margin + 200); ctx.lineTo(W - margin, margin + 200); ctx.stroke()
 
-    // Subtle technical grid
-    ctx.strokeStyle = "rgba(6, 182, 212, 0.05)"
-    ctx.lineWidth = 1
-    for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
-    for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+      // --- STATUS CARD (Light Institutional) ---
+      const cardY = margin + 350
+      ctx.fillStyle = "#F8FAFC"
+      ctx.beginPath(); ctx.roundRect(margin, cardY, W - margin * 2, 450, 40); ctx.fill()
+      ctx.strokeStyle = "#10B981"
+      ctx.lineWidth = 6
+      ctx.beginPath(); ctx.roundRect(margin, cardY, W - margin * 2, 450, 40); ctx.stroke()
 
-    // --- Premium Border ---
-    const bMargin = 60
-    ctx.strokeStyle = "rgba(6, 182, 212, 0.3)"
-    ctx.lineWidth = 4
-    ctx.strokeRect(bMargin, bMargin, W - bMargin*2, H - bMargin*2)
-    
-    // Corner Accents
-    ctx.fillStyle = "#06b6d4"
-    const cs = 40
-    ctx.fillRect(bMargin-2, bMargin-2, cs, 6) // Top Left
-    ctx.fillRect(bMargin-2, bMargin-2, 6, cs)
-    ctx.fillRect(W-bMargin-cs+2, bMargin-2, cs, 6) // Top Right
-    ctx.fillRect(W-bMargin-4, bMargin-2, 6, cs)
-    
-    // --- Header Section ---
-    ctx.fillStyle = "rgba(6, 182, 212, 0.1)"
-    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.fill()
-    ctx.strokeStyle = "rgba(6, 182, 212, 0.5)"; ctx.lineWidth = 2
-    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.stroke()
+      ctx.fillStyle = "#0F172A"
+      ctx.font = "bold 40px 'Segoe UI', Arial"
+      ctx.fillText("VERIFICATION STATUS", margin + 80, cardY + 100)
+      
+      ctx.fillStyle = "#10B981"
+      ctx.font = "bold 120px 'Segoe UI', Arial"
+      ctx.fillText("AUTHENTIC", margin + 80, cardY + 280)
+      
+      ctx.fillStyle = "#64748B"
+      ctx.font = "italic 40px 'Segoe UI', Arial"
+      ctx.fillText("Secured by AI Signature • Validated via Global Blockchain Registry", margin + 80, cardY + 380)
 
-    ctx.textAlign = "center"
-    ctx.fillStyle = "#f8fafc"
-    ctx.font = "bold 42px 'Segoe UI', Arial"
-    ctx.fillText("CERTIFICATE OF AUTHENTICITY", W/2, 165)
-    ctx.fillStyle = "#06b6d4"
-    ctx.font = "bold 16px 'Segoe UI', Arial"
-    ctx.letterSpacing = "4px"
-    ctx.fillText("VERIFIED BY CERTIGUARD GLOBAL AI", W/2, 195)
-    ctx.letterSpacing = "0px"
+      // --- CREDENTIAL DETAILS ---
+      const detailY = cardY + 650
+      const col1 = margin
+      const col2 = W / 2 + 50
 
-    // --- Main Content Area ---
-    ctx.textAlign = "left"
-    const contentX = 200, contentY = 400
+      const drawDetail = (label: string, value: string, x: number, y: number) => {
+        ctx.fillStyle = "#64748B"
+        ctx.font = "bold 35px 'Segoe UI', Arial"
+        ctx.fillText(label.toUpperCase(), x, y)
+        ctx.fillStyle = "#0F172A"
+        ctx.font = "80px Georgia, serif"
+        ctx.fillText(value || "N/A", x, y + 100)
+      }
 
-    // Presented to
-    ctx.fillStyle = "#94a3b8"
-    ctx.font = "bold 20px 'Segoe UI', Arial"
-    ctx.fillText("OFFICIALLY PRESENTED TO", contentX, contentY)
-    
-    ctx.fillStyle = "#f1f5f9"
-    ctx.font = "82px Georgia, serif"
-    ctx.fillText(result.name || "Verified Student", contentX, contentY + 100)
+      drawDetail("Credential Holder", result.name, col1, detailY)
+      drawDetail("Specialization", result.course, col1, detailY + 250)
+      drawDetail("Issuing Authority", result.platform, col1, detailY + 500)
+      drawDetail("Issue Date", result.issueDate, col1, detailY + 750)
+      
+      drawDetail("Certificate ID", result.certificateId || "N/A", col2, detailY)
+      drawDetail("Verification URL", "HTTPS://CERTIGUARD.APP/VERIFY", col2, detailY + 250)
 
-    // Course
-    ctx.fillStyle = "#94a3b8"
-    ctx.font = "bold 20px 'Segoe UI', Arial"
-    ctx.fillText("FOR SUCCESSFUL COMPLETION OF", contentX, contentY + 220)
-    
-    ctx.fillStyle = "#06b6d4"
-    ctx.font = "italic 48px Georgia, serif"
-    // Handle long course titles
-    const courseTitle = result.course || "Advanced Professional Specialization"
-    if (courseTitle.length > 50) {
-      ctx.font = "italic 36px Georgia, serif"
-      ctx.fillText(courseTitle.substring(0, 50), contentX, contentY + 290)
-      ctx.fillText(courseTitle.substring(50), contentX, contentY + 340)
-    } else {
-      ctx.fillText(courseTitle, contentX, contentY + 300)
-    }
+      // --- QR CODE SECTION ---
+      const qrSize = 600
+      const qrX = W - margin - qrSize
+      const qrY = H - margin - qrSize - 100
+      
+      const qrImg = new Image()
+      qrImg.src = qrDataUrl
+      await new Promise(resolve => qrImg.onload = resolve)
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
 
-    // --- Details Grid ---
-    const gridY = contentY + 500
-    const colWidth = 450
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#0F172A"
+      ctx.font = "bold 35px 'Segoe UI', Arial"
+      ctx.fillText("SECURE DIGITAL TWIN", qrX + qrSize/2, qrY + qrSize + 60)
+      ctx.fillStyle = "#64748B"
+      ctx.font = "30px 'Segoe UI', Arial"
+      ctx.fillText("Scan to access live registry", qrX + qrSize/2, qrY + qrSize + 110)
 
-    // Date
-    ctx.fillStyle = "#64748b"
-    ctx.font = "bold 18px 'Segoe UI', Arial"
-    ctx.fillText("ISSUE DATE", contentX, gridY)
-    ctx.fillStyle = "#cbd5e1"
-    ctx.font = "bold 24px 'Segoe UI', Arial"
-    ctx.fillText(result.issueDate, contentX, gridY + 40)
+      // --- FOOTER METADATA ---
+      ctx.textAlign = "left"
+      const footerY = H - margin
+      ctx.fillStyle = "#94A3B8"
+      ctx.font = "bold 30px 'Courier New', monospace"
+      const reportHash = Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join("")
+      ctx.fillText(`REPORT_HASH: ${reportHash.toUpperCase()}`, margin, footerY - 140)
+      ctx.fillText(`GENERATED_AT: ${new Date().toISOString()}`, margin, footerY - 90)
+      ctx.fillText("CERTIGUARD GLOBAL • INSTITUTIONAL GRADE AUTHENTICATION", margin, footerY - 40)
 
-    // Platform
-    ctx.fillStyle = "#64748b"
-    ctx.font = "bold 18px 'Segoe UI', Arial"
-    ctx.fillText("PLATFORM", contentX + colWidth, gridY)
-    ctx.fillStyle = "#cbd5e1"
-    ctx.font = "bold 24px 'Segoe UI', Arial"
-    ctx.fillText(result.platform, contentX + colWidth, gridY + 40)
+      // Final Vertical Border Accent
+      ctx.fillStyle = "#10B981"
+      ctx.fillRect(0, 0, 30, H)
 
-    // Certificate ID
-    ctx.fillStyle = "#64748b"
-    ctx.font = "bold 18px 'Segoe UI', Arial"
-    ctx.fillText("CERTIFICATE ID", contentX + colWidth * 2, gridY)
-    ctx.fillStyle = "#cbd5e1"
-    ctx.font = "bold 24px 'Segoe UI', Arial"
-    ctx.fillText(result.certificateId || "CERT-882031", contentX + colWidth * 2, gridY + 40)
-
-    // --- Verification Seal (Bottom Left) ---
-    const sealX = contentX, sealY = H - 280
-    ctx.fillStyle = "rgba(16, 185, 129, 0.1)"
-    ctx.beginPath(); ctx.arc(sealX + 60, sealY + 60, 80, 0, Math.PI * 2); ctx.fill()
-    ctx.strokeStyle = "#10b981"; ctx.lineWidth = 3
-    ctx.beginPath(); ctx.arc(sealX + 60, sealY + 60, 70, 0, Math.PI * 2); ctx.stroke()
-    ctx.textAlign = "center"
-    ctx.fillStyle = "#10b981"
-    ctx.font = "bold 20px 'Segoe UI', Arial"
-    ctx.fillText("AI VERIFIED", sealX + 60, sealY + 55)
-    ctx.font = "bold 14px 'Segoe UI', Arial"
-    ctx.fillText("AUTHENTIC", sealX + 60, sealY + 80)
-
-    // --- QR Code Section (Bottom Right) ---
-    const qrX = W - 450, qrY = H - 420
-    const qrImg = new Image()
-    qrImg.src = qrDataUrl
-    await new Promise(resolve => qrImg.onload = resolve)
-    ctx.drawImage(qrImg, qrX + 50, qrY + 20, 240, 240)
-    
-    ctx.textAlign = "center"
-    ctx.fillStyle = "#64748b"
-    ctx.font = "bold 14px 'Segoe UI', Arial"
-    ctx.fillText("SCAN TO VERIFY LIVE", qrX + 170, qrY + 280)
-
-    // --- Footer Metadata ---
-    ctx.textAlign = "left"
-    ctx.fillStyle = "#475569"
-    ctx.font = "12px 'Courier New', monospace"
-    const hash = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join("")
-    ctx.fillText(`TRANS_ID: ${hash.toUpperCase()}`, contentX, H - 100)
-    ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, contentX, H - 80)
-
-    // --- Convert to PDF ---
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4"
-    })
-    
-    const imgData = canvas.toDataURL("image/jpeg", 0.95)
-    pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
-    
-    const fileName = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
-    pdf.save(fileName)
+      // --- CONVERT TO PDF ---
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      })
+      
+      const imgData = canvas.toDataURL("image/jpeg", 0.95)
+      pdf.addImage(imgData, "JPEG", 0, 0, 210, 297) // Vertical A4
+      
+      const fileName = `CertiGuard_Authentic_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
+      pdf.save(fileName)
     } catch (error) {
       console.error("Report generation failed:", error)
     } finally {
@@ -296,14 +273,14 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
           <Card
             className={`
               relative overflow-hidden glass-strong rounded-3xl border-2 gpu-accelerate
-              ${isActionRequired ? "border-amber-500/50" : isValid ? "border-success/50" : "border-destructive/50"}
+              ${isActionRequired ? "border-amber-500/50" : isValid ? "border-primary/50" : "border-destructive/50"}
             `}
             style={{
               boxShadow: isActionRequired
                 ? "0 0 40px oklch(0.7 0.2 60 / 0.15)"
                 : isValid 
-                ? "0 0 40px oklch(0.65 0.2 160 / 0.2)" 
-                : "0 0 40px oklch(0.55 0.22 25 / 0.2)",
+                ? "0 0 40px oklch(0.65 0.2 160 / 0.15)" 
+                : "0 0 40px oklch(0.55 0.22 25 / 0.15)",
             }}
           >
             {/* Confetti for success */}
@@ -335,14 +312,14 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   ) : isValid ? (
                     <>
                       {/* Success glow */}
-                      <div className="absolute inset-0 bg-success/25 blur-2xl rounded-full animate-glow-pulse" />
+                      <div className="absolute inset-0 bg-primary/25 blur-2xl rounded-full animate-glow-pulse" />
                       
                       <motion.div
                         animate={{ scale: [1, 1.03, 1] }}
                         transition={{ duration: 1.2, repeat: Infinity }}
                         className="relative gpu-accelerate"
                       >
-                        <CheckCircle2 className="w-24 h-24 text-success drop-shadow-lg" />
+                        <CheckCircle2 className="w-24 h-24 text-primary drop-shadow-lg" />
                       </motion.div>
                       
                       {/* Sparkle */}
@@ -351,7 +328,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                         animate={{ rotate: [0, 12, 0], scale: [1, 1.15, 1] }}
                         transition={{ duration: 1.5, repeat: Infinity }}
                       >
-                        <Sparkles className="w-5 h-5 text-success" />
+                        <Sparkles className="w-5 h-5 text-primary" />
                       </motion.div>
                     </>
                   ) : (
@@ -386,15 +363,15 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.35, duration: 0.35 }}
                 >
-                  <h2 className={`text-2xl sm:text-3xl font-bold mt-6 mb-2 ${isActionRequired ? "text-amber-500" : isValid ? "text-success" : "text-destructive"}`}>
+                  <h2 className={`text-2xl sm:text-3xl font-bold mt-6 mb-2 ${isActionRequired ? "text-amber-500" : isValid ? "text-primary" : "text-destructive"}`}>
                     {isActionRequired ? "Verification Blocked: Captcha Required" : isValid ? "Verification Status: AUTHENTIC" : "Fake Certificate Detected"}
                   </h2>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground font-medium">
                     {isActionRequired 
                       ? "The platform side is asking to verify you are a human. Please solve it on their site." 
                       : isValid 
-                        ? "This certificate is authentic and secured by AI" 
-                        : "This certificate could not be verified"}
+                        ? "Institutional-grade verification successful. This credential is valid." 
+                        : "This certificate could not be verified and may be fraudulent."}
                   </p>
                 </motion.div>
               </div>
@@ -455,14 +432,14 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     href={result.verificationUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 glass rounded-xl hover:border-neon-blue/50 transition-colors duration-150 group gpu-accelerate"
+                    className="flex items-center justify-between p-4 glass rounded-xl hover:border-primary/50 transition-colors duration-150 group gpu-accelerate"
                     style={{ borderWidth: 1, borderStyle: "solid", borderColor: "transparent" }}
                   >
                     <div className="flex items-center gap-3">
-                      <ExternalLink className="w-5 h-5 text-neon-blue" />
+                      <ExternalLink className="w-5 h-5 text-primary" />
                       <div>
-                        <p className="text-xs text-muted-foreground">Verification Link</p>
-                        <p className="text-sm font-medium text-neon-blue truncate max-w-[200px] sm:max-w-[300px]">
+                        <p className="text-xs text-muted-foreground font-bold tracking-wider uppercase opacity-70">Live Registry Link</p>
+                        <p className="text-sm font-bold text-primary truncate max-w-[200px] sm:max-w-[300px]">
                           {result.verificationUrl}
                         </p>
                       </div>
@@ -471,7 +448,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                       animate={{ x: [0, 3, 0] }}
                       transition={{ duration: 1.2, repeat: Infinity }}
                     >
-                      <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-neon-blue transition-colors duration-150" />
+                      <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors duration-150" />
                     </motion.div>
                   </motion.a>
                 )}
@@ -519,17 +496,17 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                       size="lg"
                       onClick={downloadReport}
                       disabled={isDownloading}
-                      className="w-full relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white shadow-lg shadow-neon-blue/20 gpu-accelerate disabled:opacity-70"
+                      className="w-full relative overflow-hidden bg-gradient-to-r from-primary to-primary/90 hover:opacity-95 text-white shadow-xl shadow-primary/10 transition-all duration-300 h-14 rounded-2xl font-bold tracking-tight"
                     >
-                      <span className="relative z-10 flex items-center justify-center gap-2">
+                      <span className="relative z-10 flex items-center justify-center gap-2 text-lg">
                         {isDownloading ? (
-                          <RotateCcw className="w-4 h-4 animate-spin" />
+                          <RotateCcw className="w-5 h-5 animate-spin" />
                         ) : (
-                          <Download className="w-4 h-4" />
+                          <Download className="w-5 h-5" />
                         )}
-                        {isDownloading ? "Generating Report..." : "Download Report"}
+                        {isDownloading ? "Generating Forensic Report..." : "Secure Download PDF"}
                       </span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
                     </Button>
                   </motion.div>
                   
@@ -561,16 +538,16 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     size="lg"
                     variant="outline"
                     onClick={onVerifyAnother}
-                    className="w-full h-full min-h-[44px] border-glass-border hover:bg-secondary hover:border-neon-blue/50 transition-all duration-150 group gpu-accelerate"
+                    className="w-full h-14 border-glass-border hover:bg-secondary hover:border-primary/50 transition-all duration-300 rounded-2xl group font-semibold"
                   >
                     <motion.div
                       className="mr-2"
                       whileHover={{ rotate: -360 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <RotateCcw className="w-4 h-4 group-hover:text-neon-blue transition-colors duration-150" />
+                      <RotateCcw className="w-4 h-4 group-hover:text-primary transition-colors duration-150" />
                     </motion.div>
-                    <span className="group-hover:text-neon-blue transition-colors duration-150">Verify Another</span>
+                    <span className="group-hover:text-primary transition-colors duration-150">Verify Another</span>
                   </Button>
                 </motion.div>
               </motion.div>

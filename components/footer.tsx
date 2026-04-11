@@ -38,17 +38,17 @@ function ComingSoonModal({ linkName, onClose }: { linkName: string, onClose: () 
         transition={{ type: "spring", stiffness: 350, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 shadow-2xl"
-        style={{ boxShadow: "0 0 80px rgba(6, 182, 212, 0.15), 0 0 30px rgba(139, 92, 246, 0.1)" }}
+        style={{ boxShadow: "0 0 80px rgba(16, 185, 129, 0.1), 0 0 30px rgba(16, 185, 129, 0.05)" }}
       >
         {/* Grid bg */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: "linear-gradient(rgba(6,182,212,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.3) 1px, transparent 1px)",
+          backgroundImage: "linear-gradient(rgba(16,185,129,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.3) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
         }} />
 
         {/* Scan line */}
         <motion.div
-          className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
+          className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent"
           animate={{ top: ["0%", "100%", "0%"] }}
           transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
         />
@@ -65,22 +65,22 @@ function ComingSoonModal({ linkName, onClose }: { linkName: string, onClose: () 
           {/* Orbiting ring + icon */}
           <div className="relative mb-6">
             <motion.div
-              className="absolute rounded-full border border-cyan-500/20"
+              className="absolute rounded-full border border-primary/20"
               style={{ width: 90, height: 90, left: -5, top: -5 }}
               animate={{ rotate: 360 }}
               transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
             >
-              <div className="absolute top-0 left-1/2 w-2 h-2 -ml-1 rounded-full bg-cyan-400/60" />
-              <div className="absolute bottom-0 left-1/2 w-1.5 h-1.5 rounded-full bg-purple-400/60" style={{ marginLeft: -3 }} />
+              <div className="absolute top-0 left-1/2 w-2 h-2 -ml-1 rounded-full bg-primary/60" />
+              <div className="absolute bottom-0 left-1/2 w-1.5 h-1.5 rounded-full bg-accent/60" style={{ marginLeft: -3 }} />
             </motion.div>
 
             <motion.div
               animate={{ scale: [1, 1.08, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg"
-              style={{ boxShadow: "0 0 40px rgba(6, 182, 212, 0.3)" }}
+              className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg"
+              style={{ boxShadow: "0 0 40px rgba(16, 185, 129, 0.2)" }}
             >
-              <Rocket className="w-10 h-10 text-white" />
+              <Shield className="w-10 h-10 text-white" />
             </motion.div>
           </div>
 
@@ -98,13 +98,13 @@ function ComingSoonModal({ linkName, onClose }: { linkName: string, onClose: () 
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="w-full p-5 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.03] mt-5 mb-6"
+            className="w-full p-5 rounded-2xl border border-primary/20 bg-primary/[0.03] mt-5 mb-6"
           >
-            <h4 className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-2">
-              We&apos;re Working On It
+            <h4 className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-2">
+              Refined Feature Coming Soon
             </h4>
             <p className="text-sm text-slate-400 leading-relaxed">
-              The <span className="text-cyan-300 font-semibold">{linkName}</span> page is currently under development. Our team is crafting something amazing for you.
+              Our team is currenty finalizing the <span className="text-primary font-semibold">{linkName}</span> module as part of the visual excellence rollout.
             </p>
           </motion.div>
 
@@ -116,29 +116,29 @@ function ComingSoonModal({ linkName, onClose }: { linkName: string, onClose: () 
             className="flex items-center justify-center gap-5 mb-5"
           >
             <div className="flex items-center gap-2">
-              <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-cyan-400" />
-              <span className="text-[11px] text-slate-500 font-medium tracking-wide">IN PROGRESS</span>
+              <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-[11px] text-slate-500 font-medium tracking-wide">PENDING ROLLOUT</span>
             </div>
             <div className="flex items-center gap-2">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[11px] text-slate-500 font-medium tracking-wide">PRIORITY</span>
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span className="text-[11px] text-slate-500 font-medium tracking-wide">OFFICIAL</span>
             </div>
             <div className="flex items-center gap-2">
-              <Globe className="w-3.5 h-3.5 text-purple-400" />
-              <span className="text-[11px] text-slate-500 font-medium tracking-wide">GLOBAL</span>
+              <Globe className="w-3.5 h-3.5 text-primary/60" />
+              <span className="text-[11px] text-slate-500 font-medium tracking-wide">VERIFIED</span>
             </div>
           </motion.div>
 
           {/* Progress bar */}
           <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden mb-2">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500"
+              className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
               initial={{ width: "0%" }}
-              animate={{ width: "65%" }}
+              animate={{ width: "85%" }}
               transition={{ delay: 0.4, duration: 1.2, ease: "easeOut" }}
             />
           </div>
-          <p className="text-[10px] text-slate-600 font-mono tracking-wider">COMPLETION: 65%</p>
+          <p className="text-[10px] text-slate-600 font-mono tracking-wider">OFFICIAL STATUS: 85%</p>
         </div>
 
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-24 bg-cyan-500/10 blur-3xl pointer-events-none" />
@@ -157,13 +157,13 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-2">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <Shield className="w-8 h-8 text-neon-blue" />
-              <span className="text-xl font-bold bg-gradient-to-r from-neon-blue to-neon-purple bg-clip-text text-transparent">
+              <Shield className="w-8 h-8 text-primary" />
+              <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic">
                 CertiGuard
               </span>
             </Link>
-            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-              AI-powered certificate verification system. Protect your organization from fraudulent credentials.
+            <p className="text-sm text-muted-foreground mb-6 max-w-xs leading-relaxed">
+              Institutional AI-powered forensic verification system. Protecting global standards from credential fraud.
             </p>
             <div className="flex gap-3">
               {socialLinks.map((social) => (
@@ -173,7 +173,7 @@ export function Footer() {
                   onClick={(e) => { e.preventDefault(); setActiveLink(social.label) }}
                   whileHover={{ scale: 1.1, y: -2 }}
                   whileTap={{ scale: 0.95 }}
-                  className="w-10 h-10 glass rounded-lg flex items-center justify-center text-muted-foreground hover:text-neon-blue hover:border-neon-blue/50 transition-colors"
+                  className="w-10 h-10 glass rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
                   style={{ borderWidth: 1, borderStyle: "solid", borderColor: "transparent" }}
                   aria-label={social.label}
                 >
@@ -192,7 +192,7 @@ export function Footer() {
                   <li key={link}>
                     <button
                       onClick={() => setActiveLink(link)}
-                      className="text-sm text-muted-foreground hover:text-neon-blue transition-colors cursor-pointer text-left"
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer text-left"
                     >
                       {link}
                     </button>

@@ -1,15 +1,22 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
+import dynamic from "next/dynamic"
 import { AnimatedBackground } from "@/components/animated-background"
 import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 import { UploadSection } from "@/components/upload-section"
 import { VerificationStepper } from "@/components/verification-stepper"
-import { ResultDisplay, type VerificationResult } from "@/components/result-display"
 import { PlatformsSection } from "@/components/platforms-section"
 import { FloatingAssistant } from "@/components/floating-assistant"
 import { Footer } from "@/components/footer"
+
+const ResultDisplay = dynamic(
+  () => import("@/components/result-display").then((mod) => mod.ResultDisplay),
+  { ssr: false }
+)
+
+type VerificationResult = any // Since we are importing ResultDisplay dynamically, we can define the type or import it separately.
 
 type VerificationState = "idle" | "verifying" | "complete"
 
