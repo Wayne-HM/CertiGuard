@@ -131,17 +131,21 @@ def scrape_page(verification_link):
         if response.status_code != 200:
             return f"Error: HTTP {response.status_code}", "Error", False
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        all_text = soup.get_text(separator="\n")
-        
         # Meta tag fallback (Very clean)
         page_title = soup.title.string.strip() if soup.title and soup.title.string else ""
+        
+        # Check og:description first (often contains the clean sentence)
+        meta_desc = soup.find("meta", property="og:description") or soup.find("meta", name="description")
+        if meta_desc and "successful completion of" in meta_desc.get("content", "").lower():
+            all_text = meta_desc.get("content") + "\n" + all_text
+
         meta_title = soup.find("meta", property="og:title") or soup.find("meta", name="twitter:title")
         if meta_title and meta_title.get("content"):
             meta_val = meta_title.get("content").strip()
             # Clean "Coursera | Title" or "Title | Coursera"
             if "|" in meta_val:
-                meta_val = meta_val.split("|")[0].strip()
+                parts = meta_val.split("|")
+                meta_val = parts[0].strip() if "Coursera" not in parts[0] else parts[1].strip()
             if " - Coursera" in meta_val:
                 meta_val = meta_val.replace(" - Coursera", "").strip()
             page_title = meta_val
@@ -182,7 +186,9 @@ def get_verified_details(all_text, page_title):
         # Extract Course Title - Restricted to avoid noise
         verified_course = "Course Not Found"
         course_patterns = [
-            r"successful completion of\s+(?:the\s+)?(?:course\s+)?\"?(.+?)\"?\s*(?:\.|\s+Offered|\s+Authorized|\s+by|\s+on|\s+|\(|University)",
+            # Pattern 1: Quoted titles after completion marker (Very reliable)
+            r"completion of\s+(?:.+?university of.+?'s\s+)?\"(.+?)\"",
+            r"successful completion of\s+(?:the\s+)?(?:course\s+)?\"?(.+?)\"?\s*(?:\.|\s+Offered|\s+Authorized|\s+by|\s+on|\s{2,}|\(|at Coursera)",
             r"completed\s+(?:the\s+)?(?:course\s+)?\"?(.+?)\"?\s+an online",
             r"completion of\s+\"?(.+?)\"?\s+cert",
             r"Professional Certificate\s+(?:in\s+)?([A-Za-z0-9\s:&]+?)(?:\s+offered|\s+authorized|\s+by|\s+on|\s+Coursera|$)",
@@ -193,6 +199,14 @@ def get_verified_details(all_text, page_title):
             match = re.search(cp, text_clean, re.IGNORECASE)
             if match:
                 verified_course = match.group(1).strip()
+                # Prune if it captured "university" garbage
+                if "University" in verified_course and len(verified_course) > 50:
+                    u_idx = verified_course.find("University")
+                    # If university is at the start, try to skip it
+                    if u_idx < 10:
+                        inner_match = re.search(r"'s\s+\"(.+?)\"", verified_course)
+                        if inner_match: verified_course = inner_match.group(1).strip()
+                
                 # Stop if it's too long (noise usually kicks in after 100 chars)
                 if len(verified_course) > 150:
                     verified_course = verified_course[:150]
