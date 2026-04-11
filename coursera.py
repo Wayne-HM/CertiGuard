@@ -133,7 +133,18 @@ def scrape_page(verification_link):
 
         soup = BeautifulSoup(response.text, "html.parser")
         all_text = soup.get_text(separator="\n")
+        
+        # Meta tag fallback (Very clean)
         page_title = soup.title.string.strip() if soup.title and soup.title.string else ""
+        meta_title = soup.find("meta", property="og:title") or soup.find("meta", name="twitter:title")
+        if meta_title and meta_title.get("content"):
+            meta_val = meta_title.get("content").strip()
+            # Clean "Coursera | Title" or "Title | Coursera"
+            if "|" in meta_val:
+                meta_val = meta_val.split("|")[0].strip()
+            if " - Coursera" in meta_val:
+                meta_val = meta_val.replace(" - Coursera", "").strip()
+            page_title = meta_val
 
         is_blocked = any(kw in all_text.lower() for kw in [
             "verify you are human", "security verification", "cloudflare"
@@ -168,20 +179,23 @@ def get_verified_details(all_text, page_title):
                 if verified_name.lower() == "coursera": continue
                 break
 
-        # Extract Course Title
+        # Extract Course Title - Restricted to avoid noise
         verified_course = "Course Not Found"
         course_patterns = [
-            r"completed\s+(?:the\s+)?(?:course\s+)?(.+?)\s+an online",
-            r"completion of\s+(.+?)\s+cert",
+            r"successful completion of\s+(?:the\s+)?(?:course\s+)?\"?(.+?)\"?\s*(?:\.|\s+Offered|\s+Authorized|\s+by|\s+on|\s+|\(|University)",
+            r"completed\s+(?:the\s+)?(?:course\s+)?\"?(.+?)\"?\s+an online",
+            r"completion of\s+\"?(.+?)\"?\s+cert",
             r"Professional Certificate\s+(?:in\s+)?([A-Za-z0-9\s:&]+?)(?:\s+offered|\s+authorized|\s+by|\s+on|\s+Coursera|$)",
             r"Specialization\s+(?:in\s+)?([A-Za-z0-9\s:&]+?)(?:\s+offered|\s+authorized|\s+by|\s+on|\s+Coursera|$)",
-            r"course\s+(.+?)\s+on\s+\w+\s+\d"
         ]
         
         for cp in course_patterns:
             match = re.search(cp, text_clean, re.IGNORECASE)
             if match:
                 verified_course = match.group(1).strip()
+                # Stop if it's too long (noise usually kicks in after 100 chars)
+                if len(verified_course) > 150:
+                    verified_course = verified_course[:150]
                 break
         
         # Cleanup: Remove repetitive text and rating garbage
@@ -189,18 +203,31 @@ def get_verified_details(all_text, page_title):
             if not name or name == "Course Not Found": return name
             # Remove "Google Filled Star" and similar garbage
             name = re.sub(r"(?:Google\s+)?(?:Filled\s+)?Star\s*(?:Filled)?", "", name, flags=re.I).strip()
-            # Remove repetitive phrases (e.g., "Python Python")
+            
+            # Prune at common noise markers
+            noise_markers = [
+                "ratings", "already enrolled", "Enroll for Free", "Offered by", 
+                "Authorized by", "University", "Try this course", "Authorized sharing", 
+                "Verify at", "Skills you will gain", "What you will learn"
+            ]
+            for marker in noise_markers:
+                if marker.lower() in name.lower():
+                    # Find early match
+                    idx = name.lower().find(marker.lower())
+                    if idx > 10:
+                        name = name[:idx].strip()
+
+            # Remove trailing connectors
+            name = re.sub(r" (?:an online|a course|non-credit|Professional|Specialization|offered|authorized|by|on|at|and)$", "", name, flags=re.I).strip()
+            
+            # Remove repetitive phrases
             words = name.split()
             if len(words) > 4:
-                # Check if the first half is roughly same as second half
                 half = len(words) // 2
                 if " ".join(words[:half]).lower() == " ".join(words[half:]).lower():
                     name = " ".join(words[:half])
             
-            # Final prune for common non-title artifacts
-            for junk in ["Try this course", "Authorized sharing", "Verify at"]:
-                if junk in name: name = name.split(junk)[0].strip()
-            return name
+            return name.strip()
 
         if verified_course == "Course Not Found":
             if "|" in page_title:
