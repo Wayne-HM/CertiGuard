@@ -65,32 +65,37 @@ export function AnimatedBackground() {
     }
     resizeCanvas()
 
-    // Higher density for luxury feel
-    const particleCount = Math.min(100, Math.floor((width * height) / 18000))
+    // Optimized particle count based on screen size
+    const particleCount = Math.min(60, Math.floor((width * height) / 25000))
     
-    // Initialize particles only once
+        // Initialize particles only once
     if (particlesRef.current.length === 0) {
       for (let i = 0; i < particleCount; i++) {
         particlesRef.current.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          size: Math.random() * 1.5 + 0.5,
-          alpha: Math.random() * 0.4 + 0.1,
-          hue: Math.random() > 0.5 ? 155 : 195, // Radiant Emerald or Electric Cyan
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          size: Math.random() * 2 + 1,
+          alpha: Math.random() * 0.5 + 0.2,
+          hue: Math.random() * 40 + 140, // Emerald hues (140-180)
         })
       }
     }
 
     const particles = particlesRef.current
-    const gridSize = 120
-    const connectionDistance = 120
+    const gridSize = 100
+    const connectionDistance = 100
     const connectionDistanceSq = connectionDistance * connectionDistance
 
+    // Pre-calculate common values
+    const mouseInfluenceRadius = 180
+    const mouseInfluenceRadiusSq = mouseInfluenceRadius * mouseInfluenceRadius
+
     const animate = (currentTime: number) => {
+      // Target 60fps for canvas (will interpolate smoothly)
       const deltaTime = currentTime - lastTimeRef.current
-      if (deltaTime < 16) { 
+      if (deltaTime < 16) { // ~60fps cap for canvas
         animationRef.current = requestAnimationFrame(animate)
         return
       }
@@ -98,25 +103,63 @@ export function AnimatedBackground() {
 
       ctx.clearRect(0, 0, width, height)
 
-      // Draw subtle phantom grid
-      ctx.strokeStyle = "rgba(124, 255, 200, 0.01)"
-      ctx.lineWidth = 0.5
+      // Draw subtle grid with wave effect (simplified) - Emerald tint
+      ctx.strokeStyle = "rgba(16, 185, 129, 0.025)"
+      ctx.lineWidth = 1
       ctx.beginPath()
       
-      const time = currentTime * 0.0008
+      const time = currentTime * 0.001
       for (let x = 0; x <= width + gridSize; x += gridSize) {
-        const wave = Math.sin(time + x * 0.005) * 5
+        const wave = Math.sin(time + x * 0.008) * 3
         ctx.moveTo(x + wave, 0)
         ctx.lineTo(x + wave, height)
       }
       for (let y = 0; y <= height + gridSize; y += gridSize) {
-        const wave = Math.cos(time + y * 0.005) * 5
+        const wave = Math.cos(time + y * 0.008) * 3
         ctx.moveTo(0, y + wave)
         ctx.lineTo(width, y + wave)
       }
       ctx.stroke()
 
-      // Update and draw connections (Liquid layer)
+      // Update and draw particles
+      for (let i = 0; i < particles.length; i++) {
+        const particle = particles[i]
+
+        // Mouse attraction (optimized)
+        if (mouseRef.current.active) {
+          const dx = mouseRef.current.x - particle.x
+          const dy = mouseRef.current.y - particle.y
+          const distSq = dx * dx + dy * dy
+          
+          if (distSq < mouseInfluenceRadiusSq && distSq > 0) {
+            const force = (1 - distSq / mouseInfluenceRadiusSq) * 0.015
+            const invDist = 1 / Math.sqrt(distSq)
+            particle.vx += dx * invDist * force
+            particle.vy += dy * invDist * force
+          }
+        }
+
+        // Apply velocity with damping
+        particle.x += particle.vx
+        particle.y += particle.vy
+        particle.vx *= 0.985
+        particle.vy *= 0.985
+
+        // Wrap around screen
+        if (particle.x < -10) particle.x = width + 10
+        else if (particle.x > width + 10) particle.x = -10
+        if (particle.y < -10) particle.y = height + 10
+        else if (particle.y > height + 10) particle.y = -10
+
+        // Draw particle (simplified for performance) - Emerald/Mint
+        ctx.fillStyle = `hsla(${particle.hue}, 65%, 55%, ${particle.alpha})`
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      // Draw connections (optimized with spatial check)
+      ctx.lineWidth = 0.5
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
           const dx = particles[i].x - particles[j].x
@@ -124,9 +167,8 @@ export function AnimatedBackground() {
           const distSq = dx * dx + dy * dy
 
           if (distSq < connectionDistanceSq) {
-            const alpha = (1 - distSq / connectionDistanceSq) * 0.12
-            ctx.strokeStyle = `hsla(${particles[i].hue}, 80%, 65%, ${alpha})`
-            ctx.lineWidth = 0.8
+            const alpha = (1 - distSq / connectionDistanceSq) * 0.15
+            ctx.strokeStyle = `hsla(160, 60%, 50%, ${alpha})` // Emerald connection
             ctx.beginPath()
             ctx.moveTo(particles[i].x, particles[i].y)
             ctx.lineTo(particles[j].x, particles[j].y)
@@ -135,42 +177,8 @@ export function AnimatedBackground() {
         }
       }
 
-      // Draw particles
-      for (let i = 0; i < particles.length; i++) {
-        const particle = particles[i]
-
-        if (mouseRef.current.active) {
-          const dx = mouseRef.current.x - particle.x
-          const dy = mouseRef.current.y - particle.y
-          const distSq = dx * dx + dy * dy
-          
-          if (distSq < 40000) { // Larger influence
-            const force = (1 - distSq / 40000) * 0.015
-            const invDist = 1 / Math.sqrt(distSq)
-            particle.vx += dx * invDist * force
-            particle.vy += dy * invDist * force
-          }
-        }
-
-        particle.x += particle.vx
-        particle.y += particle.vy
-        particle.vx *= 0.99
-        particle.vy *= 0.99
-
-        if (particle.x < -20) particle.x = width + 20
-        else if (particle.x > width + 20) particle.x = -20
-        if (particle.y < -20) particle.y = height + 20
-        else if (particle.y > height + 20) particle.y = -20
-
-        ctx.fillStyle = `hsla(${particle.hue}, 80%, 70%, ${particle.alpha})`
-        ctx.beginPath()
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
-        ctx.fill()
-      }
-
       animationRef.current = requestAnimationFrame(animate)
     }
-
 
     window.addEventListener("resize", resizeCanvas, { passive: true })
     window.addEventListener("mousemove", handleMouseMove, { passive: true })
@@ -197,81 +205,80 @@ export function AnimatedBackground() {
         style={{ zIndex: 0 }}
       />
       
-      {/* Liquid Aurora Overlays */}
+      {/* CSS-animated gradient overlays (GPU accelerated) */}
       <div 
         className="fixed inset-0 pointer-events-none gpu-accelerate"
         style={{ 
           zIndex: 1,
           background: `
-            radial-gradient(circle at 50% -20%, oklch(0.78 0.22 155 / 0.1), transparent 70%),
-            radial-gradient(circle at 100% 50%, oklch(0.8 0.18 195 / 0.08), transparent 60%),
-            radial-gradient(circle at 0% 80%, oklch(0.65 0.25 280 / 0.05), transparent 60%)
+            radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.7 0.15 160 / 0.08), transparent),
+            radial-gradient(ellipse 60% 40% at 100% 50%, oklch(0.65 0.12 180 / 0.06), transparent),
+            radial-gradient(ellipse 60% 40% at 0% 80%, oklch(0.75 0.1 145 / 0.04), transparent)
           `
         }}
       />
       
-      {/* Prismatic Floating Orbs */}
+      {/* CSS-animated floating orbs (GPU accelerated with will-change) */}
       <FloatingOrb
-        className="fixed pointer-events-none animate-orb-1"
+        className="fixed pointer-events-none animate-orb-1 gpu-accelerate"
         style={{ 
           zIndex: 1,
-          top: '15%',
-          left: '10%',
-          width: '500px',
-          height: '500px',
-          borderRadius: '50%',
-          background: "radial-gradient(circle, oklch(0.78 0.22 155 / 0.12) 0%, transparent 70%)",
-          filter: "blur(60px)",
-        }}
-      />
-      
-      <FloatingOrb
-        className="fixed pointer-events-none animate-orb-2"
-        style={{ 
-          zIndex: 1,
-          bottom: '10%',
-          right: '5%',
-          width: '600px',
-          height: '600px',
-          borderRadius: '50%',
-          background: "radial-gradient(circle, oklch(0.8 0.18 195 / 0.08) 0%, transparent 70%)",
-          filter: "blur(80px)",
-        }}
-      />
-      
-      <FloatingOrb
-        className="fixed pointer-events-none animate-orb-3"
-        style={{ 
-          zIndex: 1,
-          top: '40%',
-          right: '25%',
+          top: '20%',
+          left: '20%',
           width: '400px',
           height: '400px',
           borderRadius: '50%',
-          background: "radial-gradient(circle, oklch(0.65 0.25 280 / 0.06) 0%, transparent 70%)",
-          filter: "blur(50px)",
+          background: "radial-gradient(circle, oklch(0.7 0.15 160 / 0.08) 0%, transparent 70%)",
+          filter: "blur(40px)",
         }}
       />
       
-      {/* Micro-Noise Texture Overlay */}
+      <FloatingOrb
+        className="fixed pointer-events-none animate-orb-2 gpu-accelerate"
+        style={{ 
+          zIndex: 1,
+          bottom: '20%',
+          right: '20%',
+          width: '350px',
+          height: '350px',
+          borderRadius: '50%',
+          background: "radial-gradient(circle, oklch(0.65 0.12 180 / 0.06) 0%, transparent 70%)",
+          filter: "blur(35px)",
+        }}
+      />
+      
+      <FloatingOrb
+        className="fixed pointer-events-none animate-orb-3 gpu-accelerate"
+        style={{ 
+          zIndex: 1,
+          top: '50%',
+          right: '30%',
+          width: '300px',
+          height: '300px',
+          borderRadius: '50%',
+          background: "radial-gradient(circle, oklch(0.75 0.1 145 / 0.04) 0%, transparent 70%)",
+          filter: "blur(30px)",
+        }}
+      />
+      
+      {/* Subtle noise texture (static, no animation) */}
       <div 
-        className="fixed inset-0 pointer-events-none opacity-[0.02] mix-blend-overlay"
+        className="fixed inset-0 pointer-events-none opacity-[0.01]"
         style={{ 
           zIndex: 2,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
       />
       
-      {/* Prismatic Vignette */}
+      {/* Vignette effect (static) */}
       <div 
         className="fixed inset-0 pointer-events-none"
         style={{ 
           zIndex: 2,
-          background: "radial-gradient(ellipse at center, transparent 20%, oklch(0.08 0.01 220 / 0.7) 100%)",
+          background: "radial-gradient(ellipse at center, transparent 0%, oklch(0.06 0.01 160 / 0.4) 100%)",
         }}
       />
     </>
   )
 }
-
 

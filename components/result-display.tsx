@@ -75,23 +75,22 @@ const DetailRow = memo(function DetailRow({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
+      initial={{ opacity: 0, x: -15 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.5, delay: 0.3 + index * 0.1, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{ scale: 1.02, x: 5 }}
-      className="flex items-center gap-5 p-5 glass-strong rounded-2xl hover:border-primary/40 transition-all duration-300 cursor-default group gpu-accelerate diamond-border"
+      transition={{ duration: 0.35, delay: 0.3 + index * 0.08, ease: "easeInOut" }}
+      whileHover={{ scale: 1.01, x: 3 }}
+      className="flex items-center gap-4 p-4 glass rounded-xl hover:border-neon-blue/30 transition-colors duration-150 cursor-default group gpu-accelerate"
     >
-      <div className="absolute inset-0 noise-surface opacity-[0.02] pointer-events-none" />
       <motion.div 
-        className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors duration-300 diamond-border border-primary/20"
-        whileHover={{ rotate: [0, -10, 10, 0] }}
-        transition={{ duration: 0.4 }}
+        className="flex-shrink-0 w-10 h-10 rounded-lg bg-secondary flex items-center justify-center group-hover:bg-neon-blue/10 transition-colors duration-150"
+        whileHover={{ rotate: [-8, 8, 0] }}
+        transition={{ duration: 0.3 }}
       >
-        <Icon className="w-6 h-6 text-primary" />
+        <Icon className="w-5 h-5 text-neon-blue" />
       </motion.div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] text-muted-foreground font-black tracking-[0.2em] uppercase opacity-50 mb-0.5">{label}</p>
-        <p className="font-bold text-lg text-foreground break-words whitespace-pre-wrap tracking-tight italic font-heading">{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-medium text-foreground break-words whitespace-pre-wrap">{value}</p>
       </div>
     </motion.div>
   )
@@ -115,160 +114,169 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     setIsDownloading(true)
     try {
       const { jsPDF } = await import("jspdf")
+      // 1. Generate QR Code
+    const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
+      margin: 1,
+      width: 250,
+      color: {
+        dark: "#06b6d4",
+        light: "#00000000"
+      }
+    })
+
+    const canvas = document.createElement("canvas")
+    // High-resolution for A4 print quality (300 DPI approx)
+    const W = 2000, H = 1414
+    canvas.width = W
+    canvas.height = H
+    const ctx = canvas.getContext("2d")!
+
+    // --- Elegant Obsidian Background ---
+    const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W)
+    bgGrad.addColorStop(0, "#0A0F1C")
+    bgGrad.addColorStop(1, "#020617")
+    ctx.fillStyle = bgGrad
+    ctx.fillRect(0, 0, W, H)
+
+    // Subtle technical grid
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.05)"
+    ctx.lineWidth = 1
+    for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+    for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+
+    // --- Premium Border ---
+    const bMargin = 60
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.3)"
+    ctx.lineWidth = 4
+    ctx.strokeRect(bMargin, bMargin, W - bMargin*2, H - bMargin*2)
+    
+    // Corner Accents
+    ctx.fillStyle = "#00D4FF"
+    const cs = 40
+    ctx.fillRect(bMargin-2, bMargin-2, cs, 6) // Top Left
+    ctx.fillRect(bMargin-2, bMargin-2, 6, cs)
+    ctx.fillRect(W-bMargin-cs+2, bMargin-2, cs, 6) // Top Right
+    ctx.fillRect(W-bMargin-4, bMargin-2, 6, cs)
+    
+    // --- Header Section ---
+    ctx.fillStyle = "rgba(0, 212, 255, 0.1)"
+    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.fill()
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.5)"; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.stroke()
+
+    ctx.textAlign = "center"
+    ctx.fillStyle = "#f8fafc"
+    ctx.font = "bold 42px 'Segoe UI', Arial"
+    ctx.fillText("CERTIFICATE OF AUTHENTICITY", W/2, 165)
+    ctx.fillStyle = "#00D4FF"
+    ctx.font = "bold 16px 'Segoe UI', Arial"
+    ctx.letterSpacing = "4px"
+    ctx.fillText("VERIFIED BY CERTIGUARD GLOBAL AI", W/2, 195)
+    ctx.letterSpacing = "0px"
+
+    // --- Main Content Area ---
+    ctx.textAlign = "left"
+    const contentX = 200, contentY = 400
+
+    // Presented to
+    ctx.fillStyle = "#94a3b8"
+    ctx.font = "bold 20px 'Segoe UI', Arial"
+    ctx.fillText("OFFICIALLY PRESENTED TO", contentX, contentY)
+    
+    ctx.fillStyle = "#f1f5f9"
+    ctx.font = "82px Georgia, serif"
+    ctx.fillText(result.name || "Verified Student", contentX, contentY + 100)
+
+      // Course
+      ctx.fillStyle = "#94a3b8"
+      ctx.font = "bold 20px 'Segoe UI', Arial"
+      ctx.fillText("FOR SUCCESSFUL COMPLETION OF", contentX, contentY + 220)
       
-      // 1. Generate QR Code (Professional Dark Mode QR)
-      const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
-        margin: 1,
-        width: 300,
-        color: {
-          dark: "#0F172A", // Deep Slate
-          light: "#FFFFFF"
-        }
-      })
+      ctx.fillStyle = "#00D4FF"
+      ctx.font = "italic 48px Georgia, serif"
+      // Handle long course titles
+      const courseTitle = result.course || "Advanced Professional Specialization"
+      if (courseTitle.length > 50) {
+        ctx.font = "italic 36px Georgia, serif"
+        ctx.fillText(courseTitle.substring(0, 50), contentX, contentY + 290)
+        ctx.fillText(courseTitle.substring(50), contentX, contentY + 340)
+      } else {
+        ctx.fillText(courseTitle, contentX, contentY + 300)
+      }
 
-      const canvas = document.createElement("canvas")
-      // High-resolution for A4 print quality (300 DPI)
-      const W = 2480, H = 3508 // A4 Vertical at 300DPI
-      canvas.width = W
-      canvas.height = H
-      const ctx = canvas.getContext("2d")!
+      // --- Details Grid ---
+      const gridY = contentY + 500
+      const colWidth = 450
 
-      // --- ULTRA-CLEAN BACKGROUND ---
-      ctx.fillStyle = "#FFFFFF"
-      ctx.fillRect(0, 0, W, H)
+      // Date
+      ctx.fillStyle = "#64748b"
+      ctx.font = "bold 18px 'Segoe UI', Arial"
+      ctx.fillText("ISSUE DATE", contentX, gridY)
+      ctx.fillStyle = "#cbd5e1"
+      ctx.font = "bold 24px 'Segoe UI', Arial"
+      ctx.fillText(result.issueDate, contentX, gridY + 40)
 
-      // Subtle Institutional Watermark
-      ctx.globalAlpha = 0.03
-      ctx.fillStyle = "#0F172A"
-      ctx.font = "bold 200px 'Segoe UI', Arial"
+      // Platform
+      ctx.fillStyle = "#64748b"
+      ctx.font = "bold 18px 'Segoe UI', Arial"
+      ctx.fillText("PLATFORM", contentX + colWidth, gridY)
+      ctx.fillStyle = "#cbd5e1"
+      ctx.font = "bold 24px 'Segoe UI', Arial"
+      ctx.fillText(result.platform, contentX + colWidth, gridY + 40)
+
+      // Certificate ID
+      ctx.fillStyle = "#64748b"
+      ctx.font = "bold 18px 'Segoe UI', Arial"
+      ctx.fillText("CERTIFICATE ID", contentX + colWidth * 2, gridY)
+      ctx.fillStyle = "#cbd5e1"
+      ctx.font = "bold 24px 'Segoe UI', Arial"
+      ctx.fillText(result.certificateId || "CERT-882031", contentX + colWidth * 2, gridY + 40)
+
+      // --- Verification Seal (Bottom Left) ---
+      const sealX = contentX, sealY = H - 280
+      ctx.fillStyle = "rgba(34, 197, 94, 0.1)"
+      ctx.beginPath(); ctx.arc(sealX + 60, sealY + 60, 80, 0, Math.PI * 2); ctx.fill()
+      ctx.strokeStyle = "#22C55E"; ctx.lineWidth = 3
+      ctx.beginPath(); ctx.arc(sealX + 60, sealY + 60, 70, 0, Math.PI * 2); ctx.stroke()
       ctx.textAlign = "center"
-      ctx.translate(W/2, H/2)
-      ctx.rotate(-Math.PI / 4)
-      for(let i = -3; i < 3; i++) {
-        for(let j = -3; j < 3; j++) {
-          ctx.fillText("CERTIGUARD", i * 1500, j * 400)
-        }
-      }
-      ctx.rotate(Math.PI / 4)
-      ctx.translate(-W/2, -H/2)
-      ctx.globalAlpha = 1.0
+      ctx.fillStyle = "#22C55E"
+      ctx.font = "bold 20px 'Segoe UI', Arial"
+      ctx.fillText("AI VERIFIED", sealX + 60, sealY + 55)
+      ctx.font = "bold 14px 'Segoe UI', Arial"
+      ctx.fillText("AUTHENTIC", sealX + 60, sealY + 80)
 
-      // --- HEADER & IDENTITY ---
-      const margin = 160
-      const primaryCol = "#10B981" // Emerald
-      const darkCol = "#050505" // Obsidian
-      const grayCol = "#64748B"
-      
-      // Top Accent Bar
-      ctx.fillStyle = primaryCol
-      ctx.fillRect(0, 0, W, 40)
-      
-      // Certificate ID - Prominent Top Right
-      ctx.textAlign = "right"
-      ctx.fillStyle = darkCol
-      ctx.font = "bold 45px 'Courier New', monospace"
-      ctx.fillText(`REPORT_ID: ${result.certificateId || "N/A"}`, W - margin, margin)
-      
-      // Brand Logo
-      ctx.textAlign = "left"
-      ctx.font = "900 80px 'Segoe UI', Arial"
-      ctx.fillStyle = darkCol
-      ctx.fillText("CERTIGUARD", margin, margin)
-      ctx.font = "bold 30px 'Segoe UI', Arial"
-      ctx.fillStyle = primaryCol
-      ctx.fillText("FORENSIC AUTHENTICATION UNIT", margin, margin + 50)
+    // --- QR Code Section (Bottom Right) ---
+    const qrX = W - 450, qrY = H - 420
+    const qrImg = new Image()
+    qrImg.src = qrDataUrl
+    await new Promise(resolve => qrImg.onload = resolve)
+    ctx.drawImage(qrImg, qrX + 50, qrY + 20, 240, 240)
+    
+    ctx.textAlign = "center"
+    ctx.fillStyle = "#64748b"
+    ctx.font = "bold 14px 'Segoe UI', Arial"
+    ctx.fillText("SCAN TO VERIFY LIVE", qrX + 170, qrY + 280)
 
-      // Divider
-      ctx.strokeStyle = "#F1F5F9"
-      ctx.lineWidth = 2
-      ctx.beginPath(); ctx.moveTo(margin, margin + 120); ctx.lineTo(W - margin, margin + 120); ctx.stroke()
+    // --- Footer Metadata ---
+    ctx.textAlign = "left"
+    ctx.fillStyle = "#475569"
+    ctx.font = "12px 'Courier New', monospace"
+    const hash = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join("")
+    ctx.fillText(`TRANS_ID: ${hash.toUpperCase()}`, contentX, H - 100)
+    ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, contentX, H - 80)
 
-      // --- HERO STATUS SECTION ---
-      const statusY = margin + 250
-      ctx.fillStyle = "#F8FAFC"
-      ctx.beginPath(); ctx.roundRect(margin, statusY, W - margin * 2, 500, 60); ctx.fill()
-      
-      // Decorative corner accents
-      ctx.fillStyle = primaryCol
-      ctx.fillRect(margin, statusY, 120, 10)
-      ctx.fillRect(margin, statusY, 10, 120)
-
-      ctx.textAlign = "left"
-      ctx.fillStyle = grayCol
-      ctx.font = "bold 40px 'Segoe UI', Arial"
-      ctx.fillText("AUTHENTICATION_RESULT", margin + 100, statusY + 120)
-      
-      ctx.fillStyle = primaryCol
-      ctx.font = "900 160px 'Segoe UI', Arial"
-      ctx.fillText("VERIFIED", margin + 100, statusY + 300)
-      
-      ctx.fillStyle = darkCol
-      ctx.font = "italic 45px Georgia, serif"
-      ctx.fillText("Parity Confirmed with Distributed Ledger", margin + 100, statusY + 400)
-
-      // --- DATA GRID ---
-      const gridY = statusY + 700
-      const colWidth = (W - margin * 2) / 2
-      
-      const drawBlock = (label: string, value: string, x: number, y: number) => {
-        ctx.fillStyle = grayCol
-        ctx.font = "bold 35px 'Segoe UI', Arial"
-        ctx.fillText(label.toUpperCase(), x, y)
-        ctx.fillStyle = darkCol
-        ctx.font = "80px 'Segoe UI', Arial"
-        ctx.fillText(value || "N/A", x, y + 100)
-        // Underline
-        ctx.strokeStyle = "#F1F5F9"
-        ctx.lineWidth = 2
-        ctx.beginPath(); ctx.moveTo(x, y + 150); ctx.lineTo(x + colWidth - 40, y + 150); ctx.stroke()
-      }
-
-      drawBlock("Credential Holder", result.name, margin, gridY)
-      drawBlock("Platform Protocol", result.platform, margin + colWidth, gridY)
-      drawBlock("Specialization", result.course, margin, gridY + 300)
-      drawBlock("Issue Date", result.issueDate, margin + colWidth, gridY + 300)
-      drawBlock("Total Duration", result.totalHours || "N/A", margin, gridY + 600)
-      drawBlock("Validation URL", "REGISTERED_NODE", margin + colWidth, gridY + 600)
-
-      // --- QR CODE & FINAL ATTESTATION ---
-      const qrSize = 550
-      const qrX = W - margin - qrSize
-      const qrY = H - margin - qrSize - 100
-      
-      const qrImg = new Image()
-      qrImg.src = qrDataUrl
-      await new Promise(resolve => qrImg.onload = resolve)
-      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize)
-
-      // Signature Area
-      ctx.textAlign = "left"
-      ctx.fillStyle = darkCol
-      ctx.font = "italic 60px 'Segoe UI', Arial"
-      ctx.fillText("CertiGuard AI", margin, qrY + 100)
-      ctx.font = "bold 30px 'Segoe UI', Arial"
-      ctx.fillStyle = grayCol
-      ctx.fillText("DIGITAL SIGNATURE ATTESTED", margin, qrY + 160)
-      
-      // Footer Bottom
-      ctx.textAlign = "left"
-      ctx.fillStyle = "#CBD5E1"
-      ctx.font = "bold 30px 'Courier New', monospace"
-      const reportHash = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join("")
-      ctx.fillText(`SHA-256: ${reportHash.toUpperCase()}`, margin, H - 120)
-      ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, margin, H - 70)
-
-      // Final Render
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4"
-      })
-      
-      const imgData = canvas.toDataURL("image/jpeg", 0.95)
-      pdf.addImage(imgData, "JPEG", 0, 0, 210, 297)
-      
-      const fileName = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
-      pdf.save(fileName)
+    // --- Convert to PDF ---
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4"
+    })
+    
+    const imgData = canvas.toDataURL("image/jpeg", 0.95)
+    pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
+    
+    const fileName = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
+    pdf.save(fileName)
     } catch (error) {
       console.error("Report generation failed:", error)
     } finally {
@@ -277,272 +285,317 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
   }
 
   return (
-    <section className="relative py-24 px-4 overflow-hidden">
-      <div className="max-w-3xl mx-auto">
+    <section className="relative py-16 px-4">
+      <div className="max-w-2xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 40 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
         >
-          {/* Main Result Card */}
+          {/* Result Card */}
           <Card
             className={`
-              relative overflow-hidden glass-strong rounded-[3rem] border-2 gpu-accelerate diamond-border
-              ${isActionRequired ? "border-warning/50 shadow-[0_0_60px_rgba(255,180,0,0.15)]" : isValid ? "border-primary/50 shadow-[0_0_60px_rgba(124,255,160,0.15)]" : "border-destructive/50 shadow-[0_0_60px_rgba(255,50,50,0.15)]"}
+              relative overflow-hidden glass-strong rounded-3xl border-2 gpu-accelerate
+              ${isActionRequired ? "border-amber-500/50" : isValid ? "border-success/50" : "border-destructive/50"}
             `}
+            style={{
+              boxShadow: isActionRequired
+                ? "0 0 40px oklch(0.7 0.2 60 / 0.15)"
+                : isValid 
+                ? "0 0 40px oklch(0.65 0.2 160 / 0.2)" 
+                : "0 0 40px oklch(0.55 0.22 25 / 0.2)",
+            }}
           >
-            <div className="absolute inset-0 noise-surface opacity-[0.05] pointer-events-none" />
-            
             {/* Confetti for success */}
             <AnimatePresence>
               {isValid && <Confetti />}
             </AnimatePresence>
             
-            <CardContent className="p-12 relative z-10">
-              {/* Status Header */}
-              <div className="text-center mb-12">
+            <CardContent className="p-8 relative z-10">
+              {/* Status Icon */}
+              <div className="text-center mb-8">
                 <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
+                  initial={{ scale: 0, rotate: -90 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={quickSpring}
-                  className="inline-flex relative mb-8"
+                  className="inline-flex relative"
                 >
                   {isActionRequired ? (
                     <>
-                      <div className="absolute inset-0 bg-warning/30 blur-[60px] rounded-full animate-pulse" />
+                      {/* Warning glow */}
+                      <div className="absolute inset-0 bg-amber-500/25 blur-2xl rounded-full animate-pulse" />
                       <motion.div
-                        animate={{ rotate: [0, -10, 10, 0], scale: [1, 1.1, 1] }}
-                        transition={{ duration: 3, repeat: Infinity }}
-                        className="relative glass rounded-[2rem] p-8 border-warning/40 shadow-2xl diamond-border"
+                        animate={{ rotate: [0, -5, 5, 0] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="relative gpu-accelerate"
                       >
-                        <AlertTriangle className="w-20 h-20 text-warning" />
+                        <AlertTriangle className="w-24 h-24 text-amber-500 drop-shadow-lg" />
                       </motion.div>
                     </>
                   ) : isValid ? (
                     <>
-                      <div className="absolute inset-0 bg-primary/30 blur-[80px] rounded-full animate-aurora" />
+                      {/* Success glow */}
+                      <div className="absolute inset-0 bg-success/25 blur-2xl rounded-full animate-glow-pulse" />
+                      
                       <motion.div
-                        animate={{ scale: [1, 1.05, 1], rotate: [0, 5, -5, 0] }}
-                        transition={{ duration: 4, repeat: Infinity }}
-                        className="relative glass rounded-[2.5rem] p-10 border-primary/40 shadow-2xl diamond-border"
+                        animate={{ scale: [1, 1.03, 1] }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                        className="relative gpu-accelerate"
                       >
-                        <CheckCircle2 className="w-24 h-24 text-primary" />
-                        <motion.div
-                          className="absolute -top-4 -right-4"
-                          animate={{ scale: [1, 1.3, 1], rotate: [0, 90, 180, 270, 360] }}
-                          transition={{ duration: 4, repeat: Infinity }}
-                        >
-                          <Sparkles className="w-10 h-10 text-primary-foreground drop-shadow-[0_0_10px_var(--primary)]" />
-                        </motion.div>
+                        <CheckCircle2 className="w-24 h-24 text-success drop-shadow-lg" />
+                      </motion.div>
+                      
+                      {/* Sparkle */}
+                      <motion.div
+                        className="absolute -top-1 -right-1"
+                        animate={{ rotate: [0, 12, 0], scale: [1, 1.15, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        <Sparkles className="w-5 h-5 text-success" />
                       </motion.div>
                     </>
                   ) : (
                     <>
-                      <div className="absolute inset-0 bg-destructive/30 blur-[60px] rounded-full" />
+                      {/* Error glow */}
+                      <div className="absolute inset-0 bg-destructive/25 blur-2xl rounded-full animate-glow-pulse" />
+                      
                       <motion.div
-                        animate={{ x: [-5, 5, -5, 5, 0] }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                        className="relative glass rounded-[2rem] p-8 border-destructive/40 shadow-2xl"
+                        initial={{ x: 0 }}
+                        animate={{ x: [-2, 2, -2, 2, 0] }}
+                        transition={{ duration: 0.4, delay: 0.2 }}
+                        className="relative gpu-accelerate"
                       >
-                        <XCircle className="w-20 h-20 text-destructive" />
+                        <XCircle className="w-24 h-24 text-destructive drop-shadow-lg" />
+                      </motion.div>
+                      
+                      {/* Warning */}
+                      <motion.div
+                        className="absolute -top-1 -right-1"
+                        animate={{ y: [0, -2, 0] }}
+                        transition={{ duration: 0.8, repeat: Infinity }}
+                      >
+                        <AlertTriangle className="w-5 h-5 text-destructive" />
                       </motion.div>
                     </>
                   )}
                 </motion.div>
 
-                {/* Status Text Block */}
+                {/* Status Text */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4, duration: 0.6 }}
+                  transition={{ delay: 0.35, duration: 0.35 }}
                 >
-                  <h2 className={`text-4xl md:text-5xl font-black mt-2 mb-4 tracking-tighter font-heading italic ${isActionRequired ? "text-warning" : isValid ? "text-primary glow-text" : "text-destructive"}`}>
-                    {isActionRequired ? "CAPTCHA REQUIRED" : isValid ? "STATUS: AUTHENTIC" : "AUTHENTICATION FAILED"}
+                  <h2 className={`text-2xl sm:text-3xl font-bold mt-6 mb-2 ${isActionRequired ? "text-amber-500" : isValid ? "text-success" : "text-destructive"}`}>
+                    {isActionRequired ? "Verification Blocked: Captcha Required" : isValid ? "Verification Status: AUTHENTIC" : "Fake Certificate Detected"}
                   </h2>
-                  <p className="text-muted-foreground/80 text-lg font-medium max-w-lg mx-auto leading-relaxed">
+                  <p className="text-muted-foreground">
                     {isActionRequired 
-                      ? "Direct algorithmic access blocked. Manual human attestation required via host provider." 
+                      ? "The platform side is asking to verify you are a human. Please solve it on their site." 
                       : isValid 
-                        ? "Institutional-grade verification completed. Document parity confirmed against global networks." 
-                        : "High-probability anomaly detected. Credential origin cannot be established."}
+                        ? "This certificate is authentic and secured by AI" 
+                        : "This certificate could not be verified"}
                   </p>
                 </motion.div>
               </div>
 
               {isActionRequired && (
                 <motion.div
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-12 p-8 glass-strong rounded-3xl border-warning/30 bg-warning/[0.03] shadow-inner diamond-border"
+                  className="mb-8 p-6 glass rounded-2xl border border-amber-500/30 bg-amber-500/5"
                 >
-                  <h4 className="flex items-center gap-3 text-warning font-black tracking-widest text-xs uppercase mb-5">
-                    <Terminal className="w-4 h-4" />
-                    Resolution Protocol
+                  <h4 className="flex items-center gap-2 text-amber-500 font-semibold mb-3">
+                    <Sparkles className="w-4 h-4" />
+                    How to fix this:
                   </h4>
-                  <ul className="text-sm space-y-4 text-muted-foreground/90 font-medium">
-                    <li className="flex gap-4">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-warning/20 flex items-center justify-center text-[10px] font-black">01</span>
-                      Execute "Solve Captcha" protocol at the source provider.
-                    </li>
-                    <li className="flex gap-4">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-warning/20 flex items-center justify-center text-[10px] font-black">02</span>
-                      Establish persistent browser session on the external site.
-                    </li>
-                    <li className="flex gap-4">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-warning/20 flex items-center justify-center text-[10px] font-black">03</span>
-                      Re-initialize verification sequence on CertiGuard.
-                    </li>
-                  </ul>
-                  <div className="mt-8">
+                  <ol className="text-sm space-y-3 text-muted-foreground list-decimal pl-4">
+                    <li>Click the <strong>Solve Captcha on Site</strong> button below.</li>
+                    <li>Verify the "Just a moment..." or captcha challenge in the new tab.</li>
+                    <li>Once the certificate appears, return here and click <strong>Verify Another</strong> to re-check.</li>
+                  </ol>
+                  <div className="mt-6">
                     <Button
                       asChild
-                      className="w-full bg-warning hover:bg-warning/90 text-black font-black h-16 rounded-2xl shadow-xl shadow-warning/20 text-lg tracking-tight"
+                      className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold h-12 shadow-lg shadow-amber-500/20"
                     >
-                      <a href={result.verificationUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-3">
-                        <ExternalLink className="w-6 h-6" />
-                        OVERRIDE & SOLVE
+                      <a href={result.verificationUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        Solve Captcha on Site
                       </a>
                     </Button>
                   </div>
                 </motion.div>
               )}
 
-              {/* Data Extraction Grid */}
-              <div className="space-y-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-50">
-                    Extracted Forensic Metadata
-                  </h3>
-                  <div className="h-px flex-1 bg-white/5 mx-6" />
-                  <div className="flex gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40 animate-pulse" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-pulse" style={{ animationDelay: '0.5s' }} />
-                  </div>
-                </div>
+              {/* Certificate Details */}
+              <div className="space-y-4">
+                <motion.h3 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.25 }}
+                  className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4"
+                >
+                  Extracted Details
+                </motion.h3>
 
-                <div className="grid gap-4">
+                <div className="grid gap-3">
                   {details.map((item, index) => (
                     <DetailRow key={item.label} {...item} index={index} />
                   ))}
                 </div>
 
-                {/* Secure Link Box */}
+                {/* Verification Link */}
                 {result.verificationUrl && (
                   <motion.a
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0, x: -15 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                    whileHover={{ scale: 1.02, x: 5 }}
+                    transition={{ duration: 0.35, delay: 0.55, ease: "easeInOut" }}
+                    whileHover={{ scale: 1.01, x: 3 }}
                     href={result.verificationUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between p-5 glass-strong rounded-2xl hover:border-primary/60 transition-all duration-300 group gpu-accelerate diamond-border border-primary/20 bg-primary/[0.02]"
+                    className="flex items-center justify-between p-4 glass rounded-xl hover:border-neon-blue/50 transition-colors duration-150 group gpu-accelerate"
+                    style={{ borderWidth: 1, borderStyle: "solid", borderColor: "transparent" }}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center diamond-border border-primary/30">
-                        <Globe className="w-6 h-6 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-muted-foreground font-black tracking-[0.2em] uppercase opacity-50 mb-0.5">Global Link</p>
-                        <p className="text-sm font-bold text-primary truncate max-w-[200px] sm:max-w-md italic tracking-tighter">
+                    <div className="flex items-center gap-3">
+                      <ExternalLink className="w-5 h-5 text-neon-blue" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Verification Link</p>
+                        <p className="text-sm font-medium text-neon-blue truncate max-w-[200px] sm:max-w-[300px]">
                           {result.verificationUrl}
                         </p>
                       </div>
                     </div>
-                    <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <motion.div
+                      animate={{ x: [0, 3, 0] }}
+                      transition={{ duration: 1.2, repeat: Infinity }}
+                    >
+                      <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-neon-blue transition-colors duration-150" />
+                    </motion.div>
                   </motion.a>
                 )}
 
-                {/* ID Badges */}
+                {/* Additional Info */}
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.9 }}
-                  className="flex flex-wrap gap-4 pt-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="flex flex-wrap gap-3 pt-4"
                 >
-                  <div className="px-5 py-2.5 glass-strong rounded-xl text-[10px] font-black tracking-widest border border-white/5 uppercase">
-                    <span className="text-muted-foreground opacity-60">ID:// </span>
-                    <span className="text-primary font-mono">{result.certificateId}</span>
-                  </div>
-                  <div className="px-5 py-2.5 glass-strong rounded-xl text-[10px] font-black tracking-widest border border-white/5 uppercase">
-                    <span className="text-muted-foreground opacity-60">AUTH:// </span>
-                    <span className="text-foreground">{isValid ? "POSITIVE" : "UNKNOWN"}</span>
-                  </div>
+                  <motion.div 
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="px-4 py-2 glass rounded-lg text-xs"
+                  >
+                    <span className="text-muted-foreground">Issue Date: </span>
+                    <span className="text-foreground font-medium">{result.issueDate}</span>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="px-4 py-2 glass rounded-lg text-xs"
+                  >
+                    <span className="text-muted-foreground">Certificate ID: </span>
+                    <span className="text-foreground font-medium font-mono">{result.certificateId}</span>
+                  </motion.div>
                 </motion.div>
               </div>
 
-              {/* Action Buttons Layer */}
+              {/* Action Buttons */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4 mt-12"
+                transition={{ delay: 0.7, duration: 0.35 }}
+                className="flex flex-col sm:flex-row gap-3 mt-8"
               >
-                <div className="flex-1 flex flex-col gap-4">
-                  <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={quickSpring}>
+                <div className="flex-1 flex flex-col gap-3">
+                  <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={quickSpring}
+                  >
                     <Button
                       size="lg"
                       onClick={downloadReport}
                       disabled={isDownloading}
-                      className="w-full relative overflow-hidden bg-primary text-primary-foreground h-16 rounded-2xl shadow-2xl shadow-primary/30 font-black tracking-tight"
+                      className="w-full relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white shadow-lg shadow-neon-blue/20 gpu-accelerate disabled:opacity-70"
                     >
-                      <span className="relative z-10 flex items-center justify-center gap-3 text-xl italic font-heading">
+                      <span className="relative z-10 flex items-center justify-center gap-2">
                         {isDownloading ? (
-                          <RotateCcw className="w-6 h-6 animate-spin" />
+                          <RotateCcw className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Download className="w-6 h-6" />
+                          <Download className="w-4 h-4" />
                         )}
-                        {isDownloading ? "BUILDING PDF..." : "SECURE EXPORT"}
+                        {isDownloading ? "Generating Report..." : "Download Report"}
                       </span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] hover:translate-x-[100%] transition-transform duration-1000" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer" />
                     </Button>
                   </motion.div>
                   
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowLog(!showLog)}
-                    className="w-full text-[10px] font-black tracking-[0.3em] text-muted-foreground hover:text-primary hover:bg-primary/5 uppercase gap-3 py-6"
+                  {/* Debug Log Toggle */}
+                  <motion.div
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={quickSpring}
                   >
-                    <Terminal className="w-4 h-4" />
-                    {showLog ? "TERMINATE LOG" : "ACCESS CONSOLE"}
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowLog(!showLog)}
+                      className="w-full text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 gap-2"
+                    >
+                      <Terminal className="w-3 h-3" />
+                      {showLog ? "Hide Debug Log" : "Show Debug Log"}
+                    </Button>
+                  </motion.div>
                 </div>
                 
-                <motion.div className="flex-1" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={quickSpring}>
+                <motion.div 
+                  className="flex-1"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={quickSpring}
+                >
                   <Button
                     size="lg"
                     variant="outline"
                     onClick={onVerifyAnother}
-                    className="w-full h-16 border-glass-border hover:border-primary/50 bg-white/5 hover:bg-primary/5 transition-all duration-500 rounded-2xl group font-black tracking-tight"
+                    className="w-full h-full min-h-[44px] border-glass-border hover:bg-secondary hover:border-neon-blue/50 transition-all duration-150 group gpu-accelerate"
                   >
-                    <RotateCcw className="mr-3 w-5 h-5 group-hover:rotate-[-180deg] transition-transform duration-500 group-hover:text-primary" />
-                    <span className="text-lg italic font-heading group-hover:text-primary">Next Target</span>
+                    <motion.div
+                      className="mr-2"
+                      whileHover={{ rotate: -360 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <RotateCcw className="w-4 h-4 group-hover:text-neon-blue transition-colors duration-150" />
+                    </motion.div>
+                    <span className="group-hover:text-neon-blue transition-colors duration-150">Verify Another</span>
                   </Button>
                 </motion.div>
               </motion.div>
 
-              {/* Console Output */}
+              {/* Debug Log Content */}
               <AnimatePresence>
                 {showLog && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mt-6"
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="overflow-hidden mt-4"
                   >
-                    <div className="p-8 glass-stronger rounded-3xl border border-white/5 bg-black/60 shadow-inner diamond-border relative">
-                      <div className="absolute top-4 right-6 flex gap-2">
-                        <div className="w-2 h-2 rounded-full bg-red-500/50" />
-                        <div className="w-2 h-2 rounded-full bg-yellow-500/50" />
-                        <div className="w-2 h-2 rounded-full bg-green-500/50" />
+                    <div className="p-4 glass-stronger rounded-xl border border-white/5 bg-black/40">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Verification Raw Output</span>
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 rounded-full bg-destructive/40" />
+                          <div className="w-2 h-2 rounded-full bg-warning/40" />
+                          <div className="w-2 h-2 rounded-full bg-success/40" />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3 mb-6">
-                        <Terminal className="w-4 h-4 text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/60">CORE_DEBUG_SEQUENCE_V4</span>
-                      </div>
-                      <pre className="text-[11px] font-mono whitespace-pre-wrap text-muted-foreground/80 leading-relaxed max-h-60 overflow-y-auto custom-scrollbar italic tracking-tight">
-                        {`> INITIALIZING NEURAL SCAN...\n> BUFFERING GLOBAL REGISTRY...\n> PARSING DOCUMENT STRUCTURE...\n\n${result.rawOutput || "NULL_RESPONSE: DATA_NOT_FOUND"}`}
+                      <pre className="text-[11px] font-mono whitespace-pre-wrap text-muted-foreground leading-relaxed max-h-48 overflow-y-auto custom-scrollbar italic">
+                        {result.rawOutput || "No debug information available for this certificate."}
                       </pre>
                     </div>
                   </motion.div>
@@ -550,9 +603,9 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
               </AnimatePresence>
             </CardContent>
 
-            {/* Ambient Corner Atmosphere */}
-            <div className={`absolute top-0 left-0 w-60 h-60 ${isActionRequired ? "bg-warning/10" : isValid ? "bg-primary/10" : "bg-destructive/10"} blur-[100px] pointer-events-none opacity-40`} />
-            <div className={`absolute bottom-0 right-0 w-60 h-60 ${isActionRequired ? "bg-warning/10" : isValid ? "bg-primary/10" : "bg-destructive/10"} blur-[100px] pointer-events-none opacity-40`} />
+            {/* Corner glows */}
+            <div className={`absolute top-0 left-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
+            <div className={`absolute bottom-0 right-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
           </Card>
         </motion.div>
       </div>

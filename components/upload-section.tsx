@@ -11,17 +11,17 @@ interface UploadSectionProps {
 }
 
 const selectPlatforms = [
-  { id: "auto", name: "AUTO_DETECT", icon: Sparkles, color: "text-primary" },
-  { id: "coursera", name: "COURSERA", icon: GraduationCap, color: "text-muted-foreground" },
-  { id: "udemy", name: "UDEMY", icon: BookOpen, color: "text-muted-foreground" },
-  { id: "alison", name: "ALISON", icon: Award, color: "text-primary" },
-  { id: "saylor", name: "SAYLOR", icon: Building, color: "text-muted-foreground" },
-  { id: "infosys", name: "INFOSYS", icon: Laptop, color: "text-muted-foreground" },
+  { id: "auto", name: "Auto-Detect", icon: Sparkles, color: "text-neon-blue" },
+  { id: "coursera", name: "Coursera", icon: GraduationCap, color: "text-blue-500" },
+  { id: "udemy", name: "Udemy", icon: BookOpen, color: "text-purple-500" },
+  { id: "alison", name: "Alison", icon: Award, color: "text-emerald-500" },
+  { id: "saylor", name: "Saylor", icon: Building, color: "text-orange-500" },
+  { id: "infosys", name: "Infosys", icon: Laptop, color: "text-blue-400" },
 ]
 
 // Optimized spring configs
-const quickSpring = { stiffness: 400, damping: 30, mass: 0.8 }
-const smoothTransition = { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
+const quickSpring = { stiffness: 300, damping: 30, mass: 0.8 }
+const smoothTransition = { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
 
 export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
   const [isDragging, setIsDragging] = useState(false)
@@ -29,7 +29,7 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
   const [selectedPlatform, setSelectedPlatform] = useState("auto")
   const [isHovering, setIsHovering] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const isInView = useInView(containerRef, { once: true, margin: "-100px" })
+  const isInView = useInView(containerRef, { once: true, margin: "-50px" })
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -68,44 +68,41 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
   }, [file, selectedPlatform, onUpload])
 
   return (
-    <section ref={containerRef} id="verify" className="relative py-40 px-4 overflow-hidden">
-      {/* Immersive Background Decor */}
-      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[160px] pointer-events-none opacity-40" />
-      <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-accent/5 rounded-full blur-[160px] pointer-events-none opacity-40" />
+    <section ref={containerRef} id="verify" className="relative py-24 px-4 overflow-hidden">
+      {/* Background Orbs */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-neon-blue/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-neon-purple/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Section Header */}
         <motion.div
-          initial={{ opacity: 0, y: 40 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-24"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-2xl glass-strong border border-white/5 mb-10 shadow-2xl diamond-border group">
-             <div className="absolute inset-0 noise-surface opacity-[0.03] pointer-events-none" />
-            <Shield className="w-4 h-4 text-primary group-hover:rotate-12 transition-transform" />
-            <span className="text-[11px] font-black uppercase tracking-[0.4em] text-muted-foreground/60 italic">NEURAL_VERIFY</span>
-            <div className="h-4 w-px bg-white/10 mx-2" />
-            <span className="text-[11px] font-black uppercase tracking-[0.4em] text-primary italic">SECURED_NODE</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass border-neon-blue/20 mb-6">
+            <Zap className="w-3 h-3 text-neon-blue" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">Process</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">AI Certificate Analysis</span>
           </div>
           
-          <h2 className="text-6xl md:text-8xl font-black mb-10 tracking-[0.02em] font-heading">
-            <span className="bg-gradient-to-br from-white via-white/90 to-white/40 bg-clip-text text-transparent italic tracking-tighter">
-              ANALYSIS_PORTAL
+          <h2 className="text-4xl md:text-5xl font-bold mb-6">
+            <span className="bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple bg-clip-text text-transparent italic">
+              Ready to Verify?
             </span>
           </h2>
-          <p className="text-muted-foreground/40 max-w-2xl mx-auto text-xl leading-relaxed italic font-medium tracking-tight">
-            Deploy advanced forensic scans across distributed ledgers. 
-            Automated deep-learning verification for global credentials.
+          <p className="text-muted-foreground max-w-xl mx-auto text-lg">
+            Upload any digital credential and let our neural networks scan for authenticity in milliseconds.
           </p>
         </motion.div>
 
-        {/* Tactical Platform Selector */}
+        {/* Platform Selector */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={isInView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex flex-wrap justify-center gap-5 mb-20"
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="flex flex-wrap justify-center gap-3 mb-10"
         >
           {selectPlatforms.map((p) => (
             <button
@@ -113,26 +110,22 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
               onClick={() => setSelectedPlatform(p.id)}
               disabled={isVerifying}
               className={`
-                relative flex items-center gap-4 px-8 py-5 rounded-[1.25rem] transition-all duration-500
+                relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300
                 ${selectedPlatform === p.id 
-                  ? "text-primary italic shadow-[0_0_50px_rgba(124,255,160,0.15)] scale-105" 
-                  : "text-muted-foreground/40 hover:text-muted-foreground/80"
+                  ? "bg-white/10 border-neon-blue/50 text-foreground shadow-lg shadow-neon-blue/10 scale-105" 
+                  : "bg-white/5 border-transparent text-muted-foreground hover:bg-white/10"
                 }
-                bg-black/40 border border-white/5 hover:border-white/10 glass-strong diamond-border disabled:opacity-30 group
+                border glass-card disabled:opacity-50 disabled:cursor-not-allowed
               `}
             >
-              <div className="absolute inset-0 noise-surface opacity-[0.02] pointer-events-none" />
-              <p.icon className={`w-5 h-5 transition-all duration-500 ${selectedPlatform === p.id ? "text-primary filter drop-shadow-[0_0_8px_rgba(124,255,160,0.5)]" : "group-hover:scale-110"}`} />
-              <span className="text-xs font-black tracking-[0.2em]">{p.name}</span>
-              
+              <p.icon className={`w-4 h-4 ${selectedPlatform === p.id ? p.color : "text-muted-foreground"}`} />
+              <span className="text-xs font-bold tracking-tight">{p.name}</span>
               {selectedPlatform === p.id && (
                 <motion.div 
                   layoutId="active-pill"
-                  className="absolute inset-0 border border-primary/40 rounded-[1.25rem] pointer-events-none diamond-border"
-                >
-                  <div className="absolute inset-0 bg-primary/5 rounded-[1.25rem]" />
-                  <div className="absolute -bottom-px left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary/60 blur-[1px]" />
-                </motion.div>
+                  className="absolute inset-0 border-2 border-neon-blue/30 rounded-2xl pointer-events-none"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
               )}
             </button>
           ))}
@@ -142,17 +135,17 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
           className={`
-            relative glass-strong rounded-[3rem] p-16 overflow-hidden diamond-border
-            transition-all duration-700
-            ${isDragging ? "border-primary shadow-[0_0_50px_rgba(124,255,160,0.2)]" : "border-glass-border"}
-            ${file && !isVerifying ? "border-primary/40 shadow-2xl shadow-primary/10" : ""}
+            relative glass-strong rounded-[2.5rem] p-12 overflow-hidden
+            transition-all duration-500
+            ${isDragging ? "border-neon-blue ring-4 ring-neon-blue/10" : "border-glass-border"}
+            ${file && !isVerifying ? "border-success/30 shadow-2xl shadow-success/5" : ""}
           `}
         >
-          {/* Laser Scan Animation - Forensics mode */}
+          {/* Laser Scan Animation - Only during verification */}
           <AnimatePresence>
             {isVerifying && (
               <motion.div
@@ -161,16 +154,14 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                 exit={{ opacity: 0 }}
                 className="absolute inset-0 z-20 pointer-events-none"
               >
-                <div className="absolute inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent filter shadow-[0_0_15px_var(--primary)] animate-scan" />
-                <div className="absolute inset-x-0 h-12 bg-gradient-to-b from-primary/20 to-transparent filter blur-xl animate-scan" />
+                <div className="absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-neon-blue to-transparent filter blur-[2px] animate-scan" />
+                <div className="absolute inset-x-0 h-4 bg-gradient-to-b from-neon-blue/10 to-transparent filter blur-md animate-scan" />
                 
                 {/* Glow during scan */}
-                <div className="absolute inset-0 bg-primary/[0.05] animate-pulse" />
+                <div className="absolute inset-0 bg-neon-blue/[0.03] animate-pulse" />
               </motion.div>
             )}
           </AnimatePresence>
-
-          <div className="absolute inset-0 noise-surface opacity-[0.05]" />
 
           <AnimatePresence mode="wait">
             {!file ? (
@@ -179,25 +170,24 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="text-center py-16"
+                className="text-center py-12"
               >
                 <motion.div
-                  animate={isDragging ? { scale: 1.05 } : { scale: 1 }}
-                  className="relative inline-flex mb-10"
+                  animate={isDragging ? { scale: 1.1 } : { scale: 1 }}
+                  className="relative inline-flex mb-8"
                 >
-                  <div className={`absolute inset-0 bg-primary/30 blur-[60px] rounded-full transition-opacity duration-700 ${isHovering ? "opacity-100" : "opacity-0"}`} />
-                  <div className="relative glass border-primary/20 rounded-[2.5rem] p-12 group shadow-2xl">
-                    <Upload className={`w-16 h-16 transition-all duration-700 ${isDragging ? "text-primary rotate-12" : "text-muted-foreground group-hover:text-primary group-hover:scale-110"}`} />
-                    <Sparkles className="absolute -top-3 -right-3 w-8 h-8 text-primary animate-pulse" />
+                  <div className={`absolute inset-0 bg-neon-blue/20 blur-3xl rounded-full transition-opacity duration-300 ${isHovering ? "opacity-100" : "opacity-0"}`} />
+                  <div className="relative glass border-neon-blue/20 rounded-3xl p-8 group">
+                    <Upload className={`w-14 h-14 transition-colors duration-300 ${isDragging ? "text-neon-blue" : "text-muted-foreground group-hover:text-neon-blue"}`} />
+                    <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-neon-cyan animate-pulse" />
                   </div>
                 </motion.div>
 
-                <h3 className="text-3xl font-black mb-4 tracking-tighter">
-                  {isDragging ? "Verify Origin" : "Secure Document Drop"}
+                <h3 className="text-2xl font-bold mb-3 tracking-tight">
+                  {isDragging ? "Release to Scan" : "Drop Certificate Here"}
                 </h3>
-                <p className="text-muted-foreground/80 mb-12 max-w-sm mx-auto text-lg leading-relaxed font-medium">
-                  PDF or high-res images accepted. 
-                  Encrypted end-to-end for maximal security.
+                <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
+                  Drag and drop your PDF or images. Multiple file processing is enabled for Pro users.
                 </p>
 
                 <div className="inline-block relative">
@@ -211,10 +201,10 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                   <Button 
                     variant="outline" 
                     onClick={() => document.getElementById('file-upload')?.click()}
-                    className="h-16 px-10 rounded-2xl border-glass-border hover:border-primary/50 group hover-scale shadow-2xl text-lg font-bold tracking-tight"
+                    className="h-12 px-8 rounded-xl border-glass-border hover:border-neon-blue/50 group hover-scale shadow-lg"
                   >
-                    <Search className="w-5 h-5 mr-3 text-primary group-hover:rotate-90 transition-transform duration-500" />
-                    Select Forensic Target
+                    <Search className="w-4 h-4 mr-2" />
+                    Browse Files
                   </Button>
                 </div>
               </motion.div>
@@ -223,66 +213,55 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                 key="file-preview"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="py-16"
+                className="py-12"
               >
-                <div className="flex flex-col items-center gap-10">
-                  <div className="relative group">
+                <div className="flex flex-col items-center gap-8">
+                  <div className="relative">
                     {/* File Icon with Glowing Backdrop */}
-                    <div className="absolute inset-0 bg-primary/20 blur-[80px] rounded-[3rem] group-hover:bg-primary/30 transition-colors" />
+                    <div className="absolute inset-0 bg-neon-blue/20 blur-2xl rounded-3xl" />
                     <motion.div 
                       layoutId="file-icon"
-                      className="relative glass rounded-[3rem] p-12 border-primary/40 shadow-2xl diamond-border"
+                      className="relative glass rounded-3xl p-10 border-success/30"
                     >
-                      <FileText className="w-24 h-24 text-primary" />
+                      <FileText className="w-20 h-20 text-success" />
                       <AnimatePresence>
                         {isVerifying && (
                           <motion.div
-                            initial={{ scale: 0, rotate: -45 }}
-                            animate={{ scale: 1, rotate: 0 }}
-                            exit={{ scale: 0, rotate: 45 }}
-                            className="absolute -top-6 -right-6 w-14 h-14 bg-primary rounded-2xl flex items-center justify-center border-4 border-background shadow-2xl"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            exit={{ scale: 0 }}
+                            className="absolute -top-4 -right-4 w-10 h-10 bg-neon-blue rounded-full flex items-center justify-center border-4 border-background"
                           >
-                            <Loader2 className="w-7 h-7 text-primary-foreground animate-spin" />
+                            <Loader2 className="w-5 h-5 text-white animate-spin" />
                           </motion.div>
                         )}
                       </AnimatePresence>
                     </motion.div>
                   </div>
 
-                  <div className="text-center space-y-3">
-                    <h3 className="text-2xl font-black truncate max-w-md tracking-tight">{file.name}</h3>
-                    <div className="flex items-center justify-center gap-3">
-                      <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest border border-primary/20">READY FOR SCAN</span>
-                      <span className="text-sm text-muted-foreground/80 font-bold">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                    </div>
+                  <div className="text-center space-y-2">
+                    <h3 className="text-xl font-bold truncate max-w-xs">{file.name}</h3>
+                    <p className="text-sm text-muted-foreground">Ready for AI analysis • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
                   </div>
 
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-4">
                     {!isVerifying && (
-                      <Button variant="ghost" onClick={removeFile} className="text-muted-foreground hover:text-destructive h-14 px-8 font-bold text-lg">
-                        Discard
+                      <Button variant="ghost" onClick={removeFile} className="text-muted-foreground hover:text-destructive h-12 px-6">
+                        Remove
                       </Button>
                     )}
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={quickSpring}>
-                      <Button
-                        size="lg"
-                        onClick={handleStartVerification}
-                        disabled={isVerifying}
-                        className="relative overflow-hidden bg-primary text-primary-foreground px-12 h-16 text-xl rounded-2xl shadow-2xl shadow-primary/30 group font-black tracking-tight"
-                      >
-                        <span className="relative z-10 flex items-center gap-3">
-                          {isVerifying ? "Processing..." : "EXECUTE ANALYTICS"}
-                          {!isVerifying && <Zap className="w-6 h-6 group-hover:scale-125 transition-transform" />}
-                        </span>
-                        {isVerifying && (
-                          <motion.div 
-                            className="absolute inset-0 bg-white/20"
-                            animate={{ opacity: [0.1, 0.3, 0.1] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                          />
-                        )}
-                      </Button>
-                    </motion.div>
+                    <Button
+                      size="lg"
+                      onClick={handleStartVerification}
+                      disabled={isVerifying}
+                      className="relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple text-white px-10 h-14 text-lg rounded-2xl shadow-xl shadow-neon-blue/20 group"
+                    >
+                      <span className="relative z-10 flex items-center gap-2 font-bold tracking-tight">
+                        {isVerifying ? "Analyzing Logic..." : "Perform AI Scan"}
+                        {!isVerifying && <Zap className="w-5 h-5 fill-current" />}
+                      </span>
+                      {isVerifying && <div className="absolute inset-0 bg-white/10 animate-pulse" />}
+                    </Button>
                   </div>
                 </div>
               </motion.div>
@@ -291,10 +270,10 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
         </motion.div>
 
         {/* Security Trust Indicators */}
-        <div className="mt-16 flex flex-wrap justify-center items-center gap-16 opacity-30 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-1000">
-          <div className="flex items-center gap-3 font-black text-xs tracking-[0.3em]"><Shield className="w-5 h-5 text-primary" /> QUANTUM-READY</div>
-          <div className="flex items-center gap-3 font-black text-xs tracking-[0.3em]"><Globe className="w-5 h-5 text-accent" /> WORLD-VERIFY</div>
-          <div className="flex items-center gap-3 font-black text-xs tracking-[0.3em]"><Award className="w-5 h-5 text-emerald-400" /> ISO-9001-C</div>
+        <div className="mt-12 flex flex-wrap justify-center items-center gap-12 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
+          <div className="flex items-center gap-2 font-bold text-sm tracking-widest"><Shield className="w-4 h-4" /> 256-BIT AES</div>
+          <div className="flex items-center gap-2 font-bold text-sm tracking-widest"><Globe className="w-4 h-4" /> GLOBAL STANDARDS</div>
+          <div className="flex items-center gap-2 font-bold text-sm tracking-widest"><Award className="w-4 h-4" /> ISO-9001 COMPLIANT</div>
         </div>
       </div>
     </section>

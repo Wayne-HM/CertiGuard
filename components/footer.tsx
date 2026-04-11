@@ -25,121 +25,123 @@ function ComingSoonModal({ linkName, onClose }: { linkName: string, onClose: () 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl"
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+
       <motion.div
-        initial={{ scale: 0.8, opacity: 0, y: 40 }}
+        initial={{ scale: 0.8, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.85, opacity: 0, y: 20 }}
-        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        transition={{ type: "spring", stiffness: 350, damping: 30 }}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg overflow-hidden rounded-[3rem] border border-white/10 bg-[#0a0a0c] shadow-[0_0_100px_rgba(0,0,0,0.8)] diamond-border"
+        className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-b from-slate-900/95 to-slate-950/95 shadow-2xl"
+        style={{ boxShadow: "0 0 80px rgba(6, 182, 212, 0.15), 0 0 30px rgba(139, 92, 246, 0.1)" }}
       >
-        <div className="absolute inset-0 noise-surface opacity-[0.05] pointer-events-none" />
-        
-        {/* Animated grid line */}
+        {/* Grid bg */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: "linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
+          backgroundImage: "linear-gradient(rgba(6,182,212,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,0.3) 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
         }} />
 
-        {/* Scan effect */}
+        {/* Scan line */}
         <motion.div
-          className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-50 z-20"
+          className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
           animate={{ top: ["0%", "100%", "0%"] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
         />
 
-        {/* Close Button */}
+        {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-8 right-8 z-30 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group diamond-border"
+          className="absolute top-4 right-4 z-10 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group"
         >
-          <X className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+          <X className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
         </button>
 
-        <div className="relative p-12 pt-16 flex flex-col items-center text-center">
-          {/* Brand Icon Orbit */}
-          <div className="relative mb-12">
+        <div className="relative p-8 pt-10 flex flex-col items-center text-center">
+          {/* Orbiting ring + icon */}
+          <div className="relative mb-6">
             <motion.div
-              className="absolute rounded-full border border-primary/10"
-              style={{ width: 140, height: 140, left: -20, top: -20 }}
+              className="absolute rounded-full border border-cyan-500/20"
+              style={{ width: 90, height: 90, left: -5, top: -5 }}
               animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
             >
-              <div className="absolute top-0 left-1/2 w-3 h-3 -ml-1.5 rounded-full bg-primary/40 blur-[1px]" />
-              <div className="absolute bottom-0 left-1/2 w-2 h-2 rounded-full bg-accent/40 blur-[1px]" style={{ marginLeft: -4 }} />
+              <div className="absolute top-0 left-1/2 w-2 h-2 -ml-1 rounded-full bg-cyan-400/60" />
+              <div className="absolute bottom-0 left-1/2 w-1.5 h-1.5 rounded-full bg-purple-400/60" style={{ marginLeft: -3 }} />
             </motion.div>
 
             <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="relative w-24 h-24 rounded-[2rem] bg-gradient-to-br from-primary via-emerald-500 to-accent flex items-center justify-center shadow-2xl diamond-border p-[2px]"
+              animate={{ scale: [1, 1.08, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg"
+              style={{ boxShadow: "0 0 40px rgba(6, 182, 212, 0.3)" }}
             >
-              <div className="w-full h-full bg-[#0a0a0c] rounded-[1.8rem] flex items-center justify-center diamond-border">
-                <Shield className="w-12 h-12 text-primary filter drop-shadow-[0_0_12px_rgba(124,255,160,0.5)]" />
-              </div>
+              <Rocket className="w-10 h-10 text-white" />
             </motion.div>
           </div>
 
           <motion.h3
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-3xl font-black text-white mb-2 tracking-tighter italic font-heading"
+            transition={{ delay: 0.15 }}
+            className="text-xl font-bold text-white mb-1"
           >
             {linkName}
           </motion.h3>
 
+          {/* Main message */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="w-full p-8 rounded-[2rem] border border-primary/20 bg-primary/[0.03] mt-8 mb-10 diamond-border relative overflow-hidden"
+            transition={{ delay: 0.2 }}
+            className="w-full p-5 rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.03] mt-5 mb-6"
           >
-            <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-primary/40 via-accent/40 to-primary/40 blur-[1px]" />
-            <h4 className="text-xl font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4 italic font-heading uppercase tracking-widest">
-              Rollout in Progress
+            <h4 className="text-lg font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent mb-2">
+              We&apos;re Working On It
             </h4>
-            <p className="text-muted-foreground/80 leading-relaxed font-medium">
-              The <span className="text-primary font-black italic">{linkName}</span> protocol is currently undergoing forensic testing as part of our visual excellence deployment.
+            <p className="text-sm text-slate-400 leading-relaxed">
+              The <span className="text-cyan-300 font-semibold">{linkName}</span> page is currently under development. Our team is crafting something amazing for you.
             </p>
           </motion.div>
 
-          {/* Status Metadata */}
+          {/* Status pills */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="flex items-center justify-center gap-8 mb-8"
+            transition={{ delay: 0.3 }}
+            className="flex items-center justify-center gap-5 mb-5"
           >
-            <div className="flex items-center gap-3">
-              <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} className="w-2.5 h-2.5 rounded-full bg-primary shadow-[0_0_10px_var(--primary)]" />
-              <span className="text-[10px] text-muted-foreground font-black tracking-[0.2em] uppercase">Pending</span>
+            <div className="flex items-center gap-2">
+              <motion.div animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-2 h-2 rounded-full bg-cyan-400" />
+              <span className="text-[11px] text-slate-500 font-medium tracking-wide">IN PROGRESS</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Zap className="w-4 h-4 text-warning" />
-              <span className="text-[10px] text-muted-foreground font-black tracking-[0.2em] uppercase">Auth_v4</span>
+            <div className="flex items-center gap-2">
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[11px] text-slate-500 font-medium tracking-wide">PRIORITY</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Globe className="w-3.5 h-3.5 text-purple-400" />
+              <span className="text-[11px] text-slate-500 font-medium tracking-wide">GLOBAL</span>
             </div>
           </motion.div>
 
-          {/* Progress Rail */}
-          <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden mb-3 border border-white/5">
+          {/* Progress bar */}
+          <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden mb-2">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-primary via-accent to-primary"
+              className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500"
               initial={{ width: "0%" }}
-              animate={{ width: "94%" }}
-              transition={{ delay: 0.5, duration: 1.5, ease: "easeOut" }}
-              style={{ backgroundSize: '200% 100%' }}
+              animate={{ width: "65%" }}
+              transition={{ delay: 0.4, duration: 1.2, ease: "easeOut" }}
             />
           </div>
-          <p className="text-[10px] text-primary/40 font-black tracking-[0.3em] uppercase">Sync Level: 94%</p>
+          <p className="text-[10px] text-slate-600 font-mono tracking-wider">COMPLETION: 65%</p>
         </div>
 
-        {/* Ambient base glow */}
-        <div className="absolute bottom-[-50px] left-1/2 -translate-x-1/2 w-[120%] h-40 bg-primary/10 blur-[80px] pointer-events-none rounded-full" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-24 bg-cyan-500/10 blur-3xl pointer-events-none" />
       </motion.div>
     </motion.div>
   )
@@ -149,53 +151,49 @@ export function Footer() {
   const [activeLink, setActiveLink] = useState<string | null>(null)
 
   return (
-    <footer className="relative py-24 px-4 border-t border-white/5">
-      <div className="absolute inset-0 noise-surface opacity-[0.02] pointer-events-none" />
-      
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-12 mb-20">
-          {/* Brand Identity */}
+    <footer className="relative py-16 px-4 border-t border-border">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-12">
+          {/* Brand */}
           <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center diamond-border border-primary/20">
-                <Shield className="w-7 h-7 text-primary" />
-              </div>
-              <span className="text-3xl font-black bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent italic tracking-tighter font-heading p-1">
+            <Link href="/" className="flex items-center gap-2 mb-4">
+              <Shield className="w-8 h-8 text-neon-blue" />
+              <span className="text-xl font-bold bg-gradient-to-r from-neon-blue to-neon-purple bg-clip-text text-transparent">
                 CertiGuard
               </span>
             </Link>
-            <p className="text-muted-foreground/80 mb-10 max-w-xs leading-relaxed font-medium italic">
-              Institutional-grade forensic verification. Securing the global standard of trust through algorithmic excellence.
+            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+              AI-powered certificate verification system. Protect your organization from fraudulent credentials.
             </p>
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               {socialLinks.map((social) => (
                 <motion.a
                   key={social.label}
                   href={social.href}
                   onClick={(e) => { e.preventDefault(); setActiveLink(social.label) }}
-                  whileHover={{ scale: 1.1, y: -5 }}
-                  whileTap={{ scale: 0.9 }}
-                  className="w-12 h-12 glass-strong rounded-xl flex items-center justify-center text-muted-foreground hover:text-primary transition-all diamond-border border-white/5 hover:border-primary/40 group"
+                  whileHover={{ scale: 1.1, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-10 h-10 glass rounded-lg flex items-center justify-center text-muted-foreground hover:text-neon-blue hover:border-neon-blue/50 transition-colors"
+                  style={{ borderWidth: 1, borderStyle: "solid", borderColor: "transparent" }}
                   aria-label={social.label}
                 >
-                  <social.icon className="w-6 h-6 transition-transform group-hover:scale-110" />
+                  <social.icon className="w-5 h-5" />
                 </motion.a>
               ))}
             </div>
           </div>
 
-          {/* Nav Links */}
+          {/* Links */}
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
-              <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.4em] mb-8 opacity-40">{category}</h4>
-              <ul className="space-y-4">
+              <h4 className="font-semibold text-foreground mb-4">{category}</h4>
+              <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link}>
                     <button
                       onClick={() => setActiveLink(link)}
-                      className="text-sm font-bold text-muted-foreground hover:text-primary transition-all cursor-pointer text-left hover:translate-x-1 flex items-center gap-2 group italic font-heading"
+                      className="text-sm text-muted-foreground hover:text-neon-blue transition-colors cursor-pointer text-left"
                     >
-                      <div className="w-1 h-1 rounded-full bg-primary/0 group-hover:bg-primary transition-all" />
                       {link}
                     </button>
                   </li>
@@ -205,31 +203,24 @@ export function Footer() {
           ))}
         </div>
 
-        {/* Legal & Status */}
-        <div className="pt-12 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-8">
-          <div className="flex flex-col sm:flex-row items-center gap-8">
-            <p className="text-xs font-black text-muted-foreground/40 uppercase tracking-[0.2em]">
-              © 2026 CERTIGUARD_CORE. ALL_RIGHTS_RESERVED.
-            </p>
-            <div className="hidden sm:block w-px h-4 bg-white/5" />
-            <p className="text-[10px] font-mono text-muted-foreground/30 uppercase tracking-widest">
-              HASH: 8F3D1A...9C2E
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4 px-6 py-2 rounded-full glass-strong border border-success/20 bg-success/5">
-              <span className="relative flex h-2.5 w-2.5">
+        {/* Bottom */}
+        <div className="pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            © 2026 CertiGuard. All rights reserved.
+          </p>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success shadow-[0_0_8px_var(--success)]"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
               </span>
-              <span className="text-[10px] font-black text-success uppercase tracking-[0.3em]">Operational</span>
+              <span className="text-sm text-muted-foreground">All systems operational</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Futuristic Modal Overlay */}
+      {/* Futuristic Modal */}
       <AnimatePresence>
         {activeLink && (
           <ComingSoonModal linkName={activeLink} onClose={() => setActiveLink(null)} />

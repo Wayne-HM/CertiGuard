@@ -72,7 +72,7 @@ const NavLink = memo(function NavLink({
       
       {/* Underline */}
       <motion.div
-        className="absolute bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-primary to-accent rounded-full"
+        className="absolute bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-neon-blue to-neon-cyan rounded-full"
         initial={{ width: 0, x: "-50%" }}
         animate={{ width: isHovered ? "60%" : 0, x: "-50%" }}
         transition={{ duration: 0.15 }}
@@ -118,35 +118,40 @@ export function Navbar() {
         >
           <motion.div 
             className={`
-              relative overflow-hidden rounded-2xl px-6 py-2.5 flex items-center justify-between gpu-accelerate
-              transition-all duration-500
-              ${isScrolled ? "glass-strong shadow-2xl shadow-black/40" : "glass bg-background/20"}
+              relative overflow-hidden rounded-2xl px-6 py-3 flex items-center justify-between gpu-accelerate
+              transition-all duration-300
+              ${isScrolled ? "glass-strong shadow-lg shadow-black/10" : "glass"}
             `}
             style={{ 
               borderWidth: 1, 
               borderStyle: "solid",
-              borderColor: isScrolled ? "var(--primary)" : "var(--glass-border)"
+              borderColor: isScrolled ? "oklch(0.5 0.1 220 / 0.25)" : "oklch(0.5 0.1 220 / 0.15)"
             }}
           >
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group relative z-10">
               <motion.div
-                whileHover={{ rotate: [0, 10, -10, 0], scale: 1.1 }}
-                transition={quickSpring}
+                whileHover={{ rotate: 15, scale: 1.05 }}
+                transition={{ duration: 0.3 }}
                 className="relative"
               >
-                <div className="absolute inset-0 bg-primary/30 blur-2xl rounded-full animate-pulse" />
-                <Shield className="w-9 h-9 text-primary relative z-10 drop-shadow-[0_0_15px_var(--primary)]" />
+                <div className="absolute inset-0 bg-neon-blue/20 blur-md rounded-full" />
+                <Shield className="w-8 h-8 text-neon-blue relative z-10" />
               </motion.div>
               
-              <div className="flex flex-col -gap-1">
-                <span className="text-2xl font-black bg-gradient-to-r from-white via-primary to-accent bg-clip-text text-transparent italic tracking-tighter leading-none font-heading">
-                  CertiGuard
-                </span>
-                <span className="text-[10px] font-black text-primary/60 tracking-[0.4em] uppercase leading-none mt-1">
-                  Security Core
-                </span>
-              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple bg-clip-text text-transparent">
+                CertiGuard
+              </span>
+              
+              <motion.span
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, ...quickSpring }}
+                className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-neon-blue/10 text-[10px] font-medium text-neon-blue border border-neon-blue/20"
+              >
+                <Sparkles className="w-2.5 h-2.5" />
+                PRO
+              </motion.span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -171,8 +176,8 @@ export function Navbar() {
                   <DropdownMenuTrigger asChild>
                     <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={quickSpring}>
                       <Button variant="ghost" size="icon" className="relative group p-0 overflow-hidden rounded-full">
-                        <Avatar className="w-9 h-9 border-2 border-primary/30 group-hover:border-primary transition-colors">
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                        <Avatar className="w-9 h-9 border-2 border-neon-blue/30 group-hover:border-neon-blue transition-colors">
+                          <AvatarFallback className="bg-neon-blue/10 text-neon-blue text-xs font-bold">
                             {user.name.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -189,16 +194,16 @@ export function Navbar() {
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-glass-border" />
                     <Link href="/dashboard">
-                      <DropdownMenuItem className="focus:bg-primary/10 cursor-pointer rounded-lg">
-                        <LayoutDashboard className="mr-2 h-4 w-4 text-primary" />
+                      <DropdownMenuItem className="focus:bg-secondary/50 cursor-pointer rounded-lg">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span>Dashboard</span>
                       </DropdownMenuItem>
                     </Link>
-                    <DropdownMenuItem className="focus:bg-primary/10 cursor-pointer rounded-lg">
-                      <User className="mr-2 h-4 w-4 text-accent" />
+                    <DropdownMenuItem className="focus:bg-secondary/50 cursor-pointer rounded-lg">
+                      <User className="mr-2 h-4 w-4" />
                       <span>Profile</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="focus:bg-primary/10 cursor-pointer rounded-lg">
+                    <DropdownMenuItem className="focus:bg-secondary/50 cursor-pointer rounded-lg">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </DropdownMenuItem>
@@ -217,14 +222,14 @@ export function Navbar() {
                   <Button 
                     variant="ghost" 
                     onClick={() => openAuth("login")}
-                    className="text-muted-foreground hover:text-foreground hover:bg-white/5 font-medium"
+                    className="text-muted-foreground hover:text-foreground hover:bg-white/5"
                   >
                     Sign In
                   </Button>
                   <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={quickSpring}>
                     <Button 
                       onClick={() => openAuth("signup")}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 h-9 rounded-xl shadow-xl shadow-primary/20 font-bold tracking-tight"
+                      className="bg-gradient-to-r from-neon-blue to-neon-purple text-white px-5 h-9 rounded-xl shadow-lg shadow-neon-blue/20"
                     >
                       Get Started
                     </Button>
@@ -243,12 +248,10 @@ export function Navbar() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsOpen(!isOpen)}
-                className="text-primary"
               >
                 {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
             </motion.div>
-
           </motion.div>
         </motion.div>
 
@@ -286,9 +289,9 @@ export function Navbar() {
                   ) : (
                     <Button 
                       onClick={() => openAuth("signup")}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-6 h-12 font-black shadow-xl shadow-primary/20"
+                      className="bg-neon-blue text-white rounded-lg px-6"
                     >
-                      Initialize System
+                      Get Started
                     </Button>
                   )}
                 </div>

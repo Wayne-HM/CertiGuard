@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { FloatingCertificate } from "@/components/floating-certificate"
 
 const stats = [
-  { value: "99.9%", label: "Accuracy", icon: Shield, color: "text-primary" },
-  { value: "500K+", label: "Verified", icon: Sparkles, color: "text-accent" },
-  { value: "<3s", label: "Latency", icon: Zap, color: "text-emerald-400" },
+  { value: "99.9%", label: "Accuracy Rate", icon: Shield, color: "text-neon-blue" },
+  { value: "500K+", label: "Verified", icon: Sparkles, color: "text-neon-cyan" },
+  { value: "<3s", label: "Time", icon: Zap, color: "text-neon-purple" },
 ]
 
 // Optimized spring config for 120fps feel
@@ -31,73 +31,71 @@ export function HeroSection() {
     <section 
       ref={containerRef}
       id="home" 
-      className="relative min-h-[95vh] flex items-center justify-center px-4 pt-40 pb-20 overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center px-4 pt-32 pb-20 overflow-hidden"
     >
-      {/* Background Decorative Element */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-[1400px] pointer-events-none overflow-hidden">
-        <div className="absolute -top-[10%] left-[10%] w-[40%] h-[40%] bg-primary/20 blur-[150px] rounded-full animate-aurora mix-blend-screen" />
-        <div className="absolute top-[20%] -right-[10%] w-[35%] h-[35%] bg-accent/15 blur-[130px] rounded-full animate-aurora mix-blend-screen" style={{ animationDelay: '2s' }} />
-      </div>
+      {/* Background Decorative Elements */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-neon-blue/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-neon-purple/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
         {/* Left Side: Content */}
         <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={isInView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
           className="relative z-10 text-left"
         >
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mb-8"
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mb-6"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass border-primary/20 shadow-2xl shadow-primary/5">
-              <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Certified Standards</span>
-              <div className="h-3 w-px bg-glass-border mx-1" />
-              <span className="text-[10px] text-primary font-bold tracking-widest uppercase">Institutional Gold</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-neon-blue/20">
+              <Sparkles className="w-4 h-4 text-neon-cyan animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mr-2">CertiGuard PRO</span>
+              <div className="h-4 w-px bg-glass-border mr-2" />
+              <span className="text-xs text-foreground font-medium">Next-Gen AI Verification Engine</span>
             </div>
           </motion.div>
 
           {/* Main Title */}
-          <h1 className="text-6xl md:text-7xl lg:text-8xl font-black leading-[0.95] mb-8 tracking-tighter font-heading">
-            <span className="text-foreground">Verify Every</span>
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-8">
+            <span className="text-foreground">Stop Certificate</span>
             <br />
             <span className="relative inline-block">
-              <span className="bg-gradient-to-br from-primary via-accent to-emerald-400 bg-clip-text text-transparent italic glow-text pb-2">
-                Credential
+              <span className="bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple bg-clip-text text-transparent neon-text">
+                Fraud Instantly
               </span>
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={isInView ? { scaleX: 1 } : {}}
-                transition={{ duration: 1.2, delay: 0.8 }}
-                className="absolute -bottom-1 left-0 h-1.5 w-full bg-gradient-to-r from-primary/60 to-accent/40 rounded-full origin-left opacity-40 blur-[1px]"
+                transition={{ duration: 1, delay: 0.8 }}
+                className="absolute -bottom-2 left-0 h-1.5 w-full bg-gradient-to-r from-neon-blue to-neon-purple rounded-full origin-left"
               />
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-muted-foreground/80 max-w-xl mb-12 leading-relaxed font-medium">
-            Next-generation forensic analysis for educational records. 
-            Automated, high-fidelity authenticity verification at global scale.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-xl mb-10 leading-relaxed">
+            Harness the power of neural networks to verify educational credentials in real-world time. 
+            The industry standard for secure, immutable certificate forensic analysis.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-wrap items-center gap-6 mb-16">
+          <div className="flex flex-wrap items-center gap-4 mb-12">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={quickSpring}>
               <Button
                 size="lg"
                 onClick={() => scrollToSection('verify')}
-                className="relative overflow-hidden bg-primary text-primary-foreground px-10 h-16 text-xl rounded-2xl shadow-2xl shadow-primary/30 group font-bold"
+                className="relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white px-8 h-14 text-lg rounded-2xl shadow-xl shadow-neon-blue/20 group"
               >
-                <div className="relative z-10 flex items-center gap-3">
-                  Start Verification
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1.5 transition-transform" />
+                <div className="relative z-10 flex items-center gap-2">
+                  Verify Now
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
               </Button>
             </motion.div>
             
@@ -105,21 +103,21 @@ export function HeroSection() {
               size="lg"
               variant="outline"
               onClick={() => scrollToSection('about')}
-              className="px-10 h-16 text-xl rounded-2xl border-glass-border hover:bg-primary/5 hover:border-primary/50 transition-all font-semibold"
+              className="px-8 h-14 text-lg rounded-2xl border-glass-border hover:bg-white/5 transition-all"
             >
-              Explore Tech
+              Learn More
             </Button>
           </div>
 
           {/* Mini Stats */}
-          <div className="flex items-center gap-10 border-t border-glass-border pt-10">
+          <div className="flex items-center gap-8 border-t border-glass-border pt-8">
             {stats.map((stat) => (
-              <div key={stat.label} className="group">
-                <div className="text-3xl font-bold text-foreground flex items-center gap-2 group-hover:text-primary transition-colors">
-                  <stat.icon className={`w-5 h-5 text-primary`} />
+              <div key={stat.label}>
+                <div className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
                   {stat.value}
                 </div>
-                <div className="text-[9px] uppercase font-bold tracking-[0.15em] text-muted-foreground mt-1.5">{stat.label}</div>
+                <div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -127,49 +125,46 @@ export function HeroSection() {
 
         {/* Right Side: 3D Visual */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, perspective: 1000 }}
-          animate={isInView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+          initial={{ opacity: 0, scale: 0.8, rotateY: 30 }}
+          animate={isInView ? { opacity: 1, scale: 1, rotateY: 0 } : {}}
+          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
           className="relative flex items-center justify-center lg:justify-end"
         >
           {/* Floating UI Elements */}
           <motion.div 
-            animate={{ y: [0, -20, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-16 -left-16 z-20 glass-strong p-5 rounded-3xl border-primary shadow-[0_0_50px_rgba(124,255,160,0.15)] diamond-border"
+            animate={{ y: [0, -15, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -top-10 -left-10 z-20 glass p-4 rounded-2xl border-neon-blue/30 shadow-2xl"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-success/20 rounded-lg flex items-center justify-center">
+                <Shield className="w-4 h-4 text-success" />
               </div>
               <div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Trust Index</p>
-                <p className="text-lg font-bold text-primary italic font-heading">VERIFIED</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">AI Score</p>
+                <p className="text-sm font-bold text-success font-mono">100/100</p>
               </div>
             </div>
           </motion.div>
 
           <motion.div 
-            animate={{ y: [0, 20, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute -bottom-10 right-0 z-20 glass-strong p-5 rounded-3xl border-accent shadow-[0_0_50px_rgba(100,220,255,0.1)]"
+            animate={{ y: [0, 15, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            className="absolute -bottom-6 right-0 z-20 glass p-4 rounded-2xl border-neon-purple/30 shadow-2xl"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center">
-                <Globe className="w-5 h-5 text-accent" />
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center">
+                <Globe className="w-4 h-4 text-neon-purple" />
               </div>
               <div>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Network</p>
-                <p className="text-lg font-bold text-accent italic font-heading">GLOBAL</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Nodes</p>
+                <p className="text-sm font-bold text-neon-purple">82 Active</p>
               </div>
             </div>
           </motion.div>
 
           {/* Main 3D Certificate */}
-          <div className="relative group">
-            <div className="absolute inset-0 bg-primary/20 blur-[100px] rounded-full group-hover:bg-primary/30 transition-colors duration-700" />
-            <FloatingCertificate />
-          </div>
+          <FloatingCertificate />
         </motion.div>
       </div>
 
@@ -177,18 +172,17 @@ export function HeroSection() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 2.5 }}
+        transition={{ delay: 2 }}
         className="absolute bottom-10 left-1/2 -translate-x-1/2 hidden md:block"
       >
-        <div className="w-[1.5px] h-16 bg-gradient-to-b from-primary to-transparent mx-auto relative overflow-hidden rounded-full">
+        <div className="w-[1px] h-12 bg-gradient-to-b from-neon-blue to-transparent mx-auto relative">
           <motion.div 
-            animate={{ top: ["-10%", "110%"] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute left-0 w-full h-4 bg-primary blur-[2px]"
+            animate={{ top: ["0%", "100%"] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="absolute left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-neon-blue rounded-full blur-[2px]"
           />
         </div>
       </motion.div>
-
     </section>
   )
 }

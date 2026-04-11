@@ -42,20 +42,20 @@ const StepCard = memo(function StepCard({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.08, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.35, delay: index * 0.06, ease: [0.4, 0, 0.2, 1] }}
       className="relative"
     >
       {/* Connector line (desktop) */}
       {index < steps.length - 1 && (
-        <div className="hidden sm:block absolute top-10 left-1/2 w-full h-px overflow-hidden">
-          <div className="relative w-full h-full bg-white/5">
+        <div className="hidden sm:block absolute top-8 left-1/2 w-full h-0.5 overflow-hidden">
+          <div className="relative w-full h-full bg-border/50">
             <motion.div
               initial={{ scaleX: 0 }}
               animate={{ scaleX: isComplete ? 1 : 0 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute inset-0 bg-gradient-to-r from-primary to-accent origin-left gpu-accelerate"
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              className="absolute inset-0 bg-gradient-to-r from-neon-blue to-neon-cyan origin-left gpu-accelerate"
             />
           </div>
         </div>
@@ -63,77 +63,84 @@ const StepCard = memo(function StepCard({
 
       {/* Step Card */}
       <motion.div
-        whileHover={{ scale: 1.05, y: -5 }}
+        whileHover={{ scale: 1.02, y: -3 }}
         transition={quickSpring}
         className={`
-          relative glass-strong rounded-2xl p-6 text-center overflow-hidden gpu-accelerate diamond-border
-          transition-all duration-500
-          ${isActive ? "border-primary shadow-[0_0_30px_rgba(124,255,160,0.1)]" : "border-glass-border"}
-          ${isComplete ? "border-primary/40 bg-primary/[0.03]" : ""}
+          relative glass-card rounded-xl p-4 text-center overflow-hidden gpu-accelerate
+          transition-colors duration-200
+          ${isActive ? "border-neon-blue/50" : "border-transparent"}
+          ${isComplete ? "border-success/30" : ""}
         `}
+        style={{ 
+          borderWidth: 1, 
+          borderStyle: "solid",
+          boxShadow: isActive ? "0 0 20px oklch(0.7 0.2 220 / 0.15)" : "none"
+        }}
       >
-        <div className="absolute inset-0 noise-surface opacity-[0.03] pointer-events-none" />
-        
-        {/* Active scan line effect */}
+        {/* Active overlay */}
         {isActive && (
-          <motion.div 
-            className="absolute inset-x-0 h-[2px] bg-primary/20 blur-[1px] z-20 pointer-events-none"
-            animate={{ top: ["-10%", "110%"] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          />
+          <div className="absolute inset-0 bg-gradient-to-b from-neon-blue/8 to-transparent pointer-events-none animate-glow-pulse" />
         )}
         
         {/* Icon */}
         <motion.div
-          animate={isActive ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
-          transition={{ duration: 2, repeat: isActive ? Infinity : 0 }}
+          animate={isActive ? { scale: [1, 1.08, 1] } : {}}
+          transition={{ duration: 1.2, repeat: isActive ? Infinity : 0 }}
           className={`
-            relative inline-flex items-center justify-center w-16 h-16 rounded-[1.25rem] mb-5 mx-auto gpu-accelerate diamond-border
-            ${isComplete ? "bg-primary/20" : isActive ? "bg-primary/25 shadow-2xl shadow-primary/20" : "bg-white/5"}
+            relative inline-flex items-center justify-center w-14 h-14 rounded-xl mb-3 mx-auto gpu-accelerate
+            ${isComplete ? "bg-success/20" : isActive ? "bg-neon-blue/20" : "bg-secondary/50"}
           `}
         >
           {/* Pulse ring for active */}
           {isActive && (
             <motion.div
-              className="absolute inset-0 rounded-[1.25rem] border-2 border-primary/50"
-              animate={{ scale: [1, 1.4], opacity: [0.5, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
+              className="absolute inset-0 rounded-xl border-2 border-neon-blue/40"
+              animate={{ scale: [1, 1.25], opacity: [0.5, 0] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
             />
           )}
           
           <step.icon
             className={`
-              w-8 h-8 relative z-10 transition-all duration-500
-              ${isComplete ? "text-primary scale-90" : isActive ? "text-primary scale-110" : "text-muted-foreground/60"}
+              w-7 h-7 relative z-10 transition-colors duration-200
+              ${isComplete ? "text-success" : isActive ? "text-neon-blue" : "text-muted-foreground"}
             `}
           />
         </motion.div>
 
         {/* Label */}
         <h4 className={`
-          font-black mb-1.5 text-sm tracking-tighter transition-colors duration-500 font-heading
-          ${isComplete ? "text-primary italic" : isActive ? "text-foreground" : "text-muted-foreground/50"}
+          font-semibold mb-1 text-sm transition-colors duration-200
+          ${isComplete ? "text-success" : isActive ? "text-foreground" : "text-muted-foreground"}
         `}>
           {step.label}
         </h4>
 
         {/* Description */}
-        <p className="text-[9px] text-muted-foreground hidden sm:block uppercase tracking-[0.2em] font-black opacity-40 group-hover:opacity-80 transition-opacity">
+        <p className="text-xs text-muted-foreground hidden sm:block">
           {step.description}
         </p>
 
-        {/* Complete checkmark transition */}
-        <AnimatePresence>
-          {isComplete && (
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              className="absolute top-2 right-2 w-6 h-6 bg-primary rounded-lg flex items-center justify-center shadow-2xl border border-primary-foreground/20"
-            >
-              <CheckCircle2 className="w-4 h-4 text-primary-foreground" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Active indicator */}
+        {isActive && (
+          <motion.div
+            layoutId="active-step-indicator"
+            className="absolute -bottom-px left-1/2 -translate-x-1/2 w-2/3 h-0.5 bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple rounded-full"
+            transition={smoothTransition}
+          />
+        )}
+
+        {/* Complete checkmark */}
+        {isComplete && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={quickSpring}
+            className="absolute -top-1.5 -right-1.5 w-6 h-6 bg-success rounded-full flex items-center justify-center shadow-lg"
+          >
+            <CheckCircle2 className="w-4 h-4 text-white" />
+          </motion.div>
+        )}
       </motion.div>
     </motion.div>
   )
@@ -141,95 +148,100 @@ const StepCard = memo(function StepCard({
 
 export function VerificationStepper({ currentStep, progress }: VerificationStepperProps) {
   return (
-    <section className="relative py-24 px-4 overflow-hidden">
-      {/* Background Decorative */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl pointer-events-none opacity-20 blur-[100px] bg-primary/10 rounded-full" />
-
-      <div className="max-w-5xl mx-auto">
+    <section className="relative py-16 px-4">
+      <div className="max-w-4xl mx-auto">
         {/* Section Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-16"
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          className="text-center mb-12"
         >
           <motion.div
-            initial={{ scale: 0, rotate: -45 }}
-            animate={{ scale: 1, rotate: 0 }}
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
             transition={quickSpring}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-[1.5rem] bg-primary/10 mb-8 diamond-border"
+            className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-neon-cyan/10 mb-4"
           >
             <motion.div
               animate={{ rotate: 360 }}
-              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
               className="gpu-accelerate"
             >
-              <Cpu className="w-10 h-10 text-primary" />
+              <Cpu className="w-7 h-7 text-neon-cyan" />
             </motion.div>
           </motion.div>
           
-          <h2 className="text-4xl md:text-5xl font-black mb-4 tracking-tighter font-heading">
-            <span className="bg-gradient-to-br from-primary via-accent to-emerald-400 bg-clip-text text-transparent italic glow-text pb-1">
-              Neural Processing Core
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2">
+            <span className="bg-gradient-to-r from-neon-cyan to-neon-blue bg-clip-text text-transparent bg-[length:200%_auto] animate-[gradient-shift_4s_linear_infinite]">
+              Verification Progress
             </span>
           </h2>
-          <p className="text-muted-foreground/80 text-lg max-w-md mx-auto font-medium">
-            Active forensic screening across multi-chain credential networks.
+          <p className="text-muted-foreground">
+            AI-powered analysis in progress
           </p>
         </motion.div>
 
-        {/* Progress Rail */}
+        {/* Progress Bar */}
         <motion.div
-          initial={{ opacity: 0, scaleX: 0.8 }}
+          initial={{ opacity: 0, scaleX: 0 }}
           animate={{ opacity: 1, scaleX: 1 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-20"
+          transition={{ duration: 0.4, delay: 0.1, ease: [0.4, 0, 0.2, 1] }}
+          className="mb-12"
         >
-          <div className="relative h-6 bg-white/5 rounded-2xl overflow-hidden shadow-inner border border-white/5">
-            {/* Energy Rail Shimmer */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent animate-shimmer" />
+          <div className="relative h-3 bg-secondary/50 rounded-full overflow-hidden glass">
+            {/* Background shimmer */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
             
-            {/* Progress Fill (Liquid style) */}
+            {/* Progress fill */}
             <motion.div 
-              className="absolute top-0 left-0 h-full rounded-2xl bg-gradient-to-r from-primary via-accent to-primary background-animate gpu-accelerate"
+              className="absolute top-0 left-0 h-full rounded-full bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple gpu-accelerate"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              style={{ backgroundSize: '200% 100%' }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
             />
             
-            {/* Lead Glow */}
+            {/* Glow at progress end */}
             <motion.div 
-              className="absolute top-0 h-full w-20 bg-gradient-to-r from-transparent via-white/40 to-transparent blur-xl pointer-events-none"
-              animate={{ left: `calc(${progress}% - 40px)` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="absolute top-0 h-full w-6 rounded-full bg-white/30 blur-sm"
+              animate={{ left: `calc(${progress}% - 12px)` }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
             />
             
-            {/* Digital Tracking Line */}
-            <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'linear-gradient(90deg, transparent 96%, var(--primary) 96%)', backgroundSize: '20px 100%' }} />
+            {/* Pulse dot */}
+            <motion.div
+              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-neon-cyan"
+              animate={{ 
+                left: `calc(${progress}% - 6px)`,
+                scale: [1, 1.3, 1],
+                opacity: [1, 0.6, 1]
+              }}
+              transition={{ 
+                left: { duration: 0.35, ease: "easeOut" },
+                scale: { duration: 0.8, repeat: Infinity },
+                opacity: { duration: 0.8, repeat: Infinity }
+              }}
+            />
           </div>
           
-          <div className="flex justify-between mt-6 px-1">
-            <div className="flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-[10px] font-black tracking-[0.3em] text-muted-foreground uppercase">
-                SCALING FORENSIC ANALYSIS...
-              </span>
-            </div>
-            <motion.div 
-              className="flex items-center gap-2"
+          <div className="flex justify-between mt-3">
+            <span className="text-sm text-muted-foreground animate-text-glow-pulse">
+              Processing...
+            </span>
+            <motion.span 
+              className="text-sm font-medium text-neon-cyan"
               key={progress}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ scale: 1.15 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.15 }}
             >
-              <span className="text-xs font-black text-primary tracking-widest font-heading">{progress}%</span>
-              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">REAL-TIME SYNC</span>
-            </motion.div>
+              {progress}%
+            </motion.span>
           </div>
         </motion.div>
 
-        {/* Steps Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-6">
+        {/* Steps */}
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
           {steps.map((step, index) => (
             <StepCard
               key={step.id}
@@ -244,4 +256,3 @@ export function VerificationStepper({ currentStep, progress }: VerificationStepp
     </section>
   )
 }
-

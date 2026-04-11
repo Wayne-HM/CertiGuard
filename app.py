@@ -91,33 +91,11 @@ def save_json(file_path, data):
 
 def save_history(record):
     import datetime
-    import json
-    
-    METADATA_FILE = 'data/metadata.json'
     history = load_json(HISTORY_FILE)
-    
-    # Persistent counter handling
-    metadata = {"total_count": 0}
-    if os.path.exists(METADATA_FILE):
-        try:
-            with open(METADATA_FILE, 'r') as f:
-                metadata = json.load(f)
-        except:
-            pass
-    else:
-        # One-time migration: if metadata doesn't exist, start from current history len
-        metadata["total_count"] = len(history)
-    
-    # Increment and save
-    current_id_num = metadata["total_count"]
-    record['id'] = f"CERT-{current_id_num:03d}"
-    
-    metadata["total_count"] += 1
-    save_json(METADATA_FILE, metadata)
-    
-    record['date'] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S") # ISO format for better frontend parsing
+    record['id'] = f"CERT-{len(history) + 1:03d}"
+    record['date'] = datetime.datetime.now().strftime("%b %d, %Y")
     history.insert(0, record)
-    save_json(HISTORY_FILE, history[:100]) 
+    save_json(HISTORY_FILE, history[:50])
     return record
 
 
@@ -265,13 +243,12 @@ def parse_verification_output(output, platform, text, forensic_result=None):
         "verificationUrl": url,
         "issueDate": format_date(extracted_date) if extracted_date else "N/A",
         "totalHours": hours,
-        "certificateId": "PENDING", # Will be set by save_history
+        "certificateId": f"CERT-{os.urandom(3).hex().upper()}",
         "rawOutput": output,
         "status": status,
         "isSuspicious": is_suspicious,
         "metadataMessage": metadata_msg
     }
-
 
 
 def execute_script(platform, pdf_path, worker_data=None):
@@ -524,28 +501,16 @@ def verify():
 @app.route('/history', methods=['GET'])
 def get_history():
     history = load_json(HISTORY_FILE)
-    METADATA_FILE = 'data/metadata.json'
-    
-    total_ever = len(history)
-    if os.path.exists(METADATA_FILE):
-        try:
-            import json
-            with open(METADATA_FILE, 'r') as f:
-                meta = json.load(f)
-                total_ever = meta.get("total_count", len(history))
-        except:
-            pass
-
     valid_count = sum(1 for r in history if r.get('isValid'))
     fake_count = len(history) - valid_count
     
     return jsonify({
         "verifications": history,
         "stats": {
-            "total": total_ever,
-            "valid": valid_count, # Valid/Fake counts are still based on visible history (last 100) or we could track these globally too, but dashboard usually shows recent stats.
+            "total": len(history),
+            "valid": valid_count,
             "fake": fake_count,
-            "avgTime": "1.8s"
+            "avgTime": "2.1s"
         }
     })
 
