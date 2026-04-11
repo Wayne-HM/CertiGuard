@@ -101,13 +101,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isInitialized) {
-      if (!user) {
-        router.push("/")
-      } else {
-        fetchDashboardData()
-      }
+      fetchDashboardData()
     }
-  }, [isInitialized, user, router, fetchDashboardData])
+  }, [isInitialized, fetchDashboardData])
 
   const handleRefresh = () => {
     setIsRefreshing(true)
@@ -126,34 +122,33 @@ export default function DashboardPage() {
   const statCards = [
     { 
       label: "Total Verifications", 
-      value: stats?.total ?? 0, 
+      value: stats?.total ?? (history.length > 0 ? history.length : 0), 
       icon: FileText,
       color: "text-primary/80"
     },
     { 
       label: "Valid Certificates", 
-      value: stats?.valid ?? 0, 
+      value: stats?.valid ?? history.filter(h => h.status === "valid").length, 
       icon: CheckCircle2,
       color: "text-emerald-400"
     },
     { 
       label: "Fake Detected", 
-      value: stats?.fake ?? 0, 
+      value: stats?.fake ?? history.filter(h => h.status === "fake").length, 
       icon: XCircle,
       color: "text-destructive"
     },
     { 
       label: "Avg. Time", 
-      value: stats?.avgTime ?? "2.1s", 
+      value: stats?.avgTime ?? "1.4s", 
       icon: Clock,
       color: "text-primary"
     },
   ]
 
   return (
-    <main className="relative min-h-screen bg-black">
-      {/* Background disabled temporarily for stability testing */}
-      {/* <AnimatedBackground /> */}
+    <main className="relative min-h-screen overflow-x-hidden">
+      <AnimatedBackground />
       
       <div className="relative z-10">
         <Navbar />
@@ -164,37 +159,45 @@ export default function DashboardPage() {
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-                  <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  <span className="bg-gradient-to-r from-primary via-emerald-400 to-accent bg-clip-text text-transparent italic">
                     Dashboard
                   </span>
                 </h1>
                 <p className="text-muted-foreground">
-                  Track your verification history
+                  Track your verification history and global statistics
                 </p>
               </div>
               
-              <Button 
-                variant="outline" 
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
+              <div className="flex items-center gap-3">
+                {!user && (
+                  <p className="text-xs text-amber-400/70 hidden md:block">
+                    Sign in to see your personal history
+                  </p>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="border-glass-border hover:bg-secondary/50 group"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-500 ${isRefreshing ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
+              </div>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {statCards.map((stat) => (
-                <Card key={stat.label} className="bg-neutral-900/50 border-neutral-800">
+                <Card key={stat.label} className="glass-strong border-glass-border hover:border-primary/30 transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="text-sm text-neutral-400 mb-1">{stat.label}</p>
+                        <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
                         <p className="text-3xl font-bold">{stat.value}</p>
                       </div>
-                      <div className={`w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center ${stat.color}`}>
-                        <stat.icon className="w-5 h-5" />
+                      <div className={`w-12 h-12 rounded-xl bg-secondary flex items-center justify-center ${stat.color}`}>
+                        <stat.icon className="w-6 h-6" />
                       </div>
                     </div>
                   </CardContent>
@@ -202,47 +205,87 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Table */}
-            <Card className="bg-neutral-900/50 border-neutral-800">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-neutral-800">
-                      <TableHead>Certificate ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="hidden md:table-cell">Course</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {history.length > 0 ? (
-                      history.map((record) => (
-                        <TableRow key={record.id} className="border-neutral-800">
-                          <TableCell className="font-mono text-xs">{record.id}</TableCell>
-                          <TableCell>{record.name}</TableCell>
-                          <TableCell className="hidden md:table-cell italic">{record.course}</TableCell>
-                          <TableCell>
-                            <span className={record.status === "valid" ? "text-emerald-400" : "text-destructive"}>
-                              {record.status === "valid" ? "Valid" : "Fake"}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
+            {/* Recent Verifications Table */}
+            <Card className="glass-strong border-glass-border">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-xl">Verification History</CardTitle>
+                <Link href="/#verify">
+                  <Button variant="outline" className="border-glass-border">
+                    Verify New
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border border-glass-border overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-secondary/50">
+                      <TableRow className="border-glass-border hover:bg-transparent">
+                        <TableHead>Certificate ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="hidden md:table-cell">Course</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="hidden lg:table-cell text-right">Date</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {history.length > 0 ? (
+                        history.map((record) => (
+                          <TableRow key={record.id || Math.random().toString()} className="border-glass-border hover:bg-secondary/30">
+                            <TableCell className="font-mono text-[10px] text-muted-foreground">
+                              {record.id || "N/A"}
+                            </TableCell>
+                            <TableCell className="font-medium text-sm">
+                              {record.name || "Unknown"}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-muted-foreground italic text-sm">
+                              {record.course || "General"}
+                            </TableCell>
+                            <TableCell>
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${
+                                  record.status === "valid" || record.isValid
+                                    ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
+                                    : "bg-destructive/10 text-destructive border border-destructive/20"
+                                }`}
+                              >
+                                {record.status === "valid" || record.isValid ? "Valid" : "Fake"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell text-muted-foreground text-xs text-right text-nowrap">
+                              {record.date || "Just now"}
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="glass-strong border-glass-border p-1">
+                                  <DropdownMenuItem className="rounded-md cursor-pointer focus:bg-secondary text-xs">
+                                    <ExternalLink className="w-4 h-4 mr-2" />
+                                    Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="rounded-md cursor-pointer focus:bg-secondary text-xs">
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Report
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-16 text-muted-foreground italic">
+                            No verification history available.
                           </TableCell>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-12 text-neutral-500">
-                          No history found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </div>

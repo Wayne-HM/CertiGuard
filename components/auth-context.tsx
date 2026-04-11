@@ -43,11 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const freshUser = await response.json()
             setUser(freshUser)
             localStorage.setItem("certiguard_user", JSON.stringify(freshUser))
-          } else {
+          } else if (response.status === 401) {
+            // Only wipe if explicitly unauthorized and not a temporary network issue
+            console.warn("Session invalid, clearing user data")
             localStorage.removeItem("certiguard_user")
+            setUser(null)
           }
         } catch (err) {
-          localStorage.removeItem("certiguard_user")
+          console.error("Auth init error (likely network):", err)
+          // Keep the local user for now to allow offline/slow-start access
         }
       }
       setIsInitialized(true)
