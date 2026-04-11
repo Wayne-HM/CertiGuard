@@ -1,122 +1,54 @@
 import re
-import time
 import os
-import gc
-from urllib.parse import urlparse
+import time
 
-# --- HELPERS FOR PDF EXTRACTION ---
-
-
-def get_tesseract_path():
-    TESSERACT_PATHS = [
-        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-        r"C:\Users\known\AppData\Local\Tesseract-OCR\tesseract.exe",
-        r"/usr/bin/tesseract"
-    ]
-
-    for path in TESSERACT_PATHS:
-        if os.path.exists(path):
-            return path
+def extract_verification_link(text, file_path):
+    # Pattern for Coursera verification links
+    match = re.search(r"coursera\.org/verify/([A-Za-z0-9]+)", text)
+    if match:
+        return f"https://www.coursera.org/account/accomplishments/verify/{match.group(1)}"
+    
+    # Try filename if text fails
+    match = re.search(r"coursera_([A-Za-z0-9]+)", file_path.lower())
+    if match:
+        return f"https://www.coursera.org/account/accomplishments/verify/{match.group(1).upper()}"
+        
     return None
 
-
-TRUSTED_DOMAINS = {
-    "coursera.org": "coursera",
-    "www.coursera.org": "coursera"
-}
-
-def extract_text_from_pdf(pdf_path, worker_data=None):
-    if worker_data and worker_data.get("text"):
-        return worker_data["text"]
-    
-    # Lightweight local fallback
-    import PyPDF2
-    try:
-        with open(pdf_path, "rb") as file:
-            reader = PyPDF2.PdfReader(file)
-            return "".join(page.extract_text() for page in reader.pages if page.extract_text())
-    except:
-        return ""
-
-
 def extract_details_from_pdf_text(text):
-    # Normalize text: collapse multiple spaces and remove extra newlines
-    text_clean = re.sub(r"\s+", " ", text).strip()
-    
-    # Extract Name
     name = "Name Not Found"
+    course = "Course Not Found"
+    
+    # Name patterns
     name_patterns = [
-        r"This certificate above verifies that\s+([A-Za-z\s\-']+?)\s+successfully completed",
-        r"(?:completed by|certified for)\s+([A-Za-z\s\-']+)",
-        r"([A-Za-z\s\-']+)\s+successfully completed",
-        # Heuristic: the name is often the first thing after a date on its own line
-        r"((?:\w+\s+\d{1,2},|\d{1,2}\s+\w+,)\s*\d{4})\s*\n\s*([A-Za-z\s\-']+)"
+        r"This certificate verifies that\s+([A-Za-z\s\.\-']+?)\s+successfully completed",
+        r"Student Name:\s*([A-Za-z\s\.\-']+)",
+        r"([A-Za-z\s\.\-']+)\s+successfully completed",
+        r"([A-Za-z\s\.\-']+?)\s+h?as\s+successfully completed"
     ]
     
     for p in name_patterns:
-        match = re.search(p, text, re.IGNORECASE | re.MULTILINE)
+        match = re.search(p, text, re.IGNORECASE)
         if match:
-            # Handle the heuristic match which has 2 groups
-            name = match.group(match.lastindex).strip()
+            name = match.group(1).strip()
             break
             
-    if name == "Name Not Found":
-        for p in name_patterns:
-            match = re.search(p, text_clean, re.IGNORECASE)
-            if match:
-                name = match.group(match.lastindex).strip()
-                break
-
-    # Extract Course
-    course = "Course Not Found"
+    # Course patterns
     course_patterns = [
-        r"successfully completed\s+([A-Za-z0-9 :&]+?)\s+(?:an online|online|a course|course|non-credit)",
-        r"completion of\s+([A-Za-z0-9 :&]+?)\s+cert",
-        r"Specialization\s+(?:in\s+)?([A-Za-z0-9 :&]+)",
-        # Heuristic: Match only the first line after the student name
-        r"(?<=\n)(" + re.escape(name) + r")\s*\n\s*([A-Za-z0-9 :&]+)" if name != "Name Not Found" else None
+        r"completion of\s+\"?(.+?)\"?(?:\n|\s+on|\s+an online)",
+        r"completed the course\s+(.+?)(?:\n|$)",
+        r"course:\s+(.+?)(?:\n|$)"
     ]
     
     for p in course_patterns:
-        if not p: continue
-        match = re.search(p, text, re.IGNORECASE | re.MULTILINE)
+        match = re.search(p, text, re.IGNORECASE)
         if match:
-            course = match.group(match.lastindex).strip()
+            course = match.group(1).strip()
             break
-    
-    if course == "Course Not Found":
-        for p in course_patterns:
-            if not p: continue
-            match = re.search(p, text_clean, re.IGNORECASE)
-            if match:
-                course = match.group(match.lastindex).strip()
-                break
-                
+            
     return name, course
 
-def extract_text_via_ocr(pdf_path, worker_data=None):
-    if worker_data and worker_data.get("ocr_text"):
-        return worker_data["ocr_text"]
-    # Local OCR disabled to save memory
-    return ""
-
-
-def extract_verification_link(text, pdf_path=""):
-    text = text.replace("\n", " ").replace("  ", " ")
-    # Relaxed Coursera link patterns
-    match = re.search(r"(?:https?://)?(?:www\.)?coursera\.org/verify/[a-zA-Z0-9/\-]+", text)
-    if not match:
-        match = re.search(r"(?:https?://)?[a-zA-Z0-9./\-]+", text)
-    
-    if match:
-        url = match.group(0).strip()
-        if not url.startswith("http"):
-            url = "https://" + url
-        return url
-    return None
-
 def scrape_page(verification_link):
-    """Lightweight page scraping using requests + BeautifulSoup. No browser needed."""
     import requests
     from bs4 import BeautifulSoup
 
@@ -127,22 +59,23 @@ def scrape_page(verification_link):
 
     try:
         response = requests.get(verification_link, headers=headers, timeout=15)
-
         if response.status_code != 200:
             return f"Error: HTTP {response.status_code}", "Error", False
 
-        # Meta tag fallback (Very clean)
+        soup = BeautifulSoup(response.text, "html.parser")
+        all_text = soup.get_text(separator="\n", strip=True)
+        
+        # Meta tag fallback
         page_title = soup.title.string.strip() if soup.title and soup.title.string else ""
         
-        # Check og:description first (often contains the clean sentence)
         meta_desc = soup.find("meta", property="og:description") or soup.find("meta", name="description")
-        if meta_desc and "successful completion of" in meta_desc.get("content", "").lower():
-            all_text = meta_desc.get("content") + "\n" + all_text
+        meta_content = meta_desc.get("content", "") if meta_desc else ""
+        if "successful completion of" in meta_content.lower():
+            all_text = meta_content + "\n" + all_text
 
         meta_title = soup.find("meta", property="og:title") or soup.find("meta", name="twitter:title")
         if meta_title and meta_title.get("content"):
             meta_val = meta_title.get("content").strip()
-            # Clean "Coursera | Title" or "Title | Coursera"
             if "|" in meta_val:
                 parts = meta_val.split("|")
                 meta_val = parts[0].strip() if "Coursera" not in parts[0] else parts[1].strip()
@@ -150,194 +83,91 @@ def scrape_page(verification_link):
                 meta_val = meta_val.replace(" - Coursera", "").strip()
             page_title = meta_val
 
-        is_blocked = any(kw in all_text.lower() for kw in [
-            "verify you are human", "security verification", "cloudflare"
-        ])
-
+        is_blocked = any(kw in all_text.lower() for kw in ["verify you are human", "security verification", "cloudflare"])
         return all_text, page_title, is_blocked
     except Exception as e:
-        print(f"DEBUG: Coursera scrape error: {e}")
         return f"Error: {e}", "Error", False
-
-
 
 def get_verified_details(all_text, page_title):
     try:
-        # Normalize web text
         text_clean = re.sub(r"\s+", " ", all_text).strip()
         
-        # Extract Name - Coursera specific patterns
+        # Name patterns
         verified_name = "Name Not Found"
-        patterns = [
-            r"This certificate above verifies that\s+([A-Za-z\s\.\-']+?)\s+successfully completed",
-            r"Student Name:\s*([A-Za-z\s\.\-']+)",
-            r"This is to certify that\s+([A-Za-z\s\.\-']+?)\s+successfully completed",
-            r"([A-Za-z\s\.\-']+?)'s account is verified",
+        name_patterns = [
+            r"This certificate verifies that\s+([A-Za-z\s\.\-']+?)\s+successfully completed",
+            r"([A-Za-z\s\.\-']+?)'s\s+account is verified",
+            r"account is verified\.?\s+Coursera certifies (?:their|that)?\s+([A-Za-z\s\.\-']+?)\s+successfull?y",
             r"Completed by\s+([A-Za-z\s\.\-']+?)(?:\s+on|\n|$)"
         ]
 
-        for p in patterns:
+        for p in name_patterns:
             match = re.search(p, text_clean, re.IGNORECASE)
             if match:
                 verified_name = match.group(1).strip()
-                if verified_name.lower() == "coursera": continue
-                break
+                if verified_name.lower() != "coursera": break
 
-        # Extract Course Title - Restricted to avoid noise
+        # Course patterns
         verified_course = "Course Not Found"
         course_patterns = [
-            # Pattern 1: Quoted titles after completion marker (Very reliable)
             r"completion of\s+(?:.+?university of.+?'s\s+)?\"(.+?)\"",
             r"successful completion of\s+(?:the\s+)?(?:course\s+)?\"?(.+?)\"?\s*(?:\.|\s+Offered|\s+Authorized|\s+by|\s+on|\s{2,}|\(|at Coursera)",
-            r"completed\s+(?:the\s+)?(?:course\s+)?\"?(.+?)\"?\s+an online",
-            r"completion of\s+\"?(.+?)\"?\s+cert",
-            r"Professional Certificate\s+(?:in\s+)?([A-Za-z0-9\s:&]+?)(?:\s+offered|\s+authorized|\s+by|\s+on|\s+Coursera|$)",
-            r"Specialization\s+(?:in\s+)?([A-Za-z0-9\s:&]+?)(?:\s+offered|\s+authorized|\s+by|\s+on|\s+Coursera|$)",
+            r"completed\s+(?:the\s+)?(?:course\s+)?\"?(.+?)\"?\s+an online"
         ]
         
         for cp in course_patterns:
             match = re.search(cp, text_clean, re.IGNORECASE)
             if match:
                 verified_course = match.group(1).strip()
-                # Prune if it captured "university" garbage
-                if "University" in verified_course and len(verified_course) > 50:
-                    u_idx = verified_course.find("University")
-                    # If university is at the start, try to skip it
-                    if u_idx < 10:
-                        inner_match = re.search(r"'s\s+\"(.+?)\"", verified_course)
-                        if inner_match: verified_course = inner_match.group(1).strip()
-                
-                # Stop if it's too long (noise usually kicks in after 100 chars)
-                if len(verified_course) > 150:
-                    verified_course = verified_course[:150]
                 break
-        
-        # Cleanup: Remove repetitive text and rating garbage
-        def clean_course_name(name):
-            if not name or name == "Course Not Found": return name
-            # Remove "Google Filled Star" and similar garbage
-            name = re.sub(r"(?:Google\s+)?(?:Filled\s+)?Star\s*(?:Filled)?", "", name, flags=re.I).strip()
-            
-            # Prune at common noise markers
-            noise_markers = [
-                "ratings", "already enrolled", "Enroll for Free", "Offered by", 
-                "Authorized by", "University", "Try this course", "Authorized sharing", 
-                "Verify at", "Skills you will gain", "What you will learn"
-            ]
-            for marker in noise_markers:
-                if marker.lower() in name.lower():
-                    # Find early match
-                    idx = name.lower().find(marker.lower())
-                    if idx > 10:
-                        name = name[:idx].strip()
-
-            # Remove trailing connectors
-            name = re.sub(r" (?:an online|a course|non-credit|Professional|Specialization|offered|authorized|by|on|at|and)$", "", name, flags=re.I).strip()
-            
-            # Remove repetitive phrases
-            words = name.split()
-            if len(words) > 4:
-                half = len(words) // 2
-                if " ".join(words[:half]).lower() == " ".join(words[half:]).lower():
-                    name = " ".join(words[:half])
-            
-            return name.strip()
 
         if verified_course == "Course Not Found":
-            if "|" in page_title:
-                verified_course = page_title.split("|")[0].strip()
-            else:
-                verified_course = page_title.strip()
-        
-        verified_course = clean_course_name(verified_course)
-        
-        # Clean up: only remove if they appear after a long gap or at the very end with specific markers
-        stop_markers = ["Verify at coursera.org", "Coursera has confirmed", "Authorized sharing"]
-        for marker in stop_markers:
-            idx = verified_course.find(marker)
-            if idx > 5:
-                verified_course = verified_course[:idx].strip()
-        
-        # Remove trailing "Coursera" if it's orphaned
-        if verified_course.endswith(" Coursera"):
-            verified_course = verified_course[:-9].strip()
+            verified_course = page_title.split("|")[0].strip() if "|" in page_title else page_title
 
         return verified_name, verified_course
-    except Exception as e:
-        return f"Error: {e}", "Error"
+    except:
+        return "Name Not Found", "Course Not Found"
 
 def extract_hours_and_date(text):
-    from datetime import datetime
     hours = "N/A"
     date = "N/A"
-    today_str = datetime.now().strftime("%B %d, %Y")
-    today_short = datetime.now().strftime("%b %d, %Y")
     
-    # Prioritize dates near completion/issued markers
-    patterns = [
-        r"(?:on|Completed on|Date Issued|Date:?)\s*([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4})",
-        r"\b([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4})\b"
-    ]
+    date_match = re.search(r"(?:on|Completed on|Issued on|Date:?)\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})", text, re.I)
+    if date_match: date = date_match.group(1).strip()
     
-    found_dates = []
-    for p in patterns:
-        for m in re.finditer(p, text, re.I):
-            d = m.group(1).strip()
-            # Normalize and avoid current date
-            if today_str.lower() in d.lower() or today_short.lower() in d.lower():
-                continue
-            found_dates.append(d)
-            
-    if found_dates:
-        date = found_dates[0] # Pick the first non-current date
-    
-    # Hours: "approx. 15 hours" or "15 total hours"
     h_match = re.search(r"(\d+)\s*(?:total\s*hours|hours)", text, re.I)
     if h_match: hours = h_match.group(1).strip()
+    
     return hours, date
 
 def run_verification(file_path, worker_data=None):
+    from app import extract_text_from_pdf
+    
     extracted_text = ""
     if worker_data and worker_data.get("text"):
         extracted_text = worker_data["text"]
-    elif worker_data and worker_data.get("ocr_text"):
-        extracted_text = worker_data["ocr_text"]
     else:
-        # Final local fallback
-        extracted_text = extract_text_from_pdf(file_path, worker_data)
+        extracted_text = extract_text_from_pdf(file_path)
     
     if not extracted_text:
-        return "❌ Skipping Coursera verification: Worker data unavailable and local processing disabled."
+        return "❌ Skipping Coursera verification: No text extracted."
 
     verification_link = extract_verification_link(extracted_text, file_path)
-
-    # Get local details first as baseline
     local_name, local_course = extract_details_from_pdf_text(extracted_text)
-    
-    # Extract Hours/Date baseline from PDF
     hours, date = extract_hours_and_date(extracted_text)
-    details_suffix = f"\nHours: {hours}\nDate: {date}"
 
     if not verification_link:
-        return f"❌ No Coursera verification link found in certificate."
+        return f"❌ No Coursera verification link found."
 
     all_text, page_title, is_blocked = scrape_page(verification_link)
     
     if is_blocked:
-        # If blocked by Cloudflare, we trust the PDF if it has a valid-looking link and matching metadata
-        if local_name != "Name Not Found" and local_course != "Course Not Found":
-            return f"✅ Valid Coursera Certificate (Analysis)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}\n[Note: Live verification restricted by platform, verified via layout analysis]"
-        else:
-            return f"⚠️ Live verification restricted by Cloudflare. Manual check required: {verification_link}"
-
-    if "Error" in all_text or not all_text:
-        if local_name != "Name Not Found" and local_course != "Course Not Found":
-             return f"✅ Valid Coursera Certificate (Direct Data)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}"
-        return f"❌ Unable to verify Coursera records. Link may be broken or restricted."
+        details_suffix = f"\nHours: {hours}\nDate: {date}"
+        if local_name != "Name Not Found":
+            return f"✅ Valid Coursera Certificate (Analysis)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}\n[Note: Live verification restricted, verified via layout analysis]"
+        return f"⚠️ Live verification restricted. Manual check: {verification_link}"
 
     verified_name, verified_course = get_verified_details(all_text, page_title)
-    
-    # Refresh hours/date from web content if available
     web_hours, web_date = extract_hours_and_date(all_text)
     if web_hours != "N/A": hours = web_hours
     if web_date != "N/A": date = web_date
@@ -345,16 +175,13 @@ def run_verification(file_path, worker_data=None):
 
     if verified_name == "Name Not Found":
         if local_name != "Name Not Found":
-             return f"✅ Valid Coursera Certificate (Structure)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}"
-        return f"❌ Unable to locate student name on Coursera verification page."
+            return f"✅ Valid Coursera Certificate (Structure)\nName: {local_name}\nCourse: {local_course}\nURL: {verification_link}{details_suffix}"
+        return f"❌ Unable to verify student name on Coursera."
 
     normalized_web_name = verified_name.lower().strip()
     normalized_extracted_text = extracted_text.lower()
-    
     name_parts = [p.strip() for p in normalized_web_name.split() if len(p.strip()) > 2]
-    if not name_parts: name_parts = [p.strip() for p in normalized_web_name.split() if len(p.strip()) > 1]
-        
-    is_name_match = all(part in normalized_extracted_text for part in name_parts)
+    is_name_match = all(part in normalized_extracted_text for part in name_parts) if name_parts else False
 
     if is_name_match:
         return f"✅ Valid Coursera Certificate\nName: {verified_name}\nCourse: {verified_course}\nURL: {verification_link}{details_suffix}"
