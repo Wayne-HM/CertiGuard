@@ -115,9 +115,8 @@ def detect_certification_platform(pdf_path, worker_data=None):
     if any(k in text or k in filename for k in udemy_keywords) or "uc-" in text or "uc-" in filename:
         return "udemy"
     
-    # 3. Check for Infosys
-    if any(k in text or k in filename for k in ["infosys", "springboard", "knowledge institute"]):
-        return "infosys"
+    # 3. Check for Infosys (QR-Only as per requirement)
+    # Identification for Infosys is handled via detect_qr_platform below
     
     # 4. Check for Saylor
     saylor_keywords = ["saylor", "jeffery daubs", "verification code", "direct credit", "saylor.org"]

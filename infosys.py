@@ -27,7 +27,7 @@ def get_nested_value(data, target_keys):
             if res: return res
     return None
 
-def verify_infosys_qr(qr_data):
+def verify_infosys_qr(qr_data, pdf_text=""):
     import json
     if not qr_data:
         return "❌ No QR Data found in certificate."
@@ -40,9 +40,8 @@ def verify_infosys_qr(qr_data):
 
     try:
         data = json.loads(json_str)
-
         
-        # 1. Try Target Keys specifically in credentialSubject first (preferred logic)
+        # 1. Extract Details from JSON
         subject = data.get("credentialSubject", {})
         if isinstance(subject, list) and len(subject) > 0:
             subject = subject[0]
@@ -53,119 +52,89 @@ def verify_infosys_qr(qr_data):
         student_name = get_nested_value(subject, name_keys) if subject else None
         course_data = get_nested_value(subject, course_keys) if subject else None
         
-        # Extraction of date/hours from payload
-        issuance_date = get_nested_value(data, ["issuanceDate", "issuedOn", "date"]) or "N/A"
-        total_hours = get_nested_value(data, ["duration", "total_hours", "hours", "learningHours"]) or "N/A"
+        if not student_name: student_name = get_nested_value(data, name_keys)
+        if not course_data: course_data = get_nested_value(data, course_keys)
 
-        # 2. Global Fallback: Search entire JSON if not found in subject
-        if not student_name:
-            student_name = get_nested_value(data, name_keys)
-        if not course_data:
-            course_data = get_nested_value(data, course_keys)
-
-        # Handle course being a dictionary or object
         course_name = ""
         if isinstance(course_data, dict):
             course_name = course_data.get("name") or course_data.get("title") or ""
         else:
             course_name = str(course_data) if course_data else ""
 
-        if student_name and course_name:
-            return (
-                f"✅ Authenticated via Infosys Digital Ledger\n"
-                f"Name: {str(student_name).strip()}\n"
-                f"Course: {str(course_name).strip()}\n"
-                f"Hours: {str(total_hours)}\n"
-                f"Date: {str(issuance_date)}\n"
-                f"Status: Authentic"
-            )
+        if not student_name or not course_name:
+            return "❌ Fake Certificate: Vital details missing in secure QR payload."
+
+        # 2. MATCH with PDF Text (The "Double Check")
+        pdf_lower = pdf_text.lower()
+        json_name_lower = str(student_name).lower().strip()
+        json_course_lower = str(course_name).lower().strip()
+
+        # Check if name parts exists in PDF
+        name_parts = [p.strip() for p in json_name_lower.split() if len(p.strip()) > 2]
+        is_name_match = all(part in pdf_lower for part in name_parts) if name_parts else False
         
-        # 3. Regex Final Fallback for near-malformed or non-standard payloads
-        name_search = re.search(r'\"(?:name|issuedTo|learnerName)\"\s*:\s*\"([^\"]+)\"', json_str, re.I)
-        course_search = re.search(r'\"(?:course|courseName|program)\"\s*:\s*\"([^\"]+)\"', json_str, re.I)
-        
-        if name_search and course_search:
+        # Check if course part exists in PDF
+        is_course_match = json_course_lower in pdf_lower or any(p in pdf_lower for p in json_course_lower.split()[:3])
+
+        if not is_name_match or not is_course_match:
             return (
-                f"✅ Authenticated via Forensic AI matching\n"
-                f"Name: {name_search.group(1).strip()}\n"
-                f"Course: {course_search.group(1).strip()}\n"
-                f"Status: Authentic"
+                f"❌ Fake Certificate Mismatch\n"
+                f"Secure Payload Name: {student_name}\n"
+                f"Secure Payload Course: {course_name}\n"
+                f"Status: Details do not match the visual certificate text."
             )
 
-        return "❌ Fake Certificate: Missing vital candidate or course information in secure payload."
+        # 3. Success Response
+        issuance_date = get_nested_value(data, ["issuanceDate", "issuedOn", "date"]) or "N/A"
+        total_hours = get_nested_value(data, ["duration", "total_hours", "hours", "learningHours"]) or "N/A"
+
+        return (
+            f"✅ Authenticated via Infosys Digital Ledger\n"
+            f"Name: {student_name}\n"
+            f"Course: {course_name}\n"
+            f"Hours: {total_hours}\n"
+            f"Date: {issuance_date}\n"
+            f"Status: Verified & Matched"
+        )
 
     except json.JSONDecodeError:
-        # Final Regex Fallback for non-JSON or partial payloads
-        name_search = re.search(r'(?:Name|Learner|Recipient):\s*([A-Z\s]+)', qr_data, re.I)
-        if name_search:
-            return f"✅ Authenticated via Layout Analysis\nName: {name_search.group(1).strip()}\nStatus: Authentic"
-        
-        return "❌ QR payload is non-standard. Unable to verify digital signature."
+        return "❌ QR payload is not a valid Infosys JSON signature."
     except Exception as e:
         return f"❌ Verification Error: {str(e)}"
 
 def run_verification(pdf_path, worker_data=None):
-    """Integrates with CertiGuard app.py workflow"""
+    """Integrates with CertiGuard app.py workflow - strictly QR-driven"""
     all_qr_data = []
 
-    # 1. Check worker data first
+    # 1. Get QR codes from worker
     if worker_data and worker_data.get("qr_codes"):
         all_qr_data = worker_data["qr_codes"]
     
-    # 2. Local fallback DISABLED on Render to save memory
-    if not all_qr_data and not worker_data:
-        # Logging for diagnostic - help user see if WORKER_URL is missing
-        print("WARNING: No worker_data and worker is unavailable. Skipping local QR scan.")
-        pass
+    # 2. Get PDF text for detail matching
+    pdf_text = ""
+    if worker_data and worker_data.get("text"):
+        pdf_text = worker_data["text"]
+    else:
+        pdf_text = extract_text_from_pdf(pdf_path)
 
-    # Try each QR code found
+    # 3. Scan QR codes for Infosys signatures
     for qr_data in all_qr_data:
-        # Check if it looks like an Infosys/credential payload
         qr_lower = qr_data.lower()
-        if any(kw in qr_lower for kw in ["credentialsubject", "infosys", "springboard",
-                                          "learner", "issuedto", "coursename", 
-                                          "certificate", "credential"]):
-            result = verify_infosys_qr(qr_data)
-            if "✅" in result:
+        # Look for Infosys-specific JSON keys
+        if any(kw in qr_lower for kw in ["credentialsubject", "infosys", "springboard"]):
+            result = verify_infosys_qr(qr_data, pdf_text)
+            if "✅" in result or "Mismatch" in result:
                 return result
 
-    # If no keyword match worked, try ALL QR codes as potential JSON payloads
+    # Secondary check: Try all QR codes that look like JSON
     for qr_data in all_qr_data:
         if "{" in qr_data and "}" in qr_data:
-            result = verify_infosys_qr(qr_data)
+            result = verify_infosys_qr(qr_data, pdf_text)
             if "✅" in result:
                 return result
 
-    # Text-based fallback - check PDF text for Infosys indicators
-    text = ""
-    if worker_data and worker_data.get("text"):
-        text = worker_data["text"]
-    else:
-        # Final local fallback
-        text = extract_text_from_pdf(pdf_path)
-        
-    if "infosys" in text.lower() or "springboard" in text.lower():
-        # Extract name and course from text
-        name_match = re.search(r'(?:Name|Learner|Participant|Awarded to)[:\s]+([A-Za-z\s\.\-]+)', text, re.I)
-        course_match = re.search(r'(?:Course|Program|Certification|completed)[:\s]+([A-Za-z\s\.\-\d]+)', text, re.I)
-        
-        name = name_match.group(1).strip() if name_match else "Name Not Found"
-        course = course_match.group(1).strip() if course_match else "Course Not Found"
-        
-        if name != "Name Not Found" and course != "Course Not Found":
-            return (
-                f"✅ Authenticated via PDF Analysis\n"
-                f"Name: {name}\n"
-                f"Course: {course}\n"
-                f"Status: Authentic"
-            )
-    except:
-        pass
-    finally:
-        gc.collect()
-
     if all_qr_data:
-        return "❌ QR code found but does not contain valid Infosys verification data."
-    return "❌ No valid Infosys verification QR code found on the certificate."
+        return "❌ QR code found but does not contain valid Infosys verification records."
+    return "❌ No valid Infosys verification QR code found. Infosys certificates require a QR signature."
 
 
