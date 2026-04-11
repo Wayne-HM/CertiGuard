@@ -154,11 +154,11 @@ def get_verified_details(all_text, page_title):
         # Extract Name - Coursera specific patterns
         verified_name = "Name Not Found"
         patterns = [
-            r"This certificate above verifies that\s+([A-Za-z\s]+?)\s+successfully completed",
-            r"Student Name:\s*([A-Za-z\s]+)",
-            r"This is to certify that\s+([A-Za-z\s]+?)\s+successfully completed",
-            r"([A-Za-z\s]+?)'s account is verified",
-            r"Completed by\s+([A-Za-z\s]+?)\s+on"
+            r"This certificate above verifies that\s+([A-Za-z\s\.\-']+?)\s+successfully completed",
+            r"Student Name:\s*([A-Za-z\s\.\-']+)",
+            r"This is to certify that\s+([A-Za-z\s\.\-']+?)\s+successfully completed",
+            r"([A-Za-z\s\.\-']+?)'s account is verified",
+            r"Completed by\s+([A-Za-z\s\.\-']+?)(?:\s+on|\n|$)"
         ]
 
         for p in patterns:
@@ -184,18 +184,42 @@ def get_verified_details(all_text, page_title):
                 verified_course = match.group(1).strip()
                 break
         
+        # Cleanup: Remove repetitive text and rating garbage
+        def clean_course_name(name):
+            if not name or name == "Course Not Found": return name
+            # Remove "Google Filled Star" and similar garbage
+            name = re.sub(r"(?:Google\s+)?(?:Filled\s+)?Star\s*(?:Filled)?", "", name, flags=re.I).strip()
+            # Remove repetitive phrases (e.g., "Python Python")
+            words = name.split()
+            if len(words) > 4:
+                # Check if the first half is roughly same as second half
+                half = len(words) // 2
+                if " ".join(words[:half]).lower() == " ".join(words[half:]).lower():
+                    name = " ".join(words[:half])
+            
+            # Final prune for common non-title artifacts
+            for junk in ["Try this course", "Authorized sharing", "Verify at"]:
+                if junk in name: name = name.split(junk)[0].strip()
+            return name
+
         if verified_course == "Course Not Found":
             if "|" in page_title:
                 verified_course = page_title.split("|")[0].strip()
             else:
                 verified_course = page_title.strip()
         
-        # Clean up: remove trailing noise words from course name
-        noise_words = ["Coursera", "Footer", "Skills", "Professional", "offered", "authorized"]
-        for word in noise_words:
-            idx = verified_course.find(word)
-            if idx > 5:  # Only trim if it's not at the very start
+        verified_course = clean_course_name(verified_course)
+        
+        # Clean up: only remove if they appear after a long gap or at the very end with specific markers
+        stop_markers = ["Verify at coursera.org", "Coursera has confirmed", "Authorized sharing"]
+        for marker in stop_markers:
+            idx = verified_course.find(marker)
+            if idx > 5:
                 verified_course = verified_course[:idx].strip()
+        
+        # Remove trailing "Coursera" if it's orphaned
+        if verified_course.endswith(" Coursera"):
+            verified_course = verified_course[:-9].strip()
 
         return verified_name, verified_course
     except Exception as e:
@@ -205,7 +229,13 @@ def extract_hours_and_date(text):
     hours = "N/A"
     date = "N/A"
     # Coursera Date: "Completed on Month Day, Year" or "on Month Day, Year"
-    d_match = re.search(r"(?:on|Completed on)\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})", text)
+    d_match = re.search(r"(?:on|Completed on|Date:?)\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})", text, re.I)
+    if not d_match:
+        # Month Day, Year standalone
+        d_match = re.search(r"\b([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\b", text)
+    if not d_match:
+        # Numeric fallback: 11/04/2026 or 11-04-2026
+        d_match = re.search(r"\b(\d{1,2}[/\-]\d{1,2}[/\-]\d{4})\b", text)
     if d_match: date = d_match.group(1).strip()
     
     # Hours: "approx. 15 hours" or "15 total hours"
