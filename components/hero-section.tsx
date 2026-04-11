@@ -8,8 +8,8 @@ import { FloatingCertificate } from "@/components/floating-certificate"
 
 const stats = [
   { value: "99.9%", label: "Accuracy Rate", icon: Shield, color: "text-neon-blue" },
-  { value: "500K+", label: "Verified", icon: Sparkles, color: "text-neon-cyan" },
-  { value: "<3s", label: "Time", icon: Zap, color: "text-neon-purple" },
+  { value: "1k+", label: "Verified", icon: Sparkles, color: "text-neon-cyan" },
+  { value: "<1min", label: "Time", icon: Zap, color: "text-neon-purple" },
 ]
 
 // Optimized spring config for 120fps feel

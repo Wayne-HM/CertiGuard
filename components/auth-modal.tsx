@@ -69,9 +69,9 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                className="w-16 h-16 bg-neon-blue/20 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-primary/20"
               >
-                <Shield className="w-8 h-8 text-neon-blue" />
+                <Shield className="w-8 h-8 text-primary" />
               </motion.div>
 
               <h2 className="text-2xl font-bold text-foreground mb-2">
@@ -89,7 +89,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
               <button
                 onClick={() => setMode("login")}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  mode === "login" ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/20" : "text-muted-foreground hover:text-foreground"
+                  mode === "login" ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <LogIn className="w-4 h-4" />
@@ -98,7 +98,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
               <button
                 onClick={() => setMode("signup")}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  mode === "signup" ? "bg-neon-blue text-white shadow-lg shadow-neon-blue/20" : "text-muted-foreground hover:text-foreground"
+                  mode === "signup" ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <UserPlus className="w-4 h-4" />
@@ -126,7 +126,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="pl-10 bg-secondary/30 border-glass-border focus:border-neon-blue/50"
+                          className="pl-10 bg-secondary/30 border-glass-border focus:border-primary/50"
                         />
                       </div>
                     </div>
@@ -141,7 +141,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
                         required
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="pl-10 bg-secondary/30 border-glass-border focus:border-neon-blue/50"
+                        className="pl-10 bg-secondary/30 border-glass-border focus:border-primary/50"
                       />
                     </div>
                   </div>
@@ -155,7 +155,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
                         required
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="pl-10 bg-secondary/30 border-glass-border focus:border-neon-blue/50"
+                        className="pl-10 bg-secondary/30 border-glass-border focus:border-primary/50"
                       />
                     </div>
                   </div>
@@ -166,7 +166,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white h-12 rounded-xl shadow-lg shadow-neon-blue/20"
+                  className="w-full bg-gradient-to-r from-primary to-emerald-500 hover:opacity-90 text-white h-12 rounded-xl shadow-lg shadow-primary/20"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -185,7 +185,7 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
                   <button
                     type="button"
                     onClick={() => setMode("signup")}
-                    className="text-neon-blue hover:underline font-medium"
+                    className="text-primary hover:underline font-medium"
                   >
                     Register now
                   </button>
@@ -194,7 +194,8 @@ export function AuthModal({ isOpen, onClose, initialMode = "login" }: AuthModalP
             </form>
 
             {/* Bottom Glow */}
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-neon-blue/40 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
           </motion.div>
         </div>
       )}

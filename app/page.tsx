@@ -16,7 +16,11 @@ const ResultDisplay = dynamic(
   { ssr: false }
 )
 
+<<<<<<< HEAD
 type VerificationResult = any // Since we are importing ResultDisplay dynamically, we can define the type or import it separately.
+=======
+type VerificationResult = any
+>>>>>>> 22648bd (Deploy: Professional PDF Reports and Cyber-Pro Palette Sync)
 
 type VerificationState = "idle" | "verifying" | "complete"
 

@@ -115,77 +115,77 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     try {
       const { jsPDF } = await import("jspdf")
       // 1. Generate QR Code
-    const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
-      margin: 1,
-      width: 250,
-      color: {
-        dark: "#06b6d4",
-        light: "#00000000"
-      }
-    })
+      const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
+        margin: 1,
+        width: 250,
+        color: {
+          dark: "#06b6d4",
+          light: "#00000000"
+        }
+      })
 
-    const canvas = document.createElement("canvas")
-    // High-resolution for A4 print quality (300 DPI approx)
-    const W = 2000, H = 1414
-    canvas.width = W
-    canvas.height = H
-    const ctx = canvas.getContext("2d")!
+      const canvas = document.createElement("canvas")
+      // High-resolution for A4 print quality (300 DPI approx)
+      const W = 2000, H = 1414
+      canvas.width = W
+      canvas.height = H
+      const ctx = canvas.getContext("2d")!
 
-    // --- Elegant Obsidian Background ---
-    const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W)
-    bgGrad.addColorStop(0, "#0A0F1C")
-    bgGrad.addColorStop(1, "#020617")
-    ctx.fillStyle = bgGrad
-    ctx.fillRect(0, 0, W, H)
+      // --- Elegant Obsidian Background ---
+      const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W)
+      bgGrad.addColorStop(0, "#0A0F1C")
+      bgGrad.addColorStop(1, "#020617")
+      ctx.fillStyle = bgGrad
+      ctx.fillRect(0, 0, W, H)
 
-    // Subtle technical grid
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.05)"
-    ctx.lineWidth = 1
-    for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
-    for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+      // Subtle technical grid
+      ctx.strokeStyle = "rgba(0, 212, 255, 0.05)"
+      ctx.lineWidth = 1
+      for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+      for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
 
-    // --- Premium Border ---
-    const bMargin = 60
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.3)"
-    ctx.lineWidth = 4
-    ctx.strokeRect(bMargin, bMargin, W - bMargin*2, H - bMargin*2)
-    
-    // Corner Accents
-    ctx.fillStyle = "#00D4FF"
-    const cs = 40
-    ctx.fillRect(bMargin-2, bMargin-2, cs, 6) // Top Left
-    ctx.fillRect(bMargin-2, bMargin-2, 6, cs)
-    ctx.fillRect(W-bMargin-cs+2, bMargin-2, cs, 6) // Top Right
-    ctx.fillRect(W-bMargin-4, bMargin-2, 6, cs)
-    
-    // --- Header Section ---
-    ctx.fillStyle = "rgba(0, 212, 255, 0.1)"
-    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.fill()
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.5)"; ctx.lineWidth = 2
-    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.stroke()
+      // --- Premium Border ---
+      const bMargin = 60
+      ctx.strokeStyle = "rgba(0, 212, 255, 0.3)"
+      ctx.lineWidth = 4
+      ctx.strokeRect(bMargin, bMargin, W - bMargin*2, H - bMargin*2)
+      
+      // Corner Accents
+      ctx.fillStyle = "#00D4FF"
+      const cs = 40
+      ctx.fillRect(bMargin-2, bMargin-2, cs, 6) // Top Left
+      ctx.fillRect(bMargin-2, bMargin-2, 6, cs)
+      ctx.fillRect(W-bMargin-cs+2, bMargin-2, cs, 6) // Top Right
+      ctx.fillRect(W-bMargin-4, bMargin-2, 6, cs)
+      
+      // --- Header Section ---
+      ctx.fillStyle = "rgba(0, 212, 255, 0.1)"
+      ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.fill()
+      ctx.strokeStyle = "rgba(0, 212, 255, 0.5)"; ctx.lineWidth = 2
+      ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.stroke()
 
-    ctx.textAlign = "center"
-    ctx.fillStyle = "#f8fafc"
-    ctx.font = "bold 42px 'Segoe UI', Arial"
-    ctx.fillText("CERTIFICATE OF AUTHENTICITY", W/2, 165)
-    ctx.fillStyle = "#00D4FF"
-    ctx.font = "bold 16px 'Segoe UI', Arial"
-    ctx.letterSpacing = "4px"
-    ctx.fillText("VERIFIED BY CERTIGUARD GLOBAL AI", W/2, 195)
-    ctx.letterSpacing = "0px"
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#f8fafc"
+      ctx.font = "bold 42px 'Segoe UI', Arial"
+      ctx.fillText("CERTIFICATE OF AUTHENTICITY", W/2, 165)
+      ctx.fillStyle = "#00D4FF"
+      ctx.font = "bold 16px 'Segoe UI', Arial"
+      ctx.letterSpacing = "4px"
+      ctx.fillText("VERIFIED BY CERTIGUARD GLOBAL AI", W/2, 195)
+      ctx.letterSpacing = "0px"
 
-    // --- Main Content Area ---
-    ctx.textAlign = "left"
-    const contentX = 200, contentY = 400
+      // --- Main Content Area ---
+      ctx.textAlign = "left"
+      const contentX = 200, contentY = 400
 
-    // Presented to
-    ctx.fillStyle = "#94a3b8"
-    ctx.font = "bold 20px 'Segoe UI', Arial"
-    ctx.fillText("OFFICIALLY PRESENTED TO", contentX, contentY)
-    
-    ctx.fillStyle = "#f1f5f9"
-    ctx.font = "82px Georgia, serif"
-    ctx.fillText(result.name || "Verified Student", contentX, contentY + 100)
+      // Presented to
+      ctx.fillStyle = "#94a3b8"
+      ctx.font = "bold 20px 'Segoe UI', Arial"
+      ctx.fillText("OFFICIALLY PRESENTED TO", contentX, contentY)
+      
+      ctx.fillStyle = "#f1f5f9"
+      ctx.font = "82px Georgia, serif"
+      ctx.fillText(result.name || "Verified Student", contentX, contentY + 100)
 
       // Course
       ctx.fillStyle = "#94a3b8"
@@ -245,38 +245,38 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       ctx.font = "bold 14px 'Segoe UI', Arial"
       ctx.fillText("AUTHENTIC", sealX + 60, sealY + 80)
 
-    // --- QR Code Section (Bottom Right) ---
-    const qrX = W - 450, qrY = H - 420
-    const qrImg = new Image()
-    qrImg.src = qrDataUrl
-    await new Promise(resolve => qrImg.onload = resolve)
-    ctx.drawImage(qrImg, qrX + 50, qrY + 20, 240, 240)
-    
-    ctx.textAlign = "center"
-    ctx.fillStyle = "#64748b"
-    ctx.font = "bold 14px 'Segoe UI', Arial"
-    ctx.fillText("SCAN TO VERIFY LIVE", qrX + 170, qrY + 280)
+      // --- QR Code Section (Bottom Right) ---
+      const qrX = W - 450, qrY = H - 420
+      const qrImg = new Image()
+      qrImg.src = qrDataUrl
+      await new Promise(resolve => qrImg.onload = resolve)
+      ctx.drawImage(qrImg, qrX + 50, qrY + 20, 240, 240)
+      
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#64748b"
+      ctx.font = "bold 14px 'Segoe UI', Arial"
+      ctx.fillText("SCAN TO VERIFY LIVE", qrX + 170, qrY + 280)
 
-    // --- Footer Metadata ---
-    ctx.textAlign = "left"
-    ctx.fillStyle = "#475569"
-    ctx.font = "12px 'Courier New', monospace"
-    const hash = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join("")
-    ctx.fillText(`TRANS_ID: ${hash.toUpperCase()}`, contentX, H - 100)
-    ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, contentX, H - 80)
+      // --- Footer Metadata ---
+      ctx.textAlign = "left"
+      ctx.fillStyle = "#475569"
+      ctx.font = "12px 'Courier New', monospace"
+      const hash = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join("")
+      ctx.fillText(`TRANS_ID: ${hash.toUpperCase()}`, contentX, H - 100)
+      ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, contentX, H - 80)
 
-    // --- Convert to PDF ---
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4"
-    })
-    
-    const imgData = canvas.toDataURL("image/jpeg", 0.95)
-    pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
-    
-    const fileName = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
-    pdf.save(fileName)
+      // --- Convert to PDF ---
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4"
+      })
+      
+      const imgData = canvas.toDataURL("image/jpeg", 0.95)
+      pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
+      
+      const fileName = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
+      pdf.save(fileName)
     } catch (error) {
       console.error("Report generation failed:", error)
     } finally {
