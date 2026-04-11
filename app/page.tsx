@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
+import { motion, AnimatePresence } from "framer-motion"
 import { AnimatedBackground } from "@/components/animated-background"
 import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
@@ -16,8 +17,7 @@ const ResultDisplay = dynamic(
   { ssr: false }
 )
 
-type VerificationResult = any // Since we are importing ResultDisplay dynamically, we can define the type or import it separately.
-
+type VerificationResult = any
 type VerificationState = "idle" | "verifying" | "complete"
 
 export default function Home() {
@@ -27,12 +27,10 @@ export default function Home() {
   const [result, setResult] = useState<VerificationResult | null>(null)
 
   const handleUpload = useCallback(async (file: File, platform: string = "auto") => {
-    console.log("Starting verification for:", file.name, "on platform:", platform)
     setVerificationState("verifying")
     setCurrentStep(1)
     setProgress(10)
 
-    // Simulate progress while waiting for backend
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev < 30) return prev + 2;
@@ -41,7 +39,6 @@ export default function Home() {
         return prev;
       });
       
-      // Update steps based on progress
       setProgress(p => {
         if (p > 20) setCurrentStep(2);
         if (p > 40) setCurrentStep(3);
@@ -62,35 +59,28 @@ export default function Home() {
         body: formData,
       })
 
-      if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`)
-      }
+      if (!response.ok) throw new Error(`Server responded with ${response.status}`)
 
       const data = await response.json()
-      console.log("Verification successful:", data)
-      
       clearInterval(interval)
       setProgress(100)
       setCurrentStep(5)
       
-      // Artificial delay for smooth transition
       setTimeout(() => {
         setResult(data)
         setVerificationState("complete")
       }, 800)
 
     } catch (error) {
-      console.error("Verification error:", error)
       clearInterval(interval)
-      
       setResult({
         isValid: false,
-        name: "Upload Failed",
-        course: "Check Backend Connection",
-        platform: "Error",
+        name: "Verification Error",
+        course: "Connection Protocol Failed",
+        platform: "NULL",
         verificationUrl: "",
         issueDate: "N/A",
-        certificateId: "ERROR",
+        certificateId: "ERROR_NODE",
       })
       setVerificationState("complete")
     }
@@ -103,10 +93,9 @@ export default function Home() {
     setResult(null)
   }, [])
 
-  // Scroll to verification section when starting
   useEffect(() => {
     if (verificationState === "verifying") {
-      const element = document.getElementById("verify")
+      const element = document.getElementById("verify-anchor")
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "start" })
       }
@@ -115,44 +104,73 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen overflow-x-hidden">
-      {/* Animated Background */}
       <AnimatedBackground />
 
-      {/* Content */}
-      <div className="relative z-10">
-        {/* Navigation */}
+      <div className="relative z-10 flex flex-col">
         <Navbar />
 
-        {/* Hero Section */}
-        <HeroSection />
+        <AnimatePresence mode="wait">
+          {verificationState === "idle" && (
+            <motion.div
+              key="hero"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20, scale: 0.98 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <HeroSection />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Upload Section - Always visible unless showing results */}
-        {verificationState !== "complete" && (
-          <UploadSection 
-            onUpload={handleUpload} 
-            isVerifying={verificationState === "verifying"} 
-          />
-        )}
+        <div id="verify-anchor" className="relative scroll-mt-24">
+          <AnimatePresence mode="wait">
+            {verificationState !== "complete" ? (
+              <motion.div
+                key="verifying-module"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4 }}
+              >
+                <UploadSection 
+                  onUpload={handleUpload} 
+                  isVerifying={verificationState === "verifying"} 
+                />
+                
+                <AnimatePresence>
+                  {verificationState === "verifying" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <VerificationStepper currentStep={currentStep} progress={progress} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="results-module"
+                initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {result && <ResultDisplay result={result} onVerifyAnother={handleVerifyAnother} />}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-        {/* Verification Progress */}
-        {verificationState === "verifying" && (
-          <VerificationStepper currentStep={currentStep} progress={progress} />
-        )}
-
-        {/* Results */}
-        {verificationState === "complete" && result && (
-          <ResultDisplay result={result} onVerifyAnother={handleVerifyAnother} />
-        )}
-
-        {/* Supported Platforms */}
         <PlatformsSection />
-
-        {/* Footer */}
         <Footer />
       </div>
 
-      {/* Floating AI Assistant */}
       <FloatingAssistant />
     </main>
   )
 }
+

@@ -4,34 +4,48 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.1 0.01 260);
-  --foreground: oklch(0.98 0.01 260);
-  --card: oklch(0.14 0.01 260);
-  --card-foreground: oklch(0.98 0.01 260);
-  --popover: oklch(0.12 0.01 260);
-  --popover-foreground: oklch(0.98 0.01 260);
-  --primary: oklch(0.68 0.14 160);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.18 0.02 260);
-  --secondary-foreground: oklch(0.9 0.01 260);
-  --muted: oklch(0.15 0.02 260);
-  --muted-foreground: oklch(0.6 0.01 260);
-  --accent: oklch(0.85 0.04 160);
-  --accent-foreground: oklch(0.1 0.01 260);
+  /* Obsidian Core */
+  --background: oklch(0.08 0.01 220);
+  --foreground: oklch(0.98 0.01 220);
+  
+  /* Layers */
+  --card: oklch(0.12 0.02 220);
+  --card-foreground: oklch(0.98 0.01 220);
+  --popover: oklch(0.1 0.02 220);
+  --popover-foreground: oklch(0.98 0.01 220);
+  
+  /* Brand - Radiant Aurora */
+  --primary: oklch(0.78 0.22 155);
+  --primary-foreground: oklch(0.1 0.01 220);
+  --secondary: oklch(0.15 0.03 220);
+  --secondary-foreground: oklch(0.9 0.01 220);
+  
+  /* Utilities */
+  --muted: oklch(0.18 0.02 220);
+  --muted-foreground: oklch(0.65 0.01 220);
+  --accent: oklch(0.8 0.18 195);
+  --accent-foreground: oklch(0.1 0.01 220);
+  
+  /* Critical States */
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --success: oklch(0.65 0.2 160);
-  --success-foreground: oklch(0.98 0 0);
-  --border: oklch(0.25 0.02 260);
-  --input: oklch(0.18 0.02 260);
-  --ring: oklch(0.68 0.14 160);
-  --radius: 1rem;
+  --success: oklch(0.75 0.2 155);
+  --success-foreground: oklch(0.1 0.01 220);
   
-  --neon-blue: oklch(0.68 0.14 160);
-  --neon-cyan: oklch(0.85 0.06 160);
-  --neon-purple: oklch(0.25 0.03 260);
-  --glass-bg: oklch(0.12 0.01 260 / 0.6);
-  --glass-border: oklch(0.68 0.14 160 / 0.15);
+  /* Architecture */
+  --border: oklch(0.24 0.03 220);
+  --input: oklch(0.15 0.03 220);
+  --ring: oklch(0.78 0.22 155);
+  --radius: 1.25rem;
+  
+  /* Legacy/Compatibility */
+  --neon-blue: oklch(0.78 0.22 155);
+  --neon-cyan: oklch(0.8 0.18 195);
+  --neon-purple: oklch(0.65 0.25 280);
+  
+  /* Luxury Glassmorphism */
+  --glass-bg: oklch(0.1 0.02 220 / 0.45);
+  --glass-border: oklch(1 0 0 / 0.12); /* Diamond White border */
 }
 
 @theme {
@@ -69,85 +83,108 @@
   --color-glass-bg: var(--glass-bg);
   --color-glass-border: var(--glass-border);
   
-  --animate-shimmer: shimmer 2.5s infinite linear;
-  --animate-float: float 6s infinite ease-in-out;
-  --animate-scan: scan 3s infinite linear;
-  --animate-glow: glow 4s infinite alternate ease-in-out;
+  --animate-shimmer: shimmer 3s infinite linear;
+  --animate-float: float 8s infinite ease-in-out;
+  --animate-scan: scan 4s infinite linear;
+  --animate-glow: glow 5s infinite alternate ease-in-out;
+  --animate-aurora: aurora 20s infinite linear;
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(200%); }
+  0% { transform: translateX(-150%) skewX(-20deg); }
+  100% { transform: translateX(250%) skewX(-20deg); }
 }
 
 @keyframes float {
   0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(2deg); }
+  50% { transform: translateY(-30px) rotate(1deg); }
 }
 
 @keyframes scan {
   0% { transform: translateY(-100%); opacity: 0; }
-  50% { opacity: 1; }
-  100% { transform: translateY(200%); opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { transform: translateY(300%); opacity: 0; }
 }
 
 @keyframes glow {
-  0% { filter: drop-shadow(0 0 5px var(--neon-blue)) brightness(1); }
-  100% { filter: drop-shadow(0 0 20px var(--neon-blue)) brightness(1.2); }
+  0% { filter: drop-shadow(0 0 5px var(--primary)) brightness(1); }
+  100% { filter: drop-shadow(0 0 25px var(--primary)) brightness(1.3); }
+}
+
+@keyframes aurora {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
 }
 
 @layer base {
   body {
     background-color: var(--background);
     color: var(--foreground);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
   }
 }
 
 @layer components {
+  .noise-surface {
+    position: relative;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-size: 200px;
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
   .glass {
     border: 1px solid var(--glass-border);
-    background-color: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    box-shadow: 0 8px 32px 0 oklch(0 0 0 / 0.4);
     transform: translateZ(0);
-    will-change: transform;
   }
   
   .glass-strong {
     border: 1px solid var(--glass-border);
-    background: oklch(0.08 0.02 260 / 0.9);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    background: oklch(0.06 0.02 220 / 0.85);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    box-shadow: 0 12px 40px -8px oklch(0 0 0 / 0.5);
     transform: translateZ(0);
-    will-change: transform;
   }
 
-  .neon-text {
-    text-shadow: 0 0 15px oklch(0.7 0.2 220 / 0.5);
+  .diamond-border {
+    position: relative;
   }
   
-  .neon-border {
-    border-color: oklch(0.7 0.2 220 / 0.4);
-    box-shadow: 0 0 15px oklch(0.7 0.2 220 / 0.2);
+  .diamond-border::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: inherit;
+    background: linear-gradient(135deg, oklch(1 0 0 / 0.15), transparent 40%, transparent 60%, oklch(1 0 0 / 0.15));
+    pointer-events: none;
+  }
+
+  .glow-text {
+    text-shadow: 0 0 20px oklch(0.78 0.22 155 / 0.35);
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Phantom Obsidian Style */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--background);
 }
 ::-webkit-scrollbar-thumb {
-  background-color: oklch(0.7 0.2 220 / 0.2);
-  border-radius: 100px;
-  transition: background-color 0.2s;
+  background: var(--border);
+  border-radius: 10px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: oklch(0.7 0.2 220 / 0.4);
+  background: var(--primary);
 }
+
 
 /* Removed .bg-noise to fix chromium 3D repaint scroll bugs */
