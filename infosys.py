@@ -2,6 +2,18 @@ import re
 import os
 import gc
 
+def format_iso_date(date_str):
+    """Converts 2026-04-01T09:17:37.395Z -> April 1, 2026"""
+    if not date_str or not isinstance(date_str, str): return date_str
+    try:
+        from datetime import datetime
+        # Handle ISO format with T and Z
+        iso_clean = date_str.split('T')[0]
+        dt = datetime.strptime(iso_clean, '%Y-%m-%d')
+        return dt.strftime('%B %d, %Y')
+    except:
+        return date_str
+
 def extract_text_from_pdf(pdf_path):
     # Lightweight local fallback
     import PyPDF2
@@ -85,7 +97,16 @@ def verify_infosys_qr(qr_data, pdf_text=""):
             )
 
         # 3. Success Response
-        issuance_date = get_nested_value(data, ["issuanceDate", "issuedOn", "date"]) or "N/A"
+        issuance_date = get_nested_value(data, ["issuanceDate", "issuedOn", "date"])
+        
+        # Prefer "Issued on" text from PDF if available (Bottom left of Infosys certificates)
+        pdf_date_match = re.search(r"Issued on:\s*(?:[A-Za-z]+,?\s+)?([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})", pdf_text, re.IGNORECASE)
+        if pdf_date_match:
+            issuance_date = pdf_date_match.group(1).strip()
+        elif issuance_date and "T" in str(issuance_date):
+            issuance_date = format_iso_date(str(issuance_date))
+        
+        issuance_date = issuance_date or "N/A"
         total_hours = get_nested_value(data, ["duration", "total_hours", "hours", "learningHours"]) or "N/A"
 
         return (

@@ -23,6 +23,24 @@ except ImportError:
 
 
 
+def format_date(date_str):
+    """Universal date polisher: handles ISO and standard formats."""
+    if not date_str or date_str == "N/A": return "N/A"
+    try:
+        from datetime import datetime
+        # Handle ISO format: 2026-04-01T...
+        if 'T' in str(date_str):
+            iso_clean = str(date_str).split('T')[0]
+            dt = datetime.strptime(iso_clean, '%Y-%m-%d')
+            return dt.strftime('%B %d, %Y')
+        # Handle 2026-04-01
+        if re.match(r'^\d{4}-\d{2}-\d{2}$', str(date_str)):
+            dt = datetime.strptime(str(date_str), '%Y-%m-%d')
+            return dt.strftime('%B %d, %Y')
+        return date_str
+    except:
+        return date_str
+
 app = Flask(__name__)
 # Enable CORS for both local development and the production Vercel frontend
 CORS(app, resources={r"/*": {
@@ -208,7 +226,7 @@ def parse_verification_output(output, platform, text, forensic_result=None):
         "course": course,
         "platform": platform.capitalize(),
         "verificationUrl": url,
-        "issueDate": extracted_date if extracted_date else "N/A",
+        "issueDate": format_date(extracted_date) if extracted_date else "N/A",
         "totalHours": hours,
         "certificateId": f"CERT-{os.urandom(3).hex().upper()}",
         "rawOutput": output,

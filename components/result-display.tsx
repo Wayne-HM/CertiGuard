@@ -89,7 +89,7 @@ const DetailRow = memo(function DetailRow({
       </motion.div>
       <div className="flex-1 min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="font-medium text-foreground truncate">{value}</p>
+        <p className="font-medium text-foreground break-words whitespace-pre-wrap">{value}</p>
       </div>
     </motion.div>
   )
