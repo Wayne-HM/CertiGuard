@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import { CheckCircle2, XCircle, User, BookOpen, Building2, ExternalLink, Download, RotateCcw, Sparkles, AlertTriangle, Terminal, Clock, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { jsPDF } from "jspdf"
+import QRCode from "qrcode"
 
 export interface VerificationResult {
   isValid: boolean
@@ -97,6 +99,7 @@ const DetailRow = memo(function DetailRow({
 
 export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
   const [showLog, setShowLog] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const isValid = result.isValid
   const isActionRequired = result.status === "action_required"
 
@@ -108,128 +111,177 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     { icon: Clock, label: "Total Hours", value: result.totalHours || "N/A" },
   ], [result.name, result.course, result.platform, result.issueDate, result.totalHours])
 
-  const downloadReport = () => {
+  const downloadReport = async () => {
+    setIsDownloading(true)
+    try {
+      // 1. Generate QR Code
+    const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
+      margin: 1,
+      width: 250,
+      color: {
+        dark: "#06b6d4",
+        light: "#00000000"
+      }
+    })
+
     const canvas = document.createElement("canvas")
-    const W = 900, H = 560
+    // High-resolution for A4 print quality (300 DPI approx)
+    const W = 2000, H = 1414
     canvas.width = W
     canvas.height = H
     const ctx = canvas.getContext("2d")!
 
-    // --- Background ---
-    const bgGrad = ctx.createLinearGradient(0, 0, W, H)
-    bgGrad.addColorStop(0, "#0a0e1a")
-    bgGrad.addColorStop(1, "#0d1224")
+    // --- Elegant Obsidian Background ---
+    const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W)
+    bgGrad.addColorStop(0, "#0f172a")
+    bgGrad.addColorStop(1, "#020617")
     ctx.fillStyle = bgGrad
     ctx.fillRect(0, 0, W, H)
 
-    // Subtle grid pattern
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.03)"
-    ctx.lineWidth = 0.5
-    for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
-    for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
+    // Subtle technical grid
+    ctx.strokeStyle = "rgba(6, 182, 212, 0.05)"
+    ctx.lineWidth = 1
+    for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+    for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
 
-    // --- AI Score Badge (top-left) ---
-    ctx.fillStyle = "rgba(16, 185, 129, 0.15)"
-    ctx.beginPath(); ctx.roundRect(20, 18, 110, 52, 14); ctx.fill()
-    ctx.strokeStyle = "rgba(16, 185, 129, 0.5)"
-    ctx.lineWidth = 1.5
-    ctx.beginPath(); ctx.roundRect(20, 18, 110, 52, 14); ctx.stroke()
-    // AI Score icon
+    // --- Premium Border ---
+    const bMargin = 60
+    ctx.strokeStyle = "rgba(6, 182, 212, 0.3)"
+    ctx.lineWidth = 4
+    ctx.strokeRect(bMargin, bMargin, W - bMargin*2, H - bMargin*2)
+    
+    // Corner Accents
+    ctx.fillStyle = "#06b6d4"
+    const cs = 40
+    ctx.fillRect(bMargin-2, bMargin-2, cs, 6) // Top Left
+    ctx.fillRect(bMargin-2, bMargin-2, 6, cs)
+    ctx.fillRect(W-bMargin-cs+2, bMargin-2, cs, 6) // Top Right
+    ctx.fillRect(W-bMargin-4, bMargin-2, 6, cs)
+    
+    // --- Header Section ---
+    ctx.fillStyle = "rgba(6, 182, 212, 0.1)"
+    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.fill()
+    ctx.strokeStyle = "rgba(6, 182, 212, 0.5)"; ctx.lineWidth = 2
+    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.stroke()
+
+    ctx.textAlign = "center"
+    ctx.fillStyle = "#f8fafc"
+    ctx.font = "bold 42px 'Segoe UI', Arial"
+    ctx.fillText("CERTIFICATE OF AUTHENTICITY", W/2, 165)
+    ctx.fillStyle = "#06b6d4"
+    ctx.font = "bold 16px 'Segoe UI', Arial"
+    ctx.letterSpacing = "4px"
+    ctx.fillText("VERIFIED BY CERTIGUARD GLOBAL AI", W/2, 195)
+    ctx.letterSpacing = "0px"
+
+    // --- Main Content Area ---
+    ctx.textAlign = "left"
+    const contentX = 200, contentY = 400
+
+    // Presented to
+    ctx.fillStyle = "#94a3b8"
+    ctx.font = "bold 20px 'Segoe UI', Arial"
+    ctx.fillText("OFFICIALLY PRESENTED TO", contentX, contentY)
+    
+    ctx.fillStyle = "#f1f5f9"
+    ctx.font = "82px Georgia, serif"
+    ctx.fillText(result.name || "Verified Student", contentX, contentY + 100)
+
+    // Course
+    ctx.fillStyle = "#94a3b8"
+    ctx.font = "bold 20px 'Segoe UI', Arial"
+    ctx.fillText("FOR SUCCESSFUL COMPLETION OF", contentX, contentY + 220)
+    
+    ctx.fillStyle = "#06b6d4"
+    ctx.font = "italic 48px Georgia, serif"
+    // Handle long course titles
+    const courseTitle = result.course || "Advanced Professional Specialization"
+    if (courseTitle.length > 50) {
+      ctx.font = "italic 36px Georgia, serif"
+      ctx.fillText(courseTitle.substring(0, 50), contentX, contentY + 290)
+      ctx.fillText(courseTitle.substring(50), contentX, contentY + 340)
+    } else {
+      ctx.fillText(courseTitle, contentX, contentY + 300)
+    }
+
+    // --- Details Grid ---
+    const gridY = contentY + 500
+    const colWidth = 450
+
+    // Date
+    ctx.fillStyle = "#64748b"
+    ctx.font = "bold 18px 'Segoe UI', Arial"
+    ctx.fillText("ISSUE DATE", contentX, gridY)
+    ctx.fillStyle = "#cbd5e1"
+    ctx.font = "bold 24px 'Segoe UI', Arial"
+    ctx.fillText(result.issueDate, contentX, gridY + 40)
+
+    // Platform
+    ctx.fillStyle = "#64748b"
+    ctx.font = "bold 18px 'Segoe UI', Arial"
+    ctx.fillText("PLATFORM", contentX + colWidth, gridY)
+    ctx.fillStyle = "#cbd5e1"
+    ctx.font = "bold 24px 'Segoe UI', Arial"
+    ctx.fillText(result.platform, contentX + colWidth, gridY + 40)
+
+    // Certificate ID
+    ctx.fillStyle = "#64748b"
+    ctx.font = "bold 18px 'Segoe UI', Arial"
+    ctx.fillText("CERTIFICATE ID", contentX + colWidth * 2, gridY)
+    ctx.fillStyle = "#cbd5e1"
+    ctx.font = "bold 24px 'Segoe UI', Arial"
+    ctx.fillText(result.certificateId || "CERT-882031", contentX + colWidth * 2, gridY + 40)
+
+    // --- Verification Seal (Bottom Left) ---
+    const sealX = contentX, sealY = H - 280
+    ctx.fillStyle = "rgba(16, 185, 129, 0.1)"
+    ctx.beginPath(); ctx.arc(sealX + 60, sealY + 60, 80, 0, Math.PI * 2); ctx.fill()
+    ctx.strokeStyle = "#10b981"; ctx.lineWidth = 3
+    ctx.beginPath(); ctx.arc(sealX + 60, sealY + 60, 70, 0, Math.PI * 2); ctx.stroke()
+    ctx.textAlign = "center"
     ctx.fillStyle = "#10b981"
-    ctx.beginPath(); ctx.arc(46, 44, 14, 0, Math.PI * 2); ctx.fill()
-    ctx.fillStyle = "#0a0e1a"; ctx.font = "bold 11px 'Segoe UI'"; ctx.fillText("✓", 41, 48)
-    ctx.fillStyle = "#94a3b8"; ctx.font = "bold 10px 'Segoe UI'"; ctx.fillText("AI SCORE", 66, 38)
-    ctx.fillStyle = "#10b981"; ctx.font = "bold 16px 'Segoe UI'"
-    ctx.fillText(isValid ? "100/100" : "0/100", 66, 56)
+    ctx.font = "bold 20px 'Segoe UI', Arial"
+    ctx.fillText("AI VERIFIED", sealX + 60, sealY + 55)
+    ctx.font = "bold 14px 'Segoe UI', Arial"
+    ctx.fillText("AUTHENTIC", sealX + 60, sealY + 80)
 
-    // --- Main Card ---
-    const cx = 120, cy = 90, cw = W - 160, ch = H - 130
-    // Card glow
-    ctx.shadowColor = isValid ? "rgba(6, 182, 212, 0.25)" : "rgba(239, 68, 68, 0.25)"
-    ctx.shadowBlur = 30
-    ctx.fillStyle = "rgba(15, 23, 42, 0.85)"
-    ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 20); ctx.fill()
-    ctx.shadowBlur = 0
-    // Card border
-    const borderGrad = ctx.createLinearGradient(cx, cy, cx + cw, cy + ch)
-    borderGrad.addColorStop(0, isValid ? "rgba(6, 182, 212, 0.6)" : "rgba(239, 68, 68, 0.6)")
-    borderGrad.addColorStop(0.5, isValid ? "rgba(139, 92, 246, 0.3)" : "rgba(239, 68, 68, 0.3)")
-    borderGrad.addColorStop(1, isValid ? "rgba(6, 182, 212, 0.6)" : "rgba(239, 68, 68, 0.6)")
-    ctx.strokeStyle = borderGrad; ctx.lineWidth = 1.5
-    ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 20); ctx.stroke()
+    // --- QR Code Section (Bottom Right) ---
+    const qrX = W - 450, qrY = H - 420
+    const qrImg = new Image()
+    qrImg.src = qrDataUrl
+    await new Promise(resolve => qrImg.onload = resolve)
+    ctx.drawImage(qrImg, qrX + 50, qrY + 20, 240, 240)
+    
+    ctx.textAlign = "center"
+    ctx.fillStyle = "#64748b"
+    ctx.font = "bold 14px 'Segoe UI', Arial"
+    ctx.fillText("SCAN TO VERIFY LIVE", qrX + 170, qrY + 280)
 
-    // --- Shield Icon ---
-    ctx.fillStyle = "rgba(30, 41, 59, 0.9)"
-    ctx.beginPath(); ctx.roundRect(cx + 30, cy + 28, 52, 52, 14); ctx.fill()
-    ctx.fillStyle = "#06b6d4"; ctx.font = "28px 'Segoe UI'"; ctx.fillText("🛡️", cx + 40, cy + 63)
+    // --- Footer Metadata ---
+    ctx.textAlign = "left"
+    ctx.fillStyle = "#475569"
+    ctx.font = "12px 'Courier New', monospace"
+    const hash = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join("")
+    ctx.fillText(`TRANS_ID: ${hash.toUpperCase()}`, contentX, H - 100)
+    ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, contentX, H - 80)
 
-    // --- Header Text ---
-    ctx.fillStyle = "#f1f5f9"; ctx.font = "bold 26px 'Segoe UI'"
-    ctx.fillText("CERTIGUARD OFFICIAL", cx + 96, cy + 52)
-    ctx.fillStyle = "#06b6d4"; ctx.font = "12px 'Segoe UI'"
-    ctx.fillText("VERIFICATION CERTIFICATE", cx + 98, cy + 70)
-
-    // --- Decorative GLOBAL-ID (top-right of card) ---
-    ctx.fillStyle = "rgba(139, 92, 246, 0.15)"
-    ctx.beginPath(); ctx.roundRect(cx + cw - 160, cy + 28, 130, 32, 8); ctx.fill()
-    ctx.strokeStyle = "rgba(139, 92, 246, 0.4)"; ctx.lineWidth = 1
-    ctx.beginPath(); ctx.roundRect(cx + cw - 160, cy + 28, 130, 32, 8); ctx.stroke()
-    ctx.fillStyle = "#a78bfa"; ctx.font = "bold 10px 'Segoe UI'"
-    ctx.fillText("GLOBAL-ID-882", cx + cw - 135, cy + 48)
-
-    // Divider
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.12)"; ctx.lineWidth = 1
-    ctx.beginPath(); ctx.moveTo(cx + 30, cy + 100); ctx.lineTo(cx + cw - 30, cy + 100); ctx.stroke()
-
-    // --- Presented To ---
-    ctx.fillStyle = "#64748b"; ctx.font = "bold 11px 'Segoe UI'"
-    ctx.fillText("PRESENTED TO", cx + 35, cy + 128)
-    ctx.fillStyle = "#f8fafc"; ctx.font = "bold 32px Georgia, serif"
-    ctx.fillText(result.name || "Alex Sterling", cx + 35, cy + 170)
-
-    // --- Course / Specialization ---
-    ctx.fillStyle = "#cbd5e1"; ctx.font = "18px 'Segoe UI'"
-    ctx.fillText(result.course || "Advanced AI Specialization", cx + 35, cy + 205)
-
-    // --- Verification Status ---
-    ctx.fillStyle = isValid ? "#10b981" : "#ef4444"; ctx.font = "bold 15px 'Segoe UI'"
-    ctx.fillText(`Verification Status: ${isValid ? "AUTHENTIC" : "FRAUDULENT"}`, cx + 35, cy + 245)
-
-    // --- Platform badge (right side) ---
-    ctx.fillStyle = isValid ? "rgba(6, 182, 212, 0.2)" : "rgba(239, 68, 68, 0.2)"
-    ctx.beginPath(); ctx.arc(cx + cw - 65, cy + 185, 35, 0, Math.PI * 2); ctx.fill()
-    ctx.strokeStyle = isValid ? "rgba(6, 182, 212, 0.5)" : "rgba(239, 68, 68, 0.5)"
-    ctx.lineWidth = 2
-    ctx.beginPath(); ctx.arc(cx + cw - 65, cy + 185, 35, 0, Math.PI * 2); ctx.stroke()
-    ctx.fillStyle = isValid ? "#06b6d4" : "#ef4444"; ctx.font = "28px 'Segoe UI'"
-    ctx.fillText("🎓", cx + cw - 80, cy + 194)
-
-    // --- Bottom Bar ---
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.08)"; ctx.lineWidth = 1
-    ctx.beginPath(); ctx.moveTo(cx + 30, cy + ch - 80); ctx.lineTo(cx + cw - 30, cy + ch - 80); ctx.stroke()
-
-    // IDs
-    ctx.fillStyle = "#475569"; ctx.font = "12px 'Segoe UI'"
-    ctx.fillText(`⊕ ID: 2991-X`, cx + 35, cy + ch - 52)
-    ctx.fillText(`♟ ${result.platform || "Infosys"}`, cx + 180, cy + ch - 52)
-
-    // SECURED BY AI badge
-    ctx.fillStyle = "rgba(139, 92, 246, 0.15)"
-    ctx.beginPath(); ctx.roundRect(cx + cw - 180, cy + ch - 70, 145, 30, 8); ctx.fill()
-    ctx.strokeStyle = "rgba(139, 92, 246, 0.5)"; ctx.lineWidth = 1
-    ctx.beginPath(); ctx.roundRect(cx + cw - 180, cy + ch - 70, 145, 30, 8); ctx.stroke()
-    ctx.fillStyle = "#a78bfa"; ctx.font = "bold 11px 'Segoe UI'"
-    ctx.fillText("SECURED BY AI", cx + cw - 155, cy + ch - 50)
-
-    // --- Date & URL footer ---
-    ctx.fillStyle = "#334155"; ctx.font = "10px 'Segoe UI'"
-    ctx.fillText(`Verified on: ${result.issueDate}  |  Report ID: ${result.certificateId || "CERT-182203"}`, cx + 35, cy + ch - 18)
-
-    // --- Download ---
-    const link = document.createElement("a")
-    link.download = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "certificate"}.png`
-    link.href = canvas.toDataURL("image/png")
-    link.click()
+    // --- Convert to PDF ---
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4"
+    })
+    
+    const imgData = canvas.toDataURL("image/jpeg", 0.95)
+    pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
+    
+    const fileName = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
+    pdf.save(fileName)
+    } catch (error) {
+      console.error("Report generation failed:", error)
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
@@ -466,11 +518,16 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     <Button
                       size="lg"
                       onClick={downloadReport}
-                      className="w-full relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white shadow-lg shadow-neon-blue/20 gpu-accelerate"
+                      disabled={isDownloading}
+                      className="w-full relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white shadow-lg shadow-neon-blue/20 gpu-accelerate disabled:opacity-70"
                     >
                       <span className="relative z-10 flex items-center justify-center gap-2">
-                        <Download className="w-4 h-4" />
-                        Download Report
+                        {isDownloading ? (
+                          <RotateCcw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        {isDownloading ? "Generating Report..." : "Download Report"}
                       </span>
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer" />
                     </Button>
