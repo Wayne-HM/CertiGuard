@@ -129,11 +129,47 @@ def get_verified_details(all_text, page_title):
         return "Name Not Found", "Course Not Found"
 
 def extract_hours_and_date(text):
+    from datetime import datetime
     hours = "N/A"
     date = "N/A"
     
-    date_match = re.search(r"(?:on|Completed on|Issued on|Date:?)\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})", text, re.I)
-    if date_match: date = date_match.group(1).strip()
+    # Standardize spaces for easier scanning
+    text_clean = re.sub(r' +', ' ', text)
+    
+    # 1. Look for dates with prefixes
+    date_match = re.search(r"(?:on|Completed on|Issued on|Date:?)\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})", text_clean, re.I)
+    if date_match: 
+        date = date_match.group(1).strip()
+    else:
+        # 2. Standalone date search (find all instances)
+        potential_dates = re.findall(r"\b([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\b", text_clean)
+        
+        # Avoid capturing today's date if possible (usually the verification date)
+        today = datetime.now()
+        # On Windows, use %#d for no-leading-zero, on Linux use %-d
+        # Since the user's OS is Windows, we use %#d
+        try:
+            today_str = today.strftime("%B %#d, %Y")
+            today_full = today.strftime("%B %d, %Y")
+            today_short = today.strftime("%b %#d, %Y")
+            today_short_full = today.strftime("%b %d, %Y")
+        except ValueError:
+            # Fallback for non-windows systems just in case
+            today_str = today.strftime("%B %d, %Y").replace(" 0", " ")
+            today_full = today.strftime("%B %d, %Y")
+            today_short = today.strftime("%b %d, %Y").replace(" 0", " ")
+            today_short_full = today.strftime("%b %d, %Y")
+        
+        today_set = {today_str.lower(), today_full.lower(), today_short.lower(), today_short_full.lower()}
+        
+        for d in potential_dates:
+            if d.lower() not in today_set:
+                date = d.strip()
+                break
+        
+        # Fallback to first found date if all are today or none found
+        if date == "N/A" and potential_dates:
+            date = potential_dates[0].strip()
     
     h_match = re.search(r"(\d+)\s*(?:total\s*hours|hours)", text, re.I)
     if h_match: hours = h_match.group(1).strip()
