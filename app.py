@@ -199,16 +199,15 @@ def parse_verification_output(output, platform, text, forensic_result=None):
     url_match = re.search(r"(https?://[^\s]+)", output)
     url = url_match.group(1).strip() if url_match else ""
 
-    import datetime
     return {
         "isValid": is_valid,
         "name": name,
         "course": course,
         "platform": platform.capitalize(),
         "verificationUrl": url,
-        "issueDate": extracted_date if extracted_date else datetime.datetime.now().strftime("%B %d, %Y"),
+        "issueDate": extracted_date if extracted_date else "N/A",
         "totalHours": hours,
-        "certificateId": f"CERT-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')[-6:]}",
+        "certificateId": f"CERT-{os.urandom(3).hex().upper()}",
         "rawOutput": output,
         "status": status,
         "isSuspicious": is_suspicious,

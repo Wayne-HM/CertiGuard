@@ -134,20 +134,22 @@ def verify_saylor(saylorId, pdfUrl):
         for row in soup.find_all(["tr", "div"]):
             row_text = row.get_text(separator=" ", strip=True)
             # Match "Label: Value" patterns
-            m = re.search(r"(Full name|Name|Certificate|Course|Date|Issued on)[:\s]+(.+)", row_text, re.I)
+            m = re.search(r"(Full name|Name|Certificate|Course|Date issued|Date|Issued on)[:\s]+(.+)", row_text, re.I)
             if m:
-                label = m.group(1).lower().strip()
+                label = m.group(1).lower().replace('issued', '').strip() # Normalize to just 'date' or 'name'
                 val = m.group(2).strip()
                 extracted_data[label] = val
 
-        if "full name" in extracted_data: studentName = extracted_data["full name"]
+        if "full name" in extracted_data: studentName = extracted_data["full_name"]
         elif "name" in extracted_data: studentName = extracted_data["name"]
         
         if "certificate" in extracted_data: courseName = extracted_data["certificate"]
         elif "course" in extracted_data: courseName = extracted_data["course"]
 
+        if "date" in extracted_data: issueDate = extracted_data["date"]
+
         # Final table-based search if above missed
-        if not studentName or not courseName:
+        if not studentName or not courseName or not issueDate:
             for table in soup.find_all("table"):
                 cells = [td.get_text(strip=True) for td in table.find_all(["td", "th"])]
                 for i, text in enumerate(cells):
@@ -156,6 +158,8 @@ def verify_saylor(saylorId, pdfUrl):
                         studentName = studentName or cells[i+1].strip()
                     if clean_text in ["certificate", "course"] and i + 1 < len(cells):
                         courseName = courseName or cells[i+1].strip()
+                    if "date" in clean_text and i + 1 < len(cells):
+                        issueDate = issueDate or cells[i+1].strip()
 
         # Step 2: PDF extraction for grade/hours/date disabled locally
         # Use worker data if we were to support this, or fallback to web scraping
