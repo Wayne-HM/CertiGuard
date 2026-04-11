@@ -226,17 +226,29 @@ def get_verified_details(all_text, page_title):
         return f"Error: {e}", "Error"
 
 def extract_hours_and_date(text):
+    from datetime import datetime
     hours = "N/A"
     date = "N/A"
-    # Coursera Date: "Completed on Month Day, Year" or "on Month Day, Year"
-    d_match = re.search(r"(?:on|Completed on|Date:?)\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})", text, re.I)
-    if not d_match:
-        # Month Day, Year standalone
-        d_match = re.search(r"\b([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\b", text)
-    if not d_match:
-        # Numeric fallback: 11/04/2026 or 11-04-2026
-        d_match = re.search(r"\b(\d{1,2}[/\-]\d{1,2}[/\-]\d{4})\b", text)
-    if d_match: date = d_match.group(1).strip()
+    today_str = datetime.now().strftime("%B %d, %Y")
+    today_short = datetime.now().strftime("%b %d, %Y")
+    
+    # Prioritize dates near completion/issued markers
+    patterns = [
+        r"(?:on|Completed on|Date Issued|Date:?)\s*([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4})",
+        r"\b([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4})\b"
+    ]
+    
+    found_dates = []
+    for p in patterns:
+        for m in re.finditer(p, text, re.I):
+            d = m.group(1).strip()
+            # Normalize and avoid current date
+            if today_str.lower() in d.lower() or today_short.lower() in d.lower():
+                continue
+            found_dates.append(d)
+            
+    if found_dates:
+        date = found_dates[0] # Pick the first non-current date
     
     # Hours: "approx. 15 hours" or "15 total hours"
     h_match = re.search(r"(\d+)\s*(?:total\s*hours|hours)", text, re.I)

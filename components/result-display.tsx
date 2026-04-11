@@ -16,6 +16,7 @@ export interface VerificationResult {
   certificateId: string
   rawOutput: string
   totalHours?: string
+  status?: "valid" | "fake" | "manual_check" | "action_required" | "error"
 }
 
 interface ResultDisplayProps {
@@ -97,6 +98,7 @@ const DetailRow = memo(function DetailRow({
 export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
   const [showLog, setShowLog] = useState(false)
   const isValid = result.isValid
+  const isActionRequired = result.status === "action_required"
 
   const details = useMemo(() => [
     { icon: User, label: "Name", value: result.name },
@@ -242,10 +244,12 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
           <Card
             className={`
               relative overflow-hidden glass-strong rounded-3xl border-2 gpu-accelerate
-              ${isValid ? "border-success/50" : "border-destructive/50"}
+              ${isActionRequired ? "border-amber-500/50" : isValid ? "border-success/50" : "border-destructive/50"}
             `}
             style={{
-              boxShadow: isValid 
+              boxShadow: isActionRequired
+                ? "0 0 40px oklch(0.7 0.2 60 / 0.15)"
+                : isValid 
                 ? "0 0 40px oklch(0.65 0.2 160 / 0.2)" 
                 : "0 0 40px oklch(0.55 0.22 25 / 0.2)",
             }}
@@ -264,7 +268,19 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   transition={quickSpring}
                   className="inline-flex relative"
                 >
-                  {isValid ? (
+                  {isActionRequired ? (
+                    <>
+                      {/* Warning glow */}
+                      <div className="absolute inset-0 bg-amber-500/25 blur-2xl rounded-full animate-pulse" />
+                      <motion.div
+                        animate={{ rotate: [0, -5, 5, 0] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="relative gpu-accelerate"
+                      >
+                        <AlertTriangle className="w-24 h-24 text-amber-500 drop-shadow-lg" />
+                      </motion.div>
+                    </>
+                  ) : isValid ? (
                     <>
                       {/* Success glow */}
                       <div className="absolute inset-0 bg-success/25 blur-2xl rounded-full animate-glow-pulse" />
@@ -318,14 +334,47 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.35, duration: 0.35 }}
                 >
-                  <h2 className={`text-2xl sm:text-3xl font-bold mt-6 mb-2 ${isValid ? "text-success" : "text-destructive"}`}>
-                    {isValid ? "Verification Status: AUTHENTIC" : "Fake Certificate Detected"}
+                  <h2 className={`text-2xl sm:text-3xl font-bold mt-6 mb-2 ${isActionRequired ? "text-amber-500" : isValid ? "text-success" : "text-destructive"}`}>
+                    {isActionRequired ? "Verification Blocked: Captcha Required" : isValid ? "Verification Status: AUTHENTIC" : "Fake Certificate Detected"}
                   </h2>
                   <p className="text-muted-foreground">
-                    {isValid ? "This certificate is authentic and secured by AI" : "This certificate could not be verified"}
+                    {isActionRequired 
+                      ? "The platform side is asking to verify you are a human. Please solve it on their site." 
+                      : isValid 
+                        ? "This certificate is authentic and secured by AI" 
+                        : "This certificate could not be verified"}
                   </p>
                 </motion.div>
               </div>
+
+              {isActionRequired && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-8 p-6 glass rounded-2xl border border-amber-500/30 bg-amber-500/5"
+                >
+                  <h4 className="flex items-center gap-2 text-amber-500 font-semibold mb-3">
+                    <Sparkles className="w-4 h-4" />
+                    How to fix this:
+                  </h4>
+                  <ol className="text-sm space-y-3 text-muted-foreground list-decimal pl-4">
+                    <li>Click the <strong>Solve Captcha on Site</strong> button below.</li>
+                    <li>Verify the "Just a moment..." or captcha challenge in the new tab.</li>
+                    <li>Once the certificate appears, return here and click <strong>Verify Another</strong> to re-check.</li>
+                  </ol>
+                  <div className="mt-6">
+                    <Button
+                      asChild
+                      className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold h-12 shadow-lg shadow-amber-500/20"
+                    >
+                      <a href={result.verificationUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
+                        <ExternalLink className="w-4 h-4" />
+                        Solve Captcha on Site
+                      </a>
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
 
               {/* Certificate Details */}
               <div className="space-y-4">
@@ -498,8 +547,8 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
             </CardContent>
 
             {/* Corner glows */}
-            <div className={`absolute top-0 left-0 w-28 h-28 ${isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
-            <div className={`absolute bottom-0 right-0 w-28 h-28 ${isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
+            <div className={`absolute top-0 left-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
+            <div className={`absolute bottom-0 right-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
           </Card>
         </motion.div>
       </div>

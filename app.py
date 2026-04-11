@@ -157,13 +157,16 @@ def parse_verification_output(output, platform, text, forensic_result=None):
     # Check for success indicators
     has_success = "✅" in output or "valid" in output_lower or "authentic" in output_lower or "verified" in output_lower
     
-    # Check for analysis/manual check flags
+    # Check for analysis/manual check/action required flags
     is_analysis = "analysis" in output_lower or "restricted" in output_lower or "manual" in output_lower
+    is_action_required = "⚠️" in output or "action required" in output_lower or "verification required" in output_lower
     
     # Final validity decision: MUST have success indicator and MUST NOT have error indicator
     is_valid = has_success and not has_error
     
-    if is_analysis and not has_success:
+    if is_action_required:
+        status = "action_required"
+    elif is_analysis and not has_success:
         status = "manual_check"
     elif is_valid:
         status = "valid"
@@ -182,11 +185,11 @@ def parse_verification_output(output, platform, text, forensic_result=None):
         name_match = re.search(r"(?:name|student):\s+([A-Za-z\s]+?)(?=\n|$)", output, re.IGNORECASE)
         name = name_match.group(1).strip() if name_match else "Extracted from Certificate"
     
-    # 2. Course Extraction - Greedier capture
-    course_match = re.search(r"^Course:\s*(.*)$", output, re.MULTILINE | re.IGNORECASE)
+    # 2. Course Extraction - Greedier capture (allows multi-line, stops at specific labels or end of string)
+    course_match = re.search(r"^Course:\s*(.*?)(?=\n[A-Z][a-z]+:|\nURL:|\Z)", output, re.MULTILINE | re.IGNORECASE | re.DOTALL)
     course = course_match.group(1).strip() if course_match else ""
     if not course or course == "Course Not Found" or len(course) < 5:
-        course_match = re.search(r"course:\s*(.+?)(?=\n|URL:|$)", output, re.IGNORECASE)
+        course_match = re.search(r"course:\s*(.+?)(?=\n[A-Z][a-z]+:|\nURL:|\Z)", output, re.IGNORECASE | re.DOTALL)
         course = course_match.group(1).strip() if course_match else "Extracted from Certificate"
     
     # 3. Hours and Date

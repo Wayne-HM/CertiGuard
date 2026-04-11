@@ -55,25 +55,40 @@ def clean_text_noise(text):
     return text.strip()
 
 def extract_hours_and_date(text):
+    from datetime import datetime
     hours = "N/A"
     date = "N/A"
+    today_str = datetime.now().strftime("%B %d, %Y")
+    today_short = datetime.now().strftime("%b %d, %Y")
     
-    # 1. Improved Date extraction regex (Month Day, Year)
-    # Looking for a Date after "on" or as a standalone line
-    d_match = re.search(r"(?:on|Completed on|Date:?)\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})", text, re.I)
-    if d_match:
-        date = d_match.group(1).strip()
+    # 1. Improved Date extraction regex (Month Day, Year or Abbr. Day, Year)
+    patterns = [
+        r"(?:on|Completed on|Date Issued|Date:?)\s*([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4})",
+        r"\b([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4})\b"
+    ]
+    
+    found_dates = []
+    for p in patterns:
+        for m in re.finditer(p, text, re.I):
+            d = m.group(1).strip()
+            # Normalize and avoid current date (verification date)
+            if today_str.lower() in d.lower() or today_short.lower() in d.lower():
+                continue
+            found_dates.append(d)
+            
+    if found_dates:
+        date = found_dates[0]
+    
+    # 3. Standalone date fallback (handles abbreviations like Feb. 12)
+    if date == "N/A":
+        d_match = re.search(r"\b([A-Z][a-z]{2,3}\.?\s+\d{1,2},?\s+\d{4})\b", text)
+        if d_match: date = d_match.group(1).strip()
     
     # 2. Improved Hours extraction
     h_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:total\s*hours|hours\s*total|hours)", text, re.I)
     if h_match:
         hours = h_match.group(1).strip()
         
-    # 3. Standalone date fallback
-    if date == "N/A":
-        d_match = re.search(r"\b([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\b", text)
-        if d_match: date = d_match.group(1).strip()
-    
     return clean_text_noise(hours), clean_text_noise(date)
 
 def extract_details_from_pdf_text(text):
@@ -200,8 +215,8 @@ def verifyUdemy(certId):
             print(f"DEBUG: Udemy verify attempt {attempt+1} for {certId} using requests")
             response = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
 
-            if response.status_code == 404:
-                return {"status": "Fake", "reason": "Certificate ID not found on Udemy (404)."}
+            if response.status_code == 403 or "verify you are human" in response.text.lower() or "challenge-platform" in response.text.lower():
+                return {"status": "Action Required", "reason": "Cloudflare challenge detected. Please solve the captcha on the site."}
 
             if response.status_code != 200:
                 print(f"DEBUG: Udemy returned status {response.status_code}")
@@ -248,15 +263,30 @@ def verifyUdemy(certId):
             page_text = soup.get_text(separator="\n")
 
             if not studentName or not courseName:
-                # Improved regex: anchor to the DATE at the end to avoid stopping at 'on' inside course title
+                # 1. Primary Scanner: Sentence-based extraction
                 verify_match = re.search(
-                    r'verifies that\s+(.+?)\s+successfully completed the course\s+(.+?)\s+on\s+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})',
+                    r'verifies that\s+(.+?)\s+successfully completed the course\s+(.+?)\s+on\s+([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4})',
                     page_text, re.IGNORECASE | re.DOTALL
                 )
+
                 if verify_match:
-                    studentName = studentName or verify_match.group(1).strip()
-                    courseName = courseName or verify_match.group(2).strip()
+                    studentName = studentName or verify_match.group(1).replace('\n', ' ').strip()
+                    courseName = courseName or verify_match.group(2).replace('\n', ' ').strip()
                     issueDate = issueDate or verify_match.group(3).strip()
+
+                # 2. Secondary Scanner: Extraction from Meta Tags (Robust fallback for titles)
+                if not courseName:
+                    meta_course = re.search(r'meta\s+name="description"\s+content="My course completion certificate for\s+&quot;(.+?)&quot;', response.text, re.IGNORECASE)
+                    if not meta_course:
+                        meta_course = re.search(r'property="og:description"\s+content="My course completion certificate for\s+&quot;(.+?)&quot;', response.text, re.IGNORECASE)
+                    if meta_course:
+                        courseName = meta_course.group(1).replace('&quot;', '"').strip()
+
+                # 3. Tertiary Scanner: Flexible label search (Date/Issue)
+                if not issueDate:
+                    date_match = re.search(r"(?:Date|Issued on|on)\s+([A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4})", page_text, re.IGNORECASE)
+                    if date_match:
+                        issueDate = date_match.group(1).strip()
                 if verify_match:
                     if not studentName:
                         studentName = verify_match.group(1).replace('\n', ' ').strip()
