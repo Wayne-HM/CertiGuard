@@ -5,17 +5,33 @@ import gc
 
 
 def extract_text_from_pdf(pdf_path, worker_data=None):
-    if worker_data and worker_data.get("text"):
-        return worker_data["text"]
+    text = ""
+    links = []
     
-    # Lightweight local fallback
+    if worker_data and worker_data.get("text"):
+        text = worker_data["text"]
+    
+    # Lightweight local fallback for text AND link extraction
     import PyPDF2
     try:
         with open(pdf_path, "rb") as file:
             reader = PyPDF2.PdfReader(file)
-            return "".join(page.extract_text() for page in reader.pages if page.extract_text())
-    except:
-        return ""
+            # Text extraction
+            if not text:
+                text = "".join(page.extract_text() for page in reader.pages if page.extract_text())
+            
+            # Link extraction
+            for page in reader.pages:
+                if '/Annots' in page:
+                    for annot in page['/Annots']:
+                        obj = annot.get_object()
+                        if isinstance(obj, dict) and '/A' in obj and '/URI' in obj['/A']:
+                            links.append(obj['/A']['/URI'])
+    except Exception as e:
+        print(f"DEBUG: Saylor local PDF extraction error: {e}")
+        pass
+        
+    return text, links
 
 
 def normalize_text(text):
@@ -54,16 +70,24 @@ def verify_saylor(saylorId, pdfUrl):
         soup = BeautifulSoup(response.text, "html.parser")
         page_text = soup.get_text(separator="\n")
 
-        # Check if we need to submit a verify form
+        # Check for the "Verify" form
         form = soup.find("form")
         if form and "this certificate is valid" not in page_text.lower():
             # Build form data and POST
             form_data = {}
-            for inp in form.find_all("input"):
+            for inp in form.find_all(["input", "button"]):
                 name = inp.get("name")
-                value = inp.get("value", "")
-                if name:
-                    form_data[name] = value
+                # Important: If it's a submit button, we MUST include its value to trigger the action
+                if inp.get("type") == "submit" or inp.get("id") == "id_verify":
+                    form_data[name or "verify"] = inp.get("value", "Verify")
+                else:
+                    value = inp.get("value", "")
+                    if name:
+                        form_data[name] = value
+
+            # Ensure the Saylor ID is in the form if it's missing
+            if 'code' not in form_data:
+                form_data['code'] = saylorId
 
             # Determine form action URL
             action = form.get("action", certUrl)
@@ -71,7 +95,7 @@ def verify_saylor(saylorId, pdfUrl):
                 from urllib.parse import urljoin
                 action = urljoin(certUrl, action)
 
-            print(f"DEBUG: Saylor submitting form to {action}")
+            print(f"DEBUG: Saylor submitting verification form to {action}")
             post_response = session.post(action, data=form_data, timeout=15)
 
             if post_response.status_code == 200:
@@ -82,26 +106,33 @@ def verify_saylor(saylorId, pdfUrl):
         if "this certificate is valid" not in page_text.lower():
             return "❌ Saylor reported this Certificate ID as invalid or not found."
 
-        # Extract data from table cells
-        for table in soup.find_all("table"):
-            cells = [td.get_text(strip=True) for td in table.find_all(["td", "th"])]
-            for i, text in enumerate(cells):
-                clean_text = text.lower().replace(':', '').strip()
-                if clean_text in ["full name", "name", "student", "student name", "participant"] and i + 1 < len(cells):
-                    studentName = cells[i+1].strip()
-                if clean_text in ["certificate", "course", "course name", "program"] and i + 1 < len(cells):
-                    courseName = cells[i+1].strip()
+        # Extract data from table cells or divs
+        extracted_data = {}
+        for row in soup.find_all(["tr", "div"]):
+            row_text = row.get_text(separator=" ", strip=True)
+            # Match "Label: Value" patterns
+            m = re.search(r"(Full name|Name|Certificate|Course|Date|Issued on)[:\s]+(.+)", row_text, re.I)
+            if m:
+                label = m.group(1).lower().strip()
+                val = m.group(2).strip()
+                extracted_data[label] = val
 
-        # Regex fallback from page text
-        if not studentName or studentName.lower() in ["full name", "name"]:
-            m1 = re.search(r'(?:full name|name|student)\s*[:\-]*\s*([^\n]+)', page_text, re.IGNORECASE)
-            if m1:
-                studentName = m1.group(1).strip()
+        if "full name" in extracted_data: studentName = extracted_data["full name"]
+        elif "name" in extracted_data: studentName = extracted_data["name"]
+        
+        if "certificate" in extracted_data: courseName = extracted_data["certificate"]
+        elif "course" in extracted_data: courseName = extracted_data["course"]
 
-        if not courseName or courseName.lower() in ["certificate", "course"]:
-            m2 = re.search(r'(?:certificate|course)\s*[:\-]*\s*([^\n]+)', page_text, re.IGNORECASE)
-            if m2:
-                courseName = m2.group(1).strip()
+        # Final table-based search if above missed
+        if not studentName or not courseName:
+            for table in soup.find_all("table"):
+                cells = [td.get_text(strip=True) for td in table.find_all(["td", "th"])]
+                for i, text in enumerate(cells):
+                    clean_text = text.lower().replace(':', '').strip()
+                    if clean_text in ["full name", "name", "student"] and i + 1 < len(cells):
+                        studentName = studentName or cells[i+1].strip()
+                    if clean_text in ["certificate", "course"] and i + 1 < len(cells):
+                        courseName = courseName or cells[i+1].strip()
 
         # Step 2: PDF extraction for grade/hours/date disabled locally
         # Use worker data if we were to support this, or fallback to web scraping
@@ -131,28 +162,43 @@ def verify_saylor(saylorId, pdfUrl):
 
 
 def run_verification(pdf_path, worker_data=None):
-    extracted_text = ""
-    if worker_data and worker_data.get("text"):
-        extracted_text = worker_data["text"]
-    elif worker_data and worker_data.get("ocr_text"):
-        extracted_text = worker_data["ocr_text"]
-    else:
-        # Final local fallback
-        extracted_text = extract_text_from_pdf(pdf_path, worker_data)
+    extracted_text, links = extract_text_from_pdf(pdf_path, worker_data)
+    
+    # 1. Check for official Verify Link first (Higher Priority as per user)
+    saylor_link = None
+    for link in links:
+        if "learn.saylor.org" in link and "code=" in link:
+            saylor_link = link
+            break
+    
+    cert_id = None
+    if saylor_link:
+        m = re.search(r"code=([A-Z0-9]{8,20})", saylor_link, re.I)
+        if m:
+            cert_id = m.group(1).strip()
+            print(f"DEBUG: Found Saylor URL in PDF: {saylor_link}")
 
-    if not extracted_text:
-        return "❌ Skipping Saylor verification: Worker data unavailable and local processing disabled."
-
-    # Alphanumeric ID detection (e.g. 5382377942SM)
-    cert_id_match = re.search(r"\b([A-Z0-9]{8,15})\b", extracted_text)
-    cert_id = cert_id_match.group(1).strip() if cert_id_match else None
-
+    # Fallback to text search if no link found
     if not cert_id:
-        filename = pdf_path.split("/")[-1].split("\\")[-1]
-        cert_id_match = re.search(r"\b([A-Z0-9]{8,15})\b", filename)
+        if not extracted_text:
+            return "❌ Skipping Saylor verification: Worker data unavailable and local processing failed."
+
+        # Try to find specifically labeled ID
+        cert_id_match = re.search(r"(?:code|id|certificate id|verification code)[:\s]*([A-Z0-9]{8,18})", extracted_text, re.I)
+        if not cert_id_match:
+            # Fallback to general alphanumeric search
+            cert_id_match = re.search(r"\b([A-Z0-9]{10,15}[A-Z]{0,2})\b", extracted_text)
+        
         cert_id = cert_id_match.group(1).strip() if cert_id_match else None
 
-    if not cert_id:
-        return "❌ Could not find a valid Saylor Certificate ID in the PDF data."
+        if not cert_id:
+            filename = pdf_path.split("/")[-1].split("\\")[-1]
+            cert_id_match = re.search(r"([A-Z0-9]{10,15})", filename)
+            cert_id = cert_id_match.group(1).strip() if cert_id_match else None
 
+    if not cert_id:
+        print(f"DEBUG: Saylor ID not found in text/links (length {len(extracted_text)})")
+        return "❌ Could not find a valid Saylor Certificate ID or verification link in the PDF data."
+
+    print(f"DEBUG: Identified Saylor ID for verification: {cert_id}")
     return verify_saylor(cert_id, pdf_path)
