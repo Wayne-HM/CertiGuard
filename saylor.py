@@ -129,39 +129,33 @@ def verify_saylor(saylorId, pdfUrl):
         if "this certificate is valid" not in page_text.lower():
             return "❌ Saylor reported this Certificate ID as invalid or not found."
 
-        # Extract data from table cells or divs
+        # Extract data strictly from table rows to avoid greedy div capture
         extracted_data = {}
-        for row in soup.find_all(["tr", "div"]):
-            row_text = row.get_text(separator=" ", strip=True)
-            # Match "Label: Value" patterns - specifically anchoring to the start of the word to avoid 'Expiry date'
-            m = re.search(r"\b(Full name|Name|Certificate|Course|Date issued|Issued on)\b[:\s]+(.+)", row_text, re.I)
-            if m:
-                label = m.group(1).lower().replace('issued', '').strip() # Normalize to just 'date' or 'name'
-                val = m.group(2).strip()
-                # Priority: Don't let subsequent 'Date' labels overwrite 'Date issued'
-                if label not in extracted_data:
-                    extracted_data[label] = val
+        for row in soup.find_all("tr"):
+            cells = row.find_all(["td", "th"])
+            if len(cells) >= 2:
+                label_text = cells[0].get_text(separator=" ", strip=True).lower()
+                val_text = cells[1].get_text(separator=" ", strip=True)
+                
+                # Match specific patterns in the label
+                if "full name" in label_text or "name" == label_text:
+                    studentName = val_text
+                elif "certificate" in label_text or "course" in label_text:
+                    courseName = val_text
+                elif "date issued" in label_text:
+                    issueDate = val_text
 
-        if "full name" in extracted_data: studentName = extracted_data["full name"]
-        elif "name" in extracted_data: studentName = extracted_data["name"]
-        
-        if "certificate" in extracted_data: courseName = extracted_data["certificate"]
-        elif "course" in extracted_data: courseName = extracted_data["course"]
-
-        if "date" in extracted_data: issueDate = extracted_data["date"]
-
-        # Final table-based search if above missed
+        # Fallback to precise regex only if table rows failed
         if not studentName or not courseName or not issueDate:
-            for table in soup.find_all("table"):
-                cells = [td.get_text(strip=True) for td in table.find_all(["td", "th"])]
-                for i, text in enumerate(cells):
-                    clean_text = text.lower().replace(':', '').strip()
-                    if clean_text in ["full name", "name", "student"] and i + 1 < len(cells):
-                        studentName = studentName or cells[i+1].strip()
-                    if clean_text in ["certificate", "course"] and i + 1 < len(cells):
-                        courseName = courseName or cells[i+1].strip()
-                    if "date" in clean_text and i + 1 < len(cells):
-                        issueDate = issueDate or cells[i+1].strip()
+            for div in soup.find_all("div", class_="form-item"): # Target specific Moodle div wrappers
+                div_text = div.get_text(separator=" ", strip=True)
+                m = re.search(r"\b(Full name|Certificate|Date issued)\b[:\s]+(.+?)(?=\s+(?:Full name|Certificate|Date issued|Expiry|Status)|$)", div_text, re.I)
+                if m:
+                    label = m.group(1).lower().replace('issued', '').strip()
+                    val = m.group(2).strip()
+                    if label == "full name": studentName = studentName or val
+                    elif label == "certificate": courseName = courseName or val
+                    elif label == "date": issueDate = issueDate or val
 
         # Step 2: PDF extraction for grade/hours/date disabled locally
         # Use worker data if we were to support this, or fallback to web scraping
