@@ -70,6 +70,19 @@ def verify_saylor(saylorId, pdfUrl):
         soup = BeautifulSoup(response.text, "html.parser")
         page_text = soup.get_text(separator="\n")
 
+        # Moodle/Saylor specific: Extract sesskey if not already found in form
+        sesskey = ""
+        # 1. Search in links
+        sess_match = re.search(r'sesskey=([A-Z0-9a-z]+)', response.text)
+        if sess_match:
+            sesskey = sess_match.group(1)
+        
+        # 2. Search in JS config
+        if not sesskey:
+            js_match = re.search(r'"sesskey":"([A-Z0-9a-z]+)"', response.text)
+            if js_match:
+                sesskey = js_match.group(1)
+
         # Check for the "Verify" form
         form = soup.find("form")
         if form and "this certificate is valid" not in page_text.lower():
@@ -77,17 +90,17 @@ def verify_saylor(saylorId, pdfUrl):
             form_data = {}
             for inp in form.find_all(["input", "button"]):
                 name = inp.get("name")
+                if not name: continue
                 # Important: If it's a submit button, we MUST include its value to trigger the action
                 if inp.get("type") == "submit" or inp.get("id") == "id_verify":
-                    form_data[name or "verify"] = inp.get("value", "Verify")
+                    form_data[name] = inp.get("value", "Verify")
                 else:
-                    value = inp.get("value", "")
-                    if name:
-                        form_data[name] = value
+                    form_data[name] = inp.get("value", "")
 
-            # Ensure the Saylor ID is in the form if it's missing
-            if 'code' not in form_data:
-                form_data['code'] = saylorId
+            # Ensure mandatory Moodle/Saylor fields are present
+            form_data['code'] = saylorId
+            if sesskey: form_data['sesskey'] = sesskey
+            form_data['mform_is_submitted_admin_tool_certificate_verify_form'] = '1'
 
             # Determine form action URL
             action = form.get("action", certUrl)
@@ -95,7 +108,7 @@ def verify_saylor(saylorId, pdfUrl):
                 from urllib.parse import urljoin
                 action = urljoin(certUrl, action)
 
-            print(f"DEBUG: Saylor submitting verification form to {action}")
+            print(f"DEBUG: Saylor submitting verification form to {action} with sesskey={sesskey}")
             post_response = session.post(action, data=form_data, timeout=15)
 
             if post_response.status_code == 200:
