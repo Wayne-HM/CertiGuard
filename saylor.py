@@ -140,7 +140,7 @@ def verify_saylor(saylorId, pdfUrl):
                 val = m.group(2).strip()
                 extracted_data[label] = val
 
-        if "full name" in extracted_data: studentName = extracted_data["full_name"]
+        if "full name" in extracted_data: studentName = extracted_data["full name"]
         elif "name" in extracted_data: studentName = extracted_data["name"]
         
         if "certificate" in extracted_data: courseName = extracted_data["certificate"]
