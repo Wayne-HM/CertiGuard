@@ -18,6 +18,7 @@ export interface VerificationResult {
   rawOutput: string
   totalHours?: string
   status?: "valid" | "fake" | "manual_check" | "action_required" | "error"
+  date?: string
 }
 
 interface ResultDisplayProps {
@@ -106,9 +107,9 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     { icon: User, label: "Name", value: result.name },
     { icon: BookOpen, label: "Course", value: result.course },
     { icon: Building2, label: "Platform", value: result.platform },
-    { icon: Calendar, label: "Issue Date", value: result.issueDate },
+    { icon: Calendar, label: "Issue Date", value: result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A") },
     { icon: Clock, label: "Total Hours", value: result.totalHours || "N/A" },
-  ], [result.name, result.course, result.platform, result.issueDate, result.totalHours])
+  ], [result.name, result.course, result.platform, result.issueDate, result.date, result.totalHours])
 
   const downloadReport = async () => {
     setIsDownloading(true)
@@ -135,30 +136,37 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       const drawShieldIcon = (x: number, y: number, size: number) => {
         ctx.save()
         ctx.translate(x, y)
+        
+        // Shield Geometry (More rounded, premium look)
         ctx.beginPath()
-        ctx.moveTo(0, 0)
-        ctx.lineTo(size, 0)
-        ctx.lineTo(size, size * 0.7)
-        ctx.quadraticCurveTo(size, size, size/2, size)
-        ctx.quadraticCurveTo(0, size, 0, size * 0.7)
+        const r = size * 0.2
+        ctx.moveTo(r, 0)
+        ctx.lineTo(size - r, 0)
+        ctx.quadraticCurveTo(size, 0, size, r)
+        ctx.lineTo(size, size * 0.6)
+        ctx.quadraticCurveTo(size, size * 0.9, size/2, size)
+        ctx.quadraticCurveTo(0, size * 0.9, 0, size * 0.6)
+        ctx.lineTo(0, r)
+        ctx.quadraticCurveTo(0, 0, r, 0)
         ctx.closePath()
         
         const grad = ctx.createLinearGradient(0, 0, 0, size)
-        grad.addColorStop(0, "#1E293B")
-        grad.addColorStop(1, "#0F172A")
+        grad.addColorStop(0, "#0EA5E9") // Sky Blue
+        grad.addColorStop(1, "#0369A1") // Darker Blue
         ctx.fillStyle = grad
         ctx.fill()
         
+        // Double Border for Premium Feel
         ctx.strokeStyle = "#00D4FF"
         ctx.lineWidth = 4
         ctx.stroke()
         
-        // Inner line
         ctx.beginPath()
-        ctx.moveTo(size/2, size*0.2)
-        ctx.lineTo(size/2, size*0.8)
-        ctx.strokeStyle = "rgba(0, 212, 255, 0.2)"
+        ctx.roundRect(size * 0.15, size * 0.15, size * 0.7, size * 0.7, r)
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.2)"
+        ctx.lineWidth = 2
         ctx.stroke()
+
         ctx.restore()
       }
 
@@ -174,7 +182,6 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
         ctx.fillRect(-size/2, -size/2, size*2, size*2)
         
         // Circle
-        const color = valid ? "#22C55E" : "#EF4444"
         const bgGrad = ctx.createLinearGradient(0, 0, size, size)
         bgGrad.addColorStop(0, "#00D4FF")
         bgGrad.addColorStop(1, "#22C55E")
@@ -286,9 +293,10 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       const metaY = H - 150
       ctx.fillStyle = "#64748B"
       ctx.font = "bold 20px 'Segoe UI', sans-serif"
+      const finalDate = result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A")
       ctx.fillText("🌐 GLOBAL-ID: " + (result.certificateId || "CG-882-X"), 400, metaY)
       ctx.fillText("👤 ID: " + Math.random().toString(36).substr(2, 6).toUpperCase(), 750, metaY)
-      ctx.fillText("📅 DATE: " + result.issueDate, 1050, metaY)
+      ctx.fillText("📅 DATE: " + finalDate, 1050, metaY)
 
       // Secured by AI Badge
       const badgeX = W - 350, badgeY = H - 180
@@ -415,7 +423,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     </>
                   )}
                 </motion.div>
-
+ 
                 {/* Status Text */}
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
@@ -434,7 +442,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </p>
                 </motion.div>
               </div>
-
+ 
               {isActionRequired && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -463,7 +471,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </div>
                 </motion.div>
               )}
-
+ 
               {/* Certificate Details */}
               <div className="space-y-4">
                 <motion.h3 
@@ -474,13 +482,13 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                 >
                   Extracted Details
                 </motion.h3>
-
+ 
                 <div className="grid gap-3">
                   {details.map((item, index) => (
                     <DetailRow key={item.label} {...item} index={index} />
                   ))}
                 </div>
-
+ 
                 {/* Verification Link */}
                 {result.verificationUrl && (
                   <motion.a
@@ -511,7 +519,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     </motion.div>
                   </motion.a>
                 )}
-
+ 
                 {/* Additional Info */}
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -525,7 +533,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     className="px-4 py-2 glass rounded-lg text-xs"
                   >
                     <span className="text-muted-foreground">Issue Date: </span>
-                    <span className="text-foreground font-medium">{result.issueDate}</span>
+                    <span className="text-foreground font-medium">{result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A")}</span>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.03 }}
@@ -537,7 +545,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </motion.div>
                 </motion.div>
               </div>
-
+ 
               {/* Action Buttons */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
@@ -568,7 +576,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer" />
                     </Button>
                   </motion.div>
-                  
+                   
                   {/* Debug Log Toggle */}
                   <motion.div
                     whileHover={{ scale: 1.02 }}
@@ -586,7 +594,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     </Button>
                   </motion.div>
                 </div>
-                
+                 
                 <motion.div 
                   className="flex-1"
                   whileHover={{ scale: 1.02 }}
@@ -610,7 +618,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </Button>
                 </motion.div>
               </motion.div>
-
+ 
               {/* Debug Log Content */}
               <AnimatePresence>
                 {showLog && (
@@ -638,7 +646,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                 )}
               </AnimatePresence>
             </CardContent>
-
+ 
             {/* Corner glows */}
             <div className={`absolute top-0 left-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
             <div className={`absolute bottom-0 right-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
