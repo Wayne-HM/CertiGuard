@@ -55,21 +55,25 @@ def clean_text_noise(text):
     return text.strip()
 
 def extract_hours_and_date(text):
-    lines = [l.strip() for l in text.split('\n') if l.strip()]
     hours = "N/A"
     date = "N/A"
-    if len(lines) >= 2:
-        hours_cand = clean_text_noise(lines[-1])
-        date_cand = clean_text_noise(lines[-2])
-        if re.search(r"\d", hours_cand): hours = hours_cand
-        if re.search(r"\d", date_cand) or any(m in date_cand.lower() for m in ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]):
-            date = date_cand
-    if "n/a" in hours.lower():
-        h_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:total\s*hours|hours\s*total|hours)", text, re.I)
-        if h_match: hours = h_match.group(1).strip()
-    if "n/a" in date.lower():
-        d_match = re.search(r"(?:on|Date:)\s*([A-Z][a-z]+\s+\d{1,2},\s+\d{4})", text)
+    
+    # 1. Improved Date extraction regex (Month Day, Year)
+    # Looking for a Date after "on" or as a standalone line
+    d_match = re.search(r"(?:on|Completed on|Date:?)\s*([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})", text, re.I)
+    if d_match:
+        date = d_match.group(1).strip()
+    
+    # 2. Improved Hours extraction
+    h_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:total\s*hours|hours\s*total|hours)", text, re.I)
+    if h_match:
+        hours = h_match.group(1).strip()
+        
+    # 3. Standalone date fallback
+    if date == "N/A":
+        d_match = re.search(r"\b([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\b", text)
         if d_match: date = d_match.group(1).strip()
+    
     return clean_text_noise(hours), clean_text_noise(date)
 
 def extract_details_from_pdf_text(text):
@@ -244,10 +248,15 @@ def verifyUdemy(certId):
             page_text = soup.get_text(separator="\n")
 
             if not studentName or not courseName:
+                # Improved regex: anchor to the DATE at the end to avoid stopping at 'on' inside course title
                 verify_match = re.search(
-                    r'verifies that\s+(.+?)\s+successfully completed the course\s+(.+?)\s+on\s+(.+?)\s+as taught by',
+                    r'verifies that\s+(.+?)\s+successfully completed the course\s+(.+?)\s+on\s+([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})',
                     page_text, re.IGNORECASE | re.DOTALL
                 )
+                if verify_match:
+                    studentName = studentName or verify_match.group(1).strip()
+                    courseName = courseName or verify_match.group(2).strip()
+                    issueDate = issueDate or verify_match.group(3).strip()
                 if verify_match:
                     if not studentName:
                         studentName = verify_match.group(1).replace('\n', ' ').strip()
@@ -294,6 +303,19 @@ def verifyUdemy(certId):
                         courseName = title_text.replace("| Udemy", "").strip()
 
                 if courseName:
+                    # Clean course name from ratings and repetition
+                    def clean_course_name(name):
+                        if not name: return name
+                        name = re.sub(r"(?:Google\s+)?(?:Filled\s+)?Star\s*(?:Filled)?", "", name, flags=re.I).strip()
+                        words = name.split()
+                        if len(words) > 4:
+                            half = len(words) // 2
+                            if " ".join(words[:half]).lower() == " ".join(words[half:]).lower():
+                                name = " ".join(words[:half])
+                        return name
+                    
+                    courseName = clean_course_name(courseName)
+
                     return {
                         "status": "Authentic",
                         "studentName": studentName or "Verified Student",
