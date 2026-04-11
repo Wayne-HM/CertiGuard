@@ -102,9 +102,9 @@ def extract_hours_and_date(text):
 
     # Alison Date: Priority patterns
     patterns = [
-        r"(?:on|dated:?)\s+([A-Z][a-z]+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})",
-        r"(?:on|dated:?)\s+(\d{1,2}(?:st|nd|rd|th)?\s+[A-Z][a-z]+,?\s+\d{4})",
-        r"\b([A-Z][a-z]+\s+\d{1,2},?\s+\d{4})\b"
+        r"(?:on|dated|completion):?\s*([A-Z][a-z]+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})",
+        r"(?:on|dated|completion):?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[A-Z][a-z]+,?\s+\d{4})",
+        r"\b([A-Z][a-z]+\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})\b"
     ]
     
     found_dates = []
@@ -119,8 +119,11 @@ def extract_hours_and_date(text):
     if found_dates:
         date = found_dates[0]
     
-    # Hours: "Duration: 5 Hours" or "10 hours of learning"
-    h_match = re.search(r"(?:Duration:?\s*)?(\d+)\s*hours?", text, re.I)
+    # Hours: "Total Study Time: 0h 52m" or "Duration: 5 Hours"
+    h_match = re.search(r"(?:Study Time|Duration):?\s*(\d+h?\s*\d*m?)", text, re.I)
+    if not h_match:
+        h_match = re.search(r"(\d+)\s*hours?", text, re.I)
+    
     if h_match: hours = h_match.group(1).strip()
     return hours, date
 

@@ -24,19 +24,34 @@ except ImportError:
 
 
 def format_date(date_str):
-    """Universal date polisher: handles ISO and standard formats."""
+    """Universal date polisher: handles ISO, ordinal, and standard formats."""
     if not date_str or date_str == "N/A": return "N/A"
     try:
         from datetime import datetime
+        # Convert to string and strip ordinal suffixes: 10th -> 10, 1st -> 1
+        d_clean = str(date_str)
+        d_clean = re.sub(r'(\d+)(st|nd|rd|th)', r'\1', d_clean, flags=re.I)
+
         # Handle ISO format: 2026-04-01T...
-        if 'T' in str(date_str):
-            iso_clean = str(date_str).split('T')[0]
+        if 'T' in d_clean:
+            iso_clean = d_clean.split('T')[0]
             dt = datetime.strptime(iso_clean, '%Y-%m-%d')
             return dt.strftime('%B %d, %Y')
+            
         # Handle 2026-04-01
-        if re.match(r'^\d{4}-\d{2}-\d{2}$', str(date_str)):
-            dt = datetime.strptime(str(date_str), '%Y-%m-%d')
+        if re.match(r'^\d{4}-\d{2}-\d{2}$', d_clean):
+            dt = datetime.strptime(d_clean, '%Y-%m-%d')
             return dt.strftime('%B %d, %Y')
+            
+        # Handle "10 April 2020" or "April 10 2020"
+        for fmt in ('%d %B %Y', '%B %d %Y', '%d %b %Y', '%b %d %Y'):
+            try:
+                # Remove commas for easier parsing
+                dt = datetime.strptime(d_clean.replace(',', ''), fmt)
+                return dt.strftime('%B %d, %Y')
+            except ValueError:
+                continue
+                
         return date_str
     except:
         return date_str
