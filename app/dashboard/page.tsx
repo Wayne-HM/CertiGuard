@@ -77,7 +77,8 @@ export default function DashboardPage() {
     try {
       // Use GET as verified by manual browser check
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://certiguard-ksm9.onrender.com"
-      const response = await fetch(`${API_URL}/history?id=${user.id}`)
+      const queryParams = user?.id ? `?id=${user.id}` : ""
+      const response = await fetch(`${API_URL}/history${queryParams}`)
       
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`)
       
