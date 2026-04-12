@@ -163,18 +163,20 @@ export default function DashboardPage() {
               <div>
                 <h1 className="text-3xl sm:text-4xl font-bold mb-2">
                   <span className="bg-gradient-to-r from-primary via-emerald-400 to-accent bg-clip-text text-transparent italic">
-                    Dashboard
+                    {user ? "Your Dashboard" : "Global Dashboard"}
                   </span>
                 </h1>
                 <p className="text-muted-foreground">
-                  Track your verification history and global statistics
+                  {user 
+                    ? `Welcome back, ${user.name}! Track your private verification history.`
+                    : "Track global verification trends and statistics across all platforms."}
                 </p>
               </div>
               
               <div className="flex items-center gap-3">
                 {!user && (
-                  <p className="text-xs text-amber-400/70 hidden md:block">
-                    Sign in to see your personal history
+                  <p className="text-xs text-amber-400/70 hidden md:block italic">
+                    Public Mode: Sign in to see your personal records
                   </p>
                 )}
                 <Button 
@@ -211,7 +213,9 @@ export default function DashboardPage() {
             {/* Recent Verifications Table */}
             <Card className="glass-strong border-glass-border">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl">Verification History</CardTitle>
+                <CardTitle className="text-xl">
+                  {user ? "Your Verification History" : "Recent Global Verifications"}
+                </CardTitle>
                 <Link href="/#verify">
                   <Button variant="outline" className="border-glass-border">
                     Verify New
