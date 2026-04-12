@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
+import Link from "next/link"
+import { toast } from "sonner"
 import { 
   Shield, 
   CheckCircle2, 
@@ -75,7 +77,8 @@ export default function DashboardPage() {
 
     try {
       // Use GET as verified by manual browser check
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history?id=${user.id}`)
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://certiguard-ksm9.onrender.com"
+      const response = await fetch(`${API_URL}/history?id=${user.id}`)
       
       if (!response.ok) throw new Error(`HTTP Error: ${response.status}`)
       
