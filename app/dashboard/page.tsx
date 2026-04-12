@@ -70,9 +70,8 @@ export default function DashboardPage() {
   }, [])
 
   const fetchDashboardData = useCallback(async () => {
-    if (!user?.id) return
-    
-    console.log("Fetching dashboard data for user:", user.id)
+    // We now allow guest fetches (no user.id) to retrieve global statistics
+    console.log("Fetching dashboard data for user:", user?.id || "Guest")
     setIsLoading(true)
 
     try {
