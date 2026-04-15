@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { motion } from "framer-motion"
+import { useState, useEffect, useCallback, useRef, memo } from "react"
+import { motion, useSpring, useTransform, useMotionValue } from "framer-motion"
 import Link from "next/link"
 import { toast } from "sonner"
 import { 
@@ -14,7 +14,8 @@ import {
   ExternalLink,
   MoreHorizontal,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Radio
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,6 +39,27 @@ import { Footer } from "@/components/footer"
 import { useAuth } from "@/components/auth-context"
 import { useRouter } from "next/navigation"
 
+// ------- Animated Counter -------
+// Smoothly animates a number from its previous value to the new value
+const AnimatedCounter = memo(function AnimatedCounter({ value }: { value: number }) {
+  const motionValue = useMotionValue(0)
+  const spring = useSpring(motionValue, { stiffness: 80, damping: 20, mass: 0.5 })
+  const [display, setDisplay] = useState(value)
+
+  useEffect(() => {
+    motionValue.set(value)
+  }, [value, motionValue])
+
+  useEffect(() => {
+    const unsubscribe = spring.on("change", (v) => {
+      setDisplay(Math.round(v))
+    })
+    return unsubscribe
+  }, [spring])
+
+  return <>{display}</>
+})
+
 interface VerificationRecord {
   id: string
   name: string
@@ -55,6 +77,8 @@ interface Stats {
   avgTime: string
 }
 
+const POLL_INTERVAL_MS = 10_000 // 10 seconds
+
 export default function DashboardPage() {
   const { user, isInitialized } = useAuth()
   const router = useRouter()
@@ -63,19 +87,20 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [isLive, setIsLive] = useState(false) // pulse indicator
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Ensure hydration is complete
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // ---- Initial fetch (shows loading spinner) ----
   const fetchDashboardData = useCallback(async () => {
-    // We now allow guest fetches (no user.id) to retrieve global statistics
     console.log("Fetching dashboard data for user:", user?.id || "Guest")
     setIsLoading(true)
 
     try {
-      // Use GET as verified by manual browser check
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://certiguard-ksm9.onrender.com"
       const queryParams = user?.id ? `?id=${user.id}` : ""
       const response = await fetch(`${API_URL}/history${queryParams}`)
@@ -85,7 +110,6 @@ export default function DashboardPage() {
       const data = await response.json()
       console.log("Dashboard data received:", data)
 
-      // Strict array check to prevent .map crashes
       const historyData = Array.isArray(data?.verifications) ? data.verifications : []
       const statsData = data?.stats || null
 
@@ -102,11 +126,53 @@ export default function DashboardPage() {
     }
   }, [user?.id])
 
+  // ---- Silent background poll (no loading spinner) ----
+  const silentPoll = useCallback(async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://certiguard-ksm9.onrender.com"
+      const queryParams = user?.id ? `?id=${user.id}` : ""
+      const response = await fetch(`${API_URL}/history${queryParams}`)
+      
+      if (!response.ok) return
+
+      const data = await response.json()
+
+      const historyData = Array.isArray(data?.verifications) ? data.verifications : []
+      const statsData = data?.stats || null
+
+      setHistory(historyData)
+      setStats(statsData)
+
+      // Flash the live indicator
+      setIsLive(true)
+      setTimeout(() => setIsLive(false), 1500)
+    } catch {
+      // Silent fail — don't toast on background polls
+    }
+  }, [user?.id])
+
+  // ---- Initial load ----
   useEffect(() => {
     if (isInitialized) {
       fetchDashboardData()
     }
   }, [isInitialized, fetchDashboardData])
+
+  // ---- Real-time polling ----
+  useEffect(() => {
+    if (!isInitialized) return
+
+    // Start polling
+    pollRef.current = setInterval(silentPoll, POLL_INTERVAL_MS)
+
+    // Cleanup on unmount or dependency change
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+  }, [isInitialized, silentPoll])
 
   const handleRefresh = () => {
     setIsRefreshing(true)
@@ -127,25 +193,29 @@ export default function DashboardPage() {
       label: "Total Verifications", 
       value: stats?.total ?? (history.length > 0 ? history.length : 0), 
       icon: FileText,
-      color: "text-primary/80"
+      color: "text-primary/80",
+      animate: true
     },
     { 
       label: "Valid Certificates", 
       value: stats?.valid ?? history.filter(h => h.status === "valid").length, 
       icon: CheckCircle2,
-      color: "text-emerald-400"
+      color: "text-emerald-400",
+      animate: true
     },
     { 
       label: "Fake Detected", 
       value: stats?.fake ?? history.filter(h => h.status === "fake").length, 
       icon: XCircle,
-      color: "text-destructive"
+      color: "text-destructive",
+      animate: true
     },
     { 
       label: "Avg. Time", 
       value: stats?.avgTime ?? "1.4s", 
       icon: Clock,
-      color: "text-primary"
+      color: "text-primary",
+      animate: false
     },
   ]
 
@@ -161,11 +231,21 @@ export default function DashboardPage() {
             {/* Header */}
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-                  <span className="bg-gradient-to-r from-primary via-emerald-400 to-accent bg-clip-text text-transparent italic">
-                    {user ? "Your Dashboard" : "Global Dashboard"}
-                  </span>
-                </h1>
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-3xl sm:text-4xl font-bold">
+                    <span className="bg-gradient-to-r from-primary via-emerald-400 to-accent bg-clip-text text-transparent italic">
+                      {user ? "Your Dashboard" : "Global Dashboard"}
+                    </span>
+                  </h1>
+                  {/* Live Indicator */}
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="relative flex h-2 w-2">
+                      <span className={`absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 ${isLive ? "animate-ping" : "animate-pulse"}`} />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">Live</span>
+                  </div>
+                </div>
                 <p className="text-muted-foreground">
                   {user 
                     ? `Welcome back, ${user.name}! Track your private verification history.`
@@ -199,7 +279,12 @@ export default function DashboardPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                        <p className="text-3xl font-bold">{stat.value}</p>
+                        <p className="text-3xl font-bold">
+                          {stat.animate && typeof stat.value === "number"
+                            ? <AnimatedCounter value={stat.value} />
+                            : stat.value
+                          }
+                        </p>
                       </div>
                       <div className={`w-12 h-12 rounded-xl bg-secondary flex items-center justify-center ${stat.color}`}>
                         <stat.icon className="w-6 h-6" />
