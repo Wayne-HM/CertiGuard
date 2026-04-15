@@ -2,14 +2,14 @@
 
 import { useRef, memo, useCallback } from "react"
 import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion"
-import { ArrowRight, Sparkles, Shield, Zap, CheckCircle, Globe, Award } from "lucide-react"
+import { ArrowRight, Sparkles, Shield, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FloatingCertificate } from "@/components/floating-certificate"
 
 const stats = [
   { value: "99.9%", label: "Accuracy Rate", icon: Shield, color: "text-neon-blue" },
-  { value: "500K+", label: "Verified", icon: Sparkles, color: "text-neon-cyan" },
-  { value: "<3s", label: "Time", icon: Zap, color: "text-neon-purple" },
+  { value: "1k+", label: "Verified", icon: Sparkles, color: "text-neon-cyan" },
+  { value: "<1min", label: "Time", icon: Zap, color: "text-neon-purple" },
 ]
 
 // Optimized spring config for 120fps feel
@@ -130,38 +130,7 @@ export function HeroSection() {
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
           className="relative flex items-center justify-center lg:justify-end"
         >
-          {/* Floating UI Elements */}
-          <motion.div 
-            animate={{ y: [0, -15, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-10 -left-10 z-20 glass p-4 rounded-2xl border-neon-blue/30 shadow-2xl"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-success/20 rounded-lg flex items-center justify-center">
-                <Shield className="w-4 h-4 text-success" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">AI Score</p>
-                <p className="text-sm font-bold text-success font-mono">100/100</p>
-              </div>
-            </div>
-          </motion.div>
 
-          <motion.div 
-            animate={{ y: [0, 15, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute -bottom-6 right-0 z-20 glass p-4 rounded-2xl border-neon-purple/30 shadow-2xl"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center">
-                <Globe className="w-4 h-4 text-neon-purple" />
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Nodes</p>
-                <p className="text-sm font-bold text-neon-purple">82 Active</p>
-              </div>
-            </div>
-          </motion.div>
 
           {/* Main 3D Certificate */}
           <FloatingCertificate />

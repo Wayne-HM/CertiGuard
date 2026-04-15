@@ -106,177 +106,220 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     { icon: User, label: "Name", value: result.name },
     { icon: BookOpen, label: "Course", value: result.course },
     { icon: Building2, label: "Platform", value: result.platform },
-    { icon: Calendar, label: "Issue Date", value: result.issueDate },
+    { icon: Calendar, label: "Issue Date", value: result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A") },
     { icon: Clock, label: "Total Hours", value: result.totalHours || "N/A" },
-  ], [result.name, result.course, result.platform, result.issueDate, result.totalHours])
+  ], [result.name, result.course, result.platform, result.issueDate, result.date, result.totalHours])
 
   const downloadReport = async () => {
     setIsDownloading(true)
     try {
       const { jsPDF } = await import("jspdf")
-      // 1. Generate QR Code
-    const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
-      margin: 1,
-      width: 250,
-      color: {
-        dark: "#06b6d4",
-        light: "#00000000"
-      }
-    })
-
-    const canvas = document.createElement("canvas")
-    // High-resolution for A4 print quality (300 DPI approx)
-    const W = 2000, H = 1414
-    canvas.width = W
-    canvas.height = H
-    const ctx = canvas.getContext("2d")!
-
-    // --- Elegant Obsidian Background ---
-    const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W)
-    bgGrad.addColorStop(0, "#0A0F1C")
-    bgGrad.addColorStop(1, "#020617")
-    ctx.fillStyle = bgGrad
-    ctx.fillRect(0, 0, W, H)
-
-    // Subtle technical grid
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.05)"
-    ctx.lineWidth = 1
-    for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
-    for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
-
-    // --- Premium Border ---
-    const bMargin = 60
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.3)"
-    ctx.lineWidth = 4
-    ctx.strokeRect(bMargin, bMargin, W - bMargin*2, H - bMargin*2)
-    
-    // Corner Accents
-    ctx.fillStyle = "#00D4FF"
-    const cs = 40
-    ctx.fillRect(bMargin-2, bMargin-2, cs, 6) // Top Left
-    ctx.fillRect(bMargin-2, bMargin-2, 6, cs)
-    ctx.fillRect(W-bMargin-cs+2, bMargin-2, cs, 6) // Top Right
-    ctx.fillRect(W-bMargin-4, bMargin-2, 6, cs)
-    
-    // --- Header Section ---
-    ctx.fillStyle = "rgba(0, 212, 255, 0.1)"
-    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.fill()
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.5)"; ctx.lineWidth = 2
-    ctx.beginPath(); ctx.roundRect(W/2 - 400, 100, 800, 120, 20); ctx.stroke()
-
-    ctx.textAlign = "center"
-    ctx.fillStyle = "#f8fafc"
-    ctx.font = "bold 42px 'Segoe UI', Arial"
-    ctx.fillText("CERTIFICATE OF AUTHENTICITY", W/2, 165)
-    ctx.fillStyle = "#00D4FF"
-    ctx.font = "bold 16px 'Segoe UI', Arial"
-    ctx.letterSpacing = "4px"
-    ctx.fillText("VERIFIED BY CERTIGUARD GLOBAL AI", W/2, 195)
-    ctx.letterSpacing = "0px"
-
-    // --- Main Content Area ---
-    ctx.textAlign = "left"
-    const contentX = 200, contentY = 400
-
-    // Presented to
-    ctx.fillStyle = "#94a3b8"
-    ctx.font = "bold 20px 'Segoe UI', Arial"
-    ctx.fillText("OFFICIALLY PRESENTED TO", contentX, contentY)
-    
-    ctx.fillStyle = "#f1f5f9"
-    ctx.font = "82px Georgia, serif"
-    ctx.fillText(result.name || "Verified Student", contentX, contentY + 100)
-
-      // Course
-      ctx.fillStyle = "#94a3b8"
-      ctx.font = "bold 20px 'Segoe UI', Arial"
-      ctx.fillText("FOR SUCCESSFUL COMPLETION OF", contentX, contentY + 220)
       
-      ctx.fillStyle = "#00D4FF"
-      ctx.font = "italic 48px Georgia, serif"
-      // Handle long course titles
-      const courseTitle = result.course || "Advanced Professional Specialization"
-      if (courseTitle.length > 50) {
-        ctx.font = "italic 36px Georgia, serif"
-        ctx.fillText(courseTitle.substring(0, 50), contentX, contentY + 290)
-        ctx.fillText(courseTitle.substring(50), contentX, contentY + 340)
-      } else {
-        ctx.fillText(courseTitle, contentX, contentY + 300)
+      // 1. Generate QR Code
+      const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguard.app", {
+        margin: 1,
+        width: 250,
+        color: {
+          dark: "#00D4FF",
+          light: "#00000000"
+        }
+      })
+
+      const canvas = document.createElement("canvas")
+      const W = 2000, H = 1414 // High-resolution A4
+      canvas.width = W
+      canvas.height = H
+      const ctx = canvas.getContext("2d")!
+
+      // --- Helper: Draw Shield Icon ---
+      const drawShieldIcon = (x: number, y: number, size: number) => {
+        ctx.save()
+        ctx.translate(x, y)
+        
+        // Shield Geometry (More rounded, premium look)
+        ctx.beginPath()
+        const r = size * 0.2
+        ctx.moveTo(r, 0)
+        ctx.lineTo(size - r, 0)
+        ctx.quadraticCurveTo(size, 0, size, r)
+        ctx.lineTo(size, size * 0.6)
+        ctx.quadraticCurveTo(size, size * 0.9, size/2, size)
+        ctx.quadraticCurveTo(0, size * 0.9, 0, size * 0.6)
+        ctx.lineTo(0, r)
+        ctx.quadraticCurveTo(0, 0, r, 0)
+        ctx.closePath()
+        
+        const grad = ctx.createLinearGradient(0, 0, 0, size)
+        grad.addColorStop(0, "#0EA5E9") // Sky Blue
+        grad.addColorStop(1, "#0369A1") // Darker Blue
+        ctx.fillStyle = grad
+        ctx.fill()
+        
+        // Double Border for Premium Feel
+        ctx.strokeStyle = "#00D4FF"
+        ctx.lineWidth = 4
+        ctx.stroke()
+        
+        ctx.beginPath()
+        ctx.roundRect(size * 0.15, size * 0.15, size * 0.7, size * 0.7, r)
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.2)"
+        ctx.lineWidth = 2
+        ctx.stroke()
+
+        ctx.restore()
       }
 
-      // --- Details Grid ---
-      const gridY = contentY + 500
-      const colWidth = 450
+      // --- Helper: Draw Award Medallion ---
+      const drawAwardMedallion = (x: number, y: number, size: number, valid: boolean) => {
+        ctx.save()
+        ctx.translate(x, y)
+        // Glow
+        const glow = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size)
+        glow.addColorStop(0, valid ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)")
+        glow.addColorStop(1, "rgba(0,0,0,0)")
+        ctx.fillStyle = glow
+        ctx.fillRect(-size/2, -size/2, size*2, size*2)
+        
+        // Circle
+        const bgGrad = ctx.createLinearGradient(0, 0, size, size)
+        bgGrad.addColorStop(0, "#00D4FF")
+        bgGrad.addColorStop(1, "#22C55E")
+        ctx.fillStyle = bgGrad
+        ctx.beginPath()
+        ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2)
+        ctx.fill()
+        
+        // Ribbon Icon
+        ctx.strokeStyle = "white"
+        ctx.lineWidth = 8
+        ctx.lineJoin = "round"
+        ctx.beginPath()
+        ctx.arc(size/2, size/2 - 5, size/4, 0, Math.PI * 2)
+        ctx.moveTo(size/2 - 10, size/2 + 10)
+        ctx.lineTo(size/2 - 20, size/2 + size/2.5)
+        ctx.lineTo(size/2, size/2 + size/4)
+        ctx.lineTo(size/2 + 20, size/2 + size/2.5)
+        ctx.lineTo(size/2 + 10, size/2 + 10)
+        ctx.stroke()
+        ctx.restore()
+      }
 
-      // Date
-      ctx.fillStyle = "#64748b"
-      ctx.font = "bold 18px 'Segoe UI', Arial"
-      ctx.fillText("ISSUE DATE", contentX, gridY)
-      ctx.fillStyle = "#cbd5e1"
-      ctx.font = "bold 24px 'Segoe UI', Arial"
-      ctx.fillText(result.issueDate, contentX, gridY + 40)
+      // --- Background: Obsidian Deep ---
+      const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W)
+      bgGrad.addColorStop(0, "#0A0F1C")
+      bgGrad.addColorStop(1, "#020617")
+      ctx.fillStyle = bgGrad
+      ctx.fillRect(0, 0, W, H)
 
-      // Platform
-      ctx.fillStyle = "#64748b"
-      ctx.font = "bold 18px 'Segoe UI', Arial"
-      ctx.fillText("PLATFORM", contentX + colWidth, gridY)
-      ctx.fillStyle = "#cbd5e1"
-      ctx.font = "bold 24px 'Segoe UI', Arial"
-      ctx.fillText(result.platform, contentX + colWidth, gridY + 40)
+      // Subtle Tech Grid
+      ctx.strokeStyle = "rgba(0, 212, 255, 0.03)"
+      ctx.lineWidth = 1
+      for (let x = 0; x < W; x += 100) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke() }
+      for (let y = 0; y < H; y += 100) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke() }
 
-      // Certificate ID
-      ctx.fillStyle = "#64748b"
-      ctx.font = "bold 18px 'Segoe UI', Arial"
-      ctx.fillText("CERTIFICATE ID", contentX + colWidth * 2, gridY)
-      ctx.fillStyle = "#cbd5e1"
-      ctx.font = "bold 24px 'Segoe UI', Arial"
-      ctx.fillText(result.certificateId || "CERT-882031", contentX + colWidth * 2, gridY + 40)
+      // --- 1. Header Section ---
+      drawShieldIcon(120, 100, 100)
+      ctx.textAlign = "left"
+      ctx.fillStyle = "#FFFFFF"
+      ctx.font = "bold 52px 'Segoe UI', sans-serif"
+      ctx.fillText("CERTIGUARD OFFICIAL", 260, 155)
+      ctx.fillStyle = "#64748B"
+      ctx.font = "bold 20px 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "4px"
+      ctx.fillText("VERIFICATION CERTIFICATE", 260, 195)
+      ctx.letterSpacing = "0px"
 
-      // --- Verification Seal (Bottom Left) ---
-      const sealX = contentX, sealY = H - 280
-      ctx.fillStyle = "rgba(34, 197, 94, 0.1)"
-      ctx.beginPath(); ctx.arc(sealX + 60, sealY + 60, 80, 0, Math.PI * 2); ctx.fill()
-      ctx.strokeStyle = "#22C55E"; ctx.lineWidth = 3
-      ctx.beginPath(); ctx.arc(sealX + 60, sealY + 60, 70, 0, Math.PI * 2); ctx.stroke()
-      ctx.textAlign = "center"
+      // Top Right Sparkle Seal
+      const sealX = W - 250, sealY = 150
+      ctx.beginPath(); ctx.arc(sealX, sealY, 60, 0, Math.PI * 2)
+      ctx.strokeStyle = "rgba(34, 197, 94, 0.3)"; ctx.lineWidth = 2; ctx.stroke()
+      ctx.beginPath(); ctx.arc(sealX, sealY, 50, 0, Math.PI * 2); ctx.setLineDash([5, 5])
+      ctx.stroke(); ctx.setLineDash([])
+      // Star Icon
       ctx.fillStyle = "#22C55E"
-      ctx.font = "bold 20px 'Segoe UI', Arial"
-      ctx.fillText("AI VERIFIED", sealX + 60, sealY + 55)
-      ctx.font = "bold 14px 'Segoe UI', Arial"
-      ctx.fillText("AUTHENTIC", sealX + 60, sealY + 80)
+      ctx.font = "40px 'Segoe UI'"
+      ctx.fillText("✦", sealX - 20, sealY + 15)
 
-    // --- QR Code Section (Bottom Right) ---
-    const qrX = W - 450, qrY = H - 420
-    const qrImg = new Image()
-    qrImg.src = qrDataUrl
-    await new Promise(resolve => qrImg.onload = resolve)
-    ctx.drawImage(qrImg, qrX + 50, qrY + 20, 240, 240)
-    
-    ctx.textAlign = "center"
-    ctx.fillStyle = "#64748b"
-    ctx.font = "bold 14px 'Segoe UI', Arial"
-    ctx.fillText("SCAN TO VERIFY LIVE", qrX + 170, qrY + 280)
+      // --- 2. Recipient Section ---
+      ctx.fillStyle = "#94A3B8"
+      ctx.font = "bold 24px 'Segoe UI', sans-serif"
+      ctx.fillText("PRESENTED TO", 120, 380)
+      
+      ctx.fillStyle = "#F8FAFC"
+      ctx.font = "italic bold 100px Georgia, serif"
+      ctx.fillText(result.name || "Verified Participant", 120, 520)
 
-    // --- Footer Metadata ---
-    ctx.textAlign = "left"
-    ctx.fillStyle = "#475569"
-    ctx.font = "12px 'Courier New', monospace"
-    const hash = Array.from({length: 40}, () => Math.floor(Math.random() * 16).toString(16)).join("")
-    ctx.fillText(`TRANS_ID: ${hash.toUpperCase()}`, contentX, H - 100)
-    ctx.fillText(`TIMESTAMP: ${new Date().toISOString()}`, contentX, H - 80)
+      // Decorative divider
+      const gradLine = ctx.createLinearGradient(120, 0, W-120, 0)
+      gradLine.addColorStop(0, "rgba(0, 212, 255, 0.5)")
+      gradLine.addColorStop(0.5, "rgba(79, 70, 229, 0.3)")
+      gradLine.addColorStop(1, "rgba(0,0,0,0)")
+      ctx.fillStyle = gradLine
+      ctx.fillRect(120, 600, W - 240, 4)
 
-    // --- Convert to PDF ---
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4"
-    })
-    
-    const imgData = canvas.toDataURL("image/jpeg", 0.95)
-    pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
-    
-    const fileName = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
-    pdf.save(fileName)
+      // --- 3. Verification Details ---
+      // Course Info
+      ctx.fillStyle = "#6366F1" // Indigo
+      ctx.font = "32px 'Segoe UI'"
+      ctx.fillText("📖", 120, 715)
+      ctx.fillStyle = "#CBD5E1"
+      ctx.font = "42px 'Segoe UI', sans-serif"
+      ctx.fillText(result.course, 180, 715)
+
+      // Status Badge
+      ctx.fillStyle = "#22C55E"
+      ctx.font = "32px 'Segoe UI'"
+      ctx.fillText("✔️", 120, 790)
+      ctx.font = "bold 38px 'Segoe UI', sans-serif"
+      ctx.fillText("STATUS: AUTHENTIC", 180, 790)
+
+      // Large Award Medallion on Right
+      drawAwardMedallion(W - 480, 630, 220, result.isValid)
+
+      // --- 4. QR & Metadata Footer ---
+      // QR Code (Bottom Left as approved)
+      const qrImg = new Image()
+      qrImg.src = qrDataUrl
+      await new Promise(resolve => qrImg.onload = resolve)
+      ctx.drawImage(qrImg, 120, 950, 220, 220)
+      
+      ctx.fillStyle = "rgba(0, 212, 255, 0.1)"
+      ctx.fillRect(120, 950, 220, 220) // Subtle overlay
+      ctx.strokeStyle = "rgba(0, 212, 255, 0.3)"; ctx.lineWidth = 1
+      ctx.strokeRect(120, 950, 220, 220)
+
+      // Metadata Row
+      const metaY = H - 150
+      ctx.fillStyle = "#64748B"
+      ctx.font = "bold 20px 'Segoe UI', sans-serif"
+      const finalDate = result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A")
+      ctx.fillText("🌐 GLOBAL-ID: " + (result.certificateId || "CG-882-X"), 400, metaY)
+      ctx.fillText("👤 ID: " + Math.random().toString(36).substr(2, 6).toUpperCase(), 750, metaY)
+      ctx.fillText("📅 DATE: " + finalDate, 1050, metaY)
+
+      // Secured by AI Badge
+      const badgeX = W - 350, badgeY = H - 180
+      ctx.fillStyle = "#0F172A"
+      ctx.beginPath(); ctx.roundRect(badgeX, badgeY, 230, 50, 10); ctx.fill()
+      ctx.strokeStyle = "#00D4FF"; ctx.lineWidth = 2; ctx.stroke()
+      ctx.fillStyle = "#00D4FF"
+      ctx.font = "bold 18px 'Segoe UI', sans-serif"
+      ctx.textAlign = "center"
+      ctx.fillText("SECURED BY AI", badgeX + 115, badgeY + 32)
+      ctx.textAlign = "left"
+
+      // --- Final PDF Assembly ---
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4"
+      })
+      
+      const imgData = canvas.toDataURL("image/jpeg", 0.95)
+      pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
+      
+      const fileName = `CertiGuard_Elite_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
+      pdf.save(fileName)
     } catch (error) {
       console.error("Report generation failed:", error)
     } finally {

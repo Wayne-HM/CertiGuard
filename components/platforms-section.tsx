@@ -119,7 +119,7 @@ export function PlatformsSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 [perspective:2000px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 [perspective:2000px]">
           {platforms.map((platform, index) => (
             <PlatformCard key={platform.name} platform={platform} index={index} />
           ))}

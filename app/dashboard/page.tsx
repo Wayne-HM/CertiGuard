@@ -63,8 +63,8 @@ export default function DashboardPage() {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/history`)
       if (!response.ok) throw new Error("Failed to fetch history")
       const data = await response.json()
-      setHistory(data.verifications)
-      setStats(data.stats)
+      setHistory(data?.verifications || [])
+      setStats(data?.stats || null)
     } catch (error) {
       console.error("Dashboard error:", error)
     } finally {

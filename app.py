@@ -89,13 +89,15 @@ def save_json(file_path, data):
         json.dump(data, f, indent=2)
 
 
-def save_history(record):
+def save_history(record, user_id=None):
     import datetime
     history = load_json(HISTORY_FILE)
     record['id'] = f"CERT-{len(history) + 1:03d}"
     record['date'] = datetime.datetime.now().strftime("%b %d, %Y")
+    record['user_id'] = user_id
     history.insert(0, record)
-    save_json(HISTORY_FILE, history[:50])
+    # Increased global history limit to 500 to accommodate multiple users
+    save_json(HISTORY_FILE, history[:500])
     return record
 
 
@@ -461,7 +463,9 @@ def verify():
             
         result = parse_verification_output(raw_output, platform, text, forensic_result)
         
-        save_history(result)
+        # Associate record with the user who uploaded it
+        user_id = request.form.get('user_id') or request.headers.get('X-User-ID')
+        save_history(result, user_id=user_id)
         
         log_mem("Before Response")
         return jsonify(result)
@@ -500,16 +504,25 @@ def verify():
 
 @app.route('/history', methods=['GET'])
 def get_history():
+    user_id = request.args.get('id')
     history = load_json(HISTORY_FILE)
-    valid_count = sum(1 for r in history if r.get('isValid'))
-    fake_count = len(history) - valid_count
     
+    # Global stats always include everything (for everyone to see CertiGuard impact)
+    total_global = len(history)
+    valid_global = sum(1 for r in history if r.get('isValid'))
+    fake_global = total_global - valid_global
+    
+    # User-specific history: only show records belonging to the user
+    # Also ignore legacy records without user_id as requested
+    user_history = [r for r in history if r.get('user_id') == user_id and user_id is not None]
+    
+    # If it's a guest or requested, we return the user-specific history and global stats
     return jsonify({
-        "verifications": history,
+        "verifications": user_history,
         "stats": {
-            "total": len(history),
-            "valid": valid_count,
-            "fake": fake_count,
+            "total": total_global,
+            "valid": valid_global,
+            "fake": fake_global,
             "avgTime": "2.1s"
         }
     })

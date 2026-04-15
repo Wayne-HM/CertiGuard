@@ -138,6 +138,9 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
           transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           className={`
             relative glass-strong rounded-[2.5rem] p-12 overflow-hidden
             transition-all duration-500

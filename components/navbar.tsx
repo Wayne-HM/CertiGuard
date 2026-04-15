@@ -178,7 +178,7 @@ export function Navbar() {
                       <Button variant="ghost" size="icon" className="relative group p-0 overflow-hidden rounded-full">
                         <Avatar className="w-9 h-9 border-2 border-neon-blue/30 group-hover:border-neon-blue transition-colors">
                           <AvatarFallback className="bg-neon-blue/10 text-neon-blue text-xs font-bold">
-                            {user.name.substring(0, 2).toUpperCase()}
+                            {user.name && user.name.length >= 2 ? user.name.substring(0, 2).toUpperCase() : (user.name?.charAt(0).toUpperCase() || "CG")}
                           </AvatarFallback>
                         </Avatar>
                         <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-background" />
