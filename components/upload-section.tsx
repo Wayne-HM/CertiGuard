@@ -173,7 +173,8 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="text-center py-12"
+                onClick={() => document.getElementById('file-upload')?.click()}
+                className="text-center py-12 cursor-pointer"
               >
                 <motion.div
                   animate={isDragging ? { scale: 1.1 } : { scale: 1 }}
@@ -203,7 +204,7 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                   />
                   <Button 
                     variant="outline" 
-                    onClick={() => document.getElementById('file-upload')?.click()}
+                    onClick={(e) => { e.stopPropagation(); document.getElementById('file-upload')?.click() }}
                     className="h-12 px-8 rounded-xl border-glass-border hover:border-neon-blue/50 group hover-scale shadow-lg"
                   >
                     <Search className="w-4 h-4 mr-2" />

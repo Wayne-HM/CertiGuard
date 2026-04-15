@@ -145,22 +145,24 @@ def detect_certification_platform(pdf_path, worker_data=None):
     if any(k in text or k in filename for k in ["coursera", "google cloud", "university of"]):
         return "coursera"
     
-    # 2. Check for Udemy
-    udemy_keywords = ["udemy", "certificate of completion", "instructor", "udemy certified", "has successfully completed the course", "a online course"]
-    if any(k in text or k in filename for k in udemy_keywords) or "uc-" in text or "uc-" in filename:
-        return "udemy"
-    
-    # 3. Check for Infosys (QR-Only as per requirement)
-    # Identification for Infosys is handled via detect_qr_platform below
-    
-    # 4. Check for Saylor
-    saylor_keywords = ["saylor", "jeffery daubs", "verification code", "direct credit", "saylor.org"]
+    # 2. Check for Saylor (BEFORE Udemy — Saylor certs contain generic phrases like
+    #    "certificate of completion" that previously caused false Udemy matches)
+    saylor_keywords = ["saylor", "jeffery daubs", "saylor.org", "learn.saylor.org", "saylor academy"]
     if any(k in text or k in filename for k in saylor_keywords):
         return "saylor"
     
-    # 5. Check for Alison
+    # 3. Check for Alison
     if "alison" in text or "alison" in filename:
         return "alison"
+    
+    # 4. Check for Infosys (QR-Only as per requirement)
+    # Identification for Infosys is handled via detect_qr_platform below
+
+    # 5. Check for Udemy (uses platform-specific markers only, NOT generic phrases
+    #    like "certificate of completion" which are shared across many platforms)
+    udemy_keywords = ["udemy", "udemy certified", "ude.my"]
+    if any(k in text or k in filename for k in udemy_keywords) or "uc-" in text or "uc-" in filename:
+        return "udemy"
     
     # 6. QR Fallback — use worker_data preferred
     qr = detect_qr_platform(pdf_path, worker_data=worker_data)
