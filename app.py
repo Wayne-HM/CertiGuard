@@ -113,6 +113,24 @@ def extract_text_from_pdf(pdf_path):
         return ""
 
 
+def extract_links_from_pdf(pdf_path):
+    """Extract embedded hyperlinks (URL annotations) from a PDF."""
+    import PyPDF2
+    links = []
+    try:
+        with open(pdf_path, "rb") as file:
+            reader = PyPDF2.PdfReader(file)
+            for page in reader.pages:
+                if '/Annots' in page:
+                    for annot in page['/Annots']:
+                        obj = annot.get_object()
+                        if isinstance(obj, dict) and '/A' in obj and '/URI' in obj['/A']:
+                            links.append(obj['/A']['/URI'])
+    except Exception as e:
+        print(f"DEBUG: Link extraction error: {e}")
+    return links
+
+
 def extract_images_from_pdf(pdf_path):
     # LOCAL IMAGE EXTRACTION DISABLED: Use Worker
     return []
@@ -140,6 +158,11 @@ def detect_certification_platform(pdf_path, worker_data=None):
         text = extract_text_from_pdf(pdf_path).lower()
 
     filename = pdf_path.split("/")[-1].split("\\")[-1].lower()
+
+    # 0b. Extract embedded PDF links for platforms whose branding is image-only
+    #     (e.g., Saylor certs render "Saylor Academy" as a logo, not text)
+    pdf_links = extract_links_from_pdf(pdf_path)
+    links_text = " ".join(pdf_links).lower()
     
     # 1. Check for Coursera
     if any(k in text or k in filename for k in ["coursera", "google cloud", "university of"]):
@@ -147,8 +170,9 @@ def detect_certification_platform(pdf_path, worker_data=None):
     
     # 2. Check for Saylor (BEFORE Udemy — Saylor certs contain generic phrases like
     #    "certificate of completion" that previously caused false Udemy matches)
+    #    Also check embedded PDF links because Saylor branding is often image-only
     saylor_keywords = ["saylor", "jeffery daubs", "saylor.org", "learn.saylor.org", "saylor academy"]
-    if any(k in text or k in filename for k in saylor_keywords):
+    if any(k in text or k in filename or k in links_text for k in saylor_keywords):
         return "saylor"
     
     # 3. Check for Alison
