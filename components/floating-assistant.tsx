@@ -73,7 +73,7 @@ export function FloatingAssistant() {
           >
             {/* Header */}
             <motion.div 
-              className="relative bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple p-4 overflow-hidden flex-shrink-0"
+              className="relative bg-gradient-to-r from-primary via-emerald-400 to-accent p-4 overflow-hidden flex-shrink-0"
               style={{ backgroundSize: "200% 100%" }}
               animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
               transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
@@ -81,15 +81,18 @@ export function FloatingAssistant() {
               <div className="flex items-center justify-between relative z-10">
                 <div className="flex items-center gap-3">
                   <motion.div 
-                    className="relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
+                    className="relative w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border border-white/30 shadow-lg"
                     animate={{ rotate: [0, 10, -10, 0] }}
                     transition={{ duration: 4, repeat: Infinity }}
                   >
                     <Bot className="w-5 h-5 text-white" />
                   </motion.div>
                   <div>
-                    <h3 className="font-semibold text-white flex items-center gap-2">CertiGuard AI</h3>
-                    <p className="text-xs text-white/80">Active now</p>
+                    <h3 className="font-semibold text-white flex items-center gap-2 tracking-tight">CertiGuard AI</h3>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                      <p className="text-[10px] text-white/80 font-medium">System Online</p>
+                    </div>
                   </div>
                 </div>
                 <Button
@@ -104,16 +107,16 @@ export function FloatingAssistant() {
             </motion.div>
 
             {/* Chat Body */}
-            <div ref={scrollRef} className="p-4 overflow-y-auto flex-1 space-y-4 min-h-[300px]">
+            <div ref={scrollRef} className="p-4 overflow-y-auto flex-1 space-y-4 min-h-[300px] scrollbar-hide">
               {/* Initial Welcome */}
               {messages.length === 0 && (
                 <div className="flex gap-3 mb-4">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neon-blue/20 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-neon-blue" />
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                    <Sparkles className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="flex-1 glass rounded-xl rounded-tl-none p-3">
-                    <p className="text-sm text-foreground">
-                      Hi! I&apos;m your AI assistant. Ask me anything about certificate verification!
+                  <div className="flex-1 glass rounded-2xl rounded-tl-none p-3 shadow-sm">
+                    <p className="text-sm text-foreground leading-relaxed">
+                      Greetings! I'm the CertiGuard intelligence module. How can I assist you with certification integrity today?
                     </p>
                   </div>
                 </div>
@@ -123,15 +126,15 @@ export function FloatingAssistant() {
               {messages.map((msg, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div className={`
-                    max-w-[80%] p-3 rounded-xl text-sm
+                    max-w-[85%] p-3 rounded-2xl text-sm shadow-sm
                     ${msg.role === "user" 
-                      ? "bg-neon-blue text-white rounded-br-none" 
-                      : "glass rounded-tl-none text-foreground"}
+                      ? "bg-primary text-white rounded-br-none" 
+                      : "glass rounded-tl-none text-foreground border-glass-border"}
                   `}>
                     {msg.content}
                   </div>
@@ -140,8 +143,8 @@ export function FloatingAssistant() {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="glass p-3 rounded-xl rounded-tl-none">
-                    <Loader2 className="w-4 h-4 animate-spin text-neon-blue" />
+                  <div className="glass p-3 rounded-2xl rounded-tl-none border-glass-border">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   </div>
                 </div>
               )}
@@ -149,14 +152,16 @@ export function FloatingAssistant() {
               {/* Quick Actions */}
               {messages.length === 0 && (
                 <div className="space-y-2 pt-2">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Suggested Questions</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest pl-1">Knowledge Bases</p>
                   {quickQuestions.map((question) => (
                     <button
                       key={question.text}
                       onClick={() => handleSendMessage(question.text)}
-                      className="w-full text-left text-xs px-3 py-2 glass rounded-lg hover:bg-secondary/80 hover:border-neon-blue/30 transition-all text-muted-foreground hover:text-foreground flex items-center gap-2"
+                      className="w-full text-left text-[11px] px-3 py-2.5 glass rounded-xl hover:bg-secondary/80 hover:border-primary/30 transition-all text-muted-foreground hover:text-foreground flex items-center gap-3 group shadow-sm"
                     >
-                      <question.icon className="w-3.5 h-3.5 text-neon-blue" />
+                      <div className="w-6 h-6 rounded-lg bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                        <question.icon className="w-3.5 h-3.5 text-primary" />
+                      </div>
                       {question.text}
                     </button>
                   ))}
@@ -165,7 +170,7 @@ export function FloatingAssistant() {
             </div>
 
             {/* Input */}
-            <div className="p-4 border-t border-border/50 bg-secondary/10">
+            <div className="p-4 border-t border-border/50 bg-secondary/10 backdrop-blur-sm">
               <form 
                 onSubmit={(e) => { e.preventDefault(); handleSendMessage(inputMessage); }}
                 className="flex gap-2"
@@ -173,14 +178,14 @@ export function FloatingAssistant() {
                 <Input
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder="Ask me something..."
-                  className="bg-secondary/50 border-none h-10"
+                  placeholder="Inquiry..."
+                  className="bg-secondary/50 border-glass-border h-10 rounded-xl text-sm focus-visible:ring-primary/30"
                 />
                 <Button 
                   size="icon" 
                   type="submit"
                   disabled={!inputMessage.trim() || isLoading}
-                  className="bg-gradient-to-r from-neon-blue to-neon-purple shrink-0 h-10 w-10"
+                  className="bg-primary hover:bg-emerald-600 shrink-0 h-10 w-10 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -191,17 +196,32 @@ export function FloatingAssistant() {
       </AnimatePresence>
 
       <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onHoverStart={() => setIsHovering(true)}
         onHoverEnd={() => setIsHovering(false)}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative w-14 h-14 rounded-full bg-gradient-to-r from-neon-blue to-neon-purple flex items-center justify-center shadow-lg shadow-neon-blue/30"
+        className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-emerald-600 flex items-center justify-center shadow-xl shadow-primary/20 border border-white/10"
       >
         <AnimatePresence mode="wait">
-          {isOpen ? <X className="w-6 h-6 text-white" /> : <Bot className="w-6 h-6 text-white" />}
+          {isOpen ? (
+            <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
+              <X className="w-6 h-6 text-white" />
+            </motion.div>
+          ) : (
+            <motion.div key="bot" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }}>
+              <Bot className="w-6 h-6 text-white" />
+            </motion.div>
+          )}
         </AnimatePresence>
+        
+        {!isOpen && (
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-accent rounded-full border-2 border-background flex items-center justify-center animate-bounce">
+            <div className="w-1.5 h-1.5 bg-white rounded-full" />
+          </div>
+        )}
       </motion.button>
+
     </div>
   )
 }

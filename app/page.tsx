@@ -10,6 +10,7 @@ import { VerificationStepper } from "@/components/verification-stepper"
 import { PlatformsSection } from "@/components/platforms-section"
 import { FloatingAssistant } from "@/components/floating-assistant"
 import { Footer } from "@/components/footer"
+import { useAuth } from "@/components/auth-context"
 
 const ResultDisplay = dynamic(
   () => import("@/components/result-display").then((mod) => mod.ResultDisplay),
@@ -21,13 +22,14 @@ type VerificationResult = any // Since we are importing ResultDisplay dynamicall
 type VerificationState = "idle" | "verifying" | "complete"
 
 export default function Home() {
+  const { user } = useAuth()
   const [verificationState, setVerificationState] = useState<VerificationState>("idle")
   const [currentStep, setCurrentStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<VerificationResult | null>(null)
 
   const handleUpload = useCallback(async (file: File, platform: string = "auto") => {
-    console.log("Starting verification for:", file.name, "on platform:", platform)
+    console.log("Starting verification for:", file.name, "on platform:", platform, "User:", user?.id || "Guest")
     setVerificationState("verifying")
     setCurrentStep(1)
     setProgress(10)
@@ -55,6 +57,9 @@ export default function Home() {
       const formData = new FormData()
       formData.append("certificate", file)
       formData.append("platform", platform)
+      if (user?.id) {
+        formData.append("user_id", user.id)
+      }
 
       const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://certiguard-ksm9.onrender.com"
       const response = await fetch(`${API_URL}/verify`, {

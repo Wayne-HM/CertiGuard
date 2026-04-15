@@ -1,122 +1,79 @@
-# CertiGuard - Certificate Verification System
+# CertiGuard: Unified AI Certificate Verification 🛡️✨
 
-CertiGuard is a modern, full-stack web application designed to automatically verify whether online course certificates are genuine or fake. It supports multiple platforms and can verify certificates either via PDF upload, web scraping, or OCR image analysis.
+**CertiGuard** is a premier, high-fidelity certificate verification command center. It leverages neural-network-driven OCR, forensic metadata analysis, and multi-platform scrapers to instantly validate the authenticity of digital credentials. 
 
-The system features a sleek **Next.js** frontend with an interactive UI, and a powerful **Python/Flask** backend that handles the heavy lifting of reading QR codes, extracting data, and validating authenticity.
-
----
-
-## 🌟 Key Features
-
-* **Platform Detection**: Automatically identifies the certificate's issuing platform (Coursera, Udemy, Alison, Saylor Academy, etc.).
-* **Multiple Verification Methods**:
-  * PDF data parsing & metadata extraction
-  * Text/Image OCR for scanned certificates
-  * QR Code scanning support
-  * Fallback to direct URL scraping using Selenium
-* **Modern Frontend**: Built with Next.js 16, React 19, Tailwind CSS v4, and Radix UI components.
-* **Smart UI**: Interactive dashboard, smooth animations (Framer Motion), dark mode support (next-themes), and responsive layout.
+Designed with a "Cyber-Pro" aesthetic, it provides a seamless, glassmorphic interface for students and organizations to detect fraudulent certifications in milliseconds.
 
 ---
 
-## 🛠 Project Architecture
+## 🌟 Premier Features
 
-This application consists of two main parts residing in the same repository:
+### 🔐 Privacy-Scoped Dashboards
+Every user enjoys a private command center. Verifications are uniquely tagged to individual accounts, ensuring your history is yours and yours alone. Guests can still view global impact statistics while private records remain shielded.
 
-1. **Frontend (Next.js)**: Handles user uploads, status updates, and displaying verification reports.
-2. **Backend (Flask API)**: Python scripts (`app.py`, `coursera.py`, `udemy.py`, etc.) that process the uploaded files and return verification results.
+### 🕵️‍♂️ Forensic Metadata Analysis
+Beyond visual scanning, CertiGuard audits the internal DNA of PDF files. It detects usage of editing suites (Photoshop, Canva, etc.) and flags potential tampering that the naked eye might miss.
 
-### Directory Overview
+### ⚡ Zero-Memory AI Processing
+Optimized for high-performance deployment, CertiGuard offloads heavy OCR and QR processing to serverless worker nodes, ensuring the core platform remains lightning-fast and stable under load.
+
+### 🍱 Multi-Platform Neural Scanners
+Automated verification support for:
+- **Coursera**: Deep-link validation and signature auditing.
+- **Udemy**: UC-ID verification and instructor cross-referencing.
+- **Alison**: QR-driven authenticity checks.
+- **Saylor Academy**: Direct credit verification.
+- **Infosys Springboard**: QR-to-Credential matching.
+
+---
+
+## 🛠 Tech Stack (Premier Elite)
+
+### Frontend Engine
+- **Next.js 16 (App Router)**: Blazing fast SSR and hydration guards.
+- **Framer Motion**: High-performance "Cyber-Pro" animations and transitions.
+- **Tailwind CSS v4**: Advanced glassmorphism and dynamic dark mode.
+- **Context API Auth**: Resilient session management with 401 fail-safes.
+
+### Backend Intelligence
+- **Python / Flask**: Restful precision for scraper orchestration.
+- **PyPDF2 & Tesseract**: Multi-layered text and OCR extraction.
+- **Forensic Engine**: Algorithmic metadata auditing.
+- **Worker Client**: Serverless heavy-computation offloading.
+
+---
+
+## 🚀 Deployment & Scaling
+
+CertiGuard is architected for modern cloud environments:
+- **Frontend**: Optimized for **Vercel** with full hydration safety.
+- **Backend**: Deployed on **Render** with memory-aware resource management.
+- **Database**: Local JSON storage with per-user record limits and global stat aggregation.
+
+---
+
+## 📁 Directory Architecture (V3.0)
+
 ```
 CertiGuard/
-├── app/                  # Next.js frontend application (React 19)
-├── components/           # Reusable Radix UI & generic components
-├── public/               # Static frontend assets
-├── .next/                # Build output for Next.js
+├── app/                  # Next.js App Router (Dashboard, Login, Verify)
+├── components/           # Cyber-Pro UI Components (Glassmorphism)
+├── public/               # High-res assets and dynamic backgrounds
 │
-├── app.py                # Main Flask API entry point
-├── coursera.py           # Coursera verification logic
-├── udemy.py              # Udemy verification logic
-├── alison.py             # Alison verification logic
-├── saylor.py             # Saylor verification logic
-│
-├── uploads/              # Temporary storage for uploaded certificates
-├── pdfs/                 # Cached PDF storage
-└── requirements.txt      # Python dependencies
+├── app.py                # Main Scraper Orchestrator (Flask)
+├── worker_client.py      # Serverless offloading bridge
+├── forensic_audit.py     # Metadata tampering detection logic
+├── scripts/              # Platform-specific verification modules
+│   ├── coursera.py
+│   ├── udemy.py
+│   └── infosys.py
 ```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-You will need the following installed:
-* **Node.js**: v18 or higher (for the frontend)
-* **Python**: v3.9 or higher (for the backend)
-* **Google Chrome & ChromeDriver**: Used by Selenium for web scraping pages that require JavaScript.
-* **Tesseract OCR**: Required for image-based text extraction. (Download: [Tesseract Github](https://github.com/tesseract-ocr/tesseract))
-
----
-
-### 1. Setup the Python Backend
-
-1. Open a terminal in the project root.
-2. Create and activate a Virtual Environment (optional but recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-3. Install the dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Start the Flask API:
-   ```bash
-   python app.py
-   ```
-   *The Flask API typically runs on `http://127.0.0.1:5000`.*
-
----
-
-### 2. Setup the Next.js Frontend
-
-1. Open a **new** terminal in the project root.
-2. Install Node dependencies:
-   ```bash
-   npm install
-   ```
-3. Run the Next.js development server:
-   ```bash
-   npm run dev
-   ```
-4. Open your browser and navigate to `http://localhost:3000`.
-
----
-
-## 🧠 Supported Platforms
-
-Currently, the backend validation modules support the following certification platforms:
-
-* **Coursera** (`coursera.py`)
-* **Udemy** (`udemy.py`)
-* **Alison** (`alison.py`)
-* **Saylor Academy** (`saylor.py`)
-* *(Infosys, etc. logic are frequently updated modules)*
-
-The platform is dynamically inferred by analyzing the certificate's visual content, structural text, or embedded QR code data.
-
----
-
-## 🔮 Future Improvements
-
-- Containerize the entire application using Docker (a `Dockerfile` is present in the repository).
-- Improve Cloudflare bypass handling in the scraping modules.
-- Enhance OCR accuracy for low-resolution certificates.
-- Add history tracking for previously verified certificates.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the **MIT License**.
+
+---
+**Status**: All systems operational. 🚀

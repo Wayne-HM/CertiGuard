@@ -18,6 +18,7 @@ export interface VerificationResult {
   rawOutput: string
   totalHours?: string
   status?: "valid" | "fake" | "manual_check" | "action_required" | "error"
+  date?: string
 }
 
 interface ResultDisplayProps {
@@ -422,7 +423,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     </>
                   )}
                 </motion.div>
-
+ 
                 {/* Status Text */}
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
@@ -441,7 +442,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </p>
                 </motion.div>
               </div>
-
+ 
               {isActionRequired && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -470,7 +471,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </div>
                 </motion.div>
               )}
-
+ 
               {/* Certificate Details */}
               <div className="space-y-4">
                 <motion.h3 
@@ -481,13 +482,13 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                 >
                   Extracted Details
                 </motion.h3>
-
+ 
                 <div className="grid gap-3">
                   {details.map((item, index) => (
                     <DetailRow key={item.label} {...item} index={index} />
                   ))}
                 </div>
-
+ 
                 {/* Verification Link */}
                 {result.verificationUrl && (
                   <motion.a
@@ -518,7 +519,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     </motion.div>
                   </motion.a>
                 )}
-
+ 
                 {/* Additional Info */}
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -532,7 +533,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     className="px-4 py-2 glass rounded-lg text-xs"
                   >
                     <span className="text-muted-foreground">Issue Date: </span>
-                    <span className="text-foreground font-medium">{result.issueDate}</span>
+                    <span className="text-foreground font-medium">{result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A")}</span>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.03 }}
@@ -544,7 +545,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </motion.div>
                 </motion.div>
               </div>
-
+ 
               {/* Action Buttons */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
@@ -575,7 +576,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer" />
                     </Button>
                   </motion.div>
-                  
+                   
                   {/* Debug Log Toggle */}
                   <motion.div
                     whileHover={{ scale: 1.02 }}
@@ -593,7 +594,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                     </Button>
                   </motion.div>
                 </div>
-                
+                 
                 <motion.div 
                   className="flex-1"
                   whileHover={{ scale: 1.02 }}
@@ -617,7 +618,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </Button>
                 </motion.div>
               </motion.div>
-
+ 
               {/* Debug Log Content */}
               <AnimatePresence>
                 {showLog && (
@@ -645,7 +646,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                 )}
               </AnimatePresence>
             </CardContent>
-
+ 
             {/* Corner glows */}
             <div className={`absolute top-0 left-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
             <div className={`absolute bottom-0 right-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
