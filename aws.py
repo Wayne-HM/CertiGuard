@@ -51,36 +51,43 @@ def scrape_credly_badge(url):
         if "not found" in page_text.lower() or "invalid" in page_text.lower():
             return {"status": "Fake", "reason": "Badge not found or invalid on Credly database."}
 
-        # 1. Extract Name — HTML regex (most reliable for Credly)
-        name_match = re.search(r'This badge was issued to\s*<a[^>]*>([^<]+)</a>', html, re.IGNORECASE)
-        if not name_match:
-            name_match = re.search(r'This badge was issued to\s*([A-Za-z\s]+)', page_text, re.IGNORECASE)
-        if name_match:
-            student_name = name_match.group(1).strip()
+        # 1. Extract Name & Course from og:title (New Credly Format)
+        og_title_meta = soup.find("meta", property="og:title")
+        if og_title_meta and og_title_meta.get("content"):
+            title_content = og_title_meta["content"]
+            m = re.search(r'^(.*?)\s+was issued by\s+.*?\s+to\s+(.+?)\.?$', title_content, re.IGNORECASE)
+            if m:
+                course_name = m.group(1).strip()
+                student_name = m.group(2).strip()
+            else:
+                course_name = title_content.strip()
 
-        # 2. Extract Course/Badge Name — <h1> or meta
-        course_match = re.search(r'<h1[^>]*>([^<]+)</h1>', html, re.IGNORECASE)
-        if not course_match:
-            og_title = soup.find("meta", property="og:title")
-            if og_title and og_title.get("content"):
-                course_name = og_title["content"].strip()
-        if course_match and not course_name:
-            course_name = course_match.group(1).strip()
+        # 2. Extract Name — Fallback HTML regex
+        if not student_name:
+            name_match = re.search(r'This badge was issued to\s*<a[^>]*>([^<]+)</a>', html, re.IGNORECASE)
+            if not name_match:
+                name_match = re.search(r'This badge was issued to\s*([A-Za-z\s]+)', page_text, re.IGNORECASE)
+            if name_match:
+                student_name = name_match.group(1).strip()
 
-        # Fallback: search for "AWS Academy Graduate" pattern
+        # 3. Extract Course/Badge Name — Fallback
         if not course_name:
-            aws_match = re.search(r'(AWS Academy Graduate[^\n]+)', page_text, re.IGNORECASE)
-            if aws_match:
-                course_name = aws_match.group(1).strip()
+            course_match = re.search(r'<h1[^>]*>([^<]+)</h1>', html, re.IGNORECASE)
+            if course_match:
+                course_name = course_match.group(1).strip()
+            else:
+                aws_match = re.search(r'(AWS Academy Graduate[^\n]+)', page_text, re.IGNORECASE)
+                if aws_match:
+                    course_name = aws_match.group(1).strip()
 
-        # 3. Extract Date
+        # 4. Extract Date
         date_match = re.search(r'Date issued:\s*([^<\n]+)', html, re.IGNORECASE)
         if not date_match:
             date_match = re.search(r'Date issued:\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4})', page_text, re.IGNORECASE)
         if date_match:
             issue_date = date_match.group(1).strip()
 
-        # 4. Fallback: og:description
+        # 5. Fallback: og:description for Name
         if not student_name:
             og_desc = soup.find("meta", property="og:description")
             if og_desc and og_desc.get("content"):
