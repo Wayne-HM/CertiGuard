@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Inter, Outfit } from 'next/font/google'
+import { Inter, Playfair_Display } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/components/auth-context'
 import { Toaster } from 'sonner'
@@ -11,9 +11,9 @@ const inter = Inter({
   display: 'swap',
 });
 
-const outfit = Outfit({ 
+const playfair = Playfair_Display({ 
   subsets: ["latin"], 
-  variable: "--font-outfit",
+  variable: "--font-playfair",
   display: 'swap',
 });
 
@@ -38,7 +38,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark scroll-smooth">
-      <body className={`${inter.variable} ${outfit.variable} font-sans antialiased bg-background text-foreground selection:bg-neon-blue/30`}>
+      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased bg-background text-foreground selection:bg-neon-blue/30`}>
         <AuthProvider>
           {children}
           <Toaster richColors position="top-right" theme="dark" closeButton />
