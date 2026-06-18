@@ -48,13 +48,6 @@ const platforms = [
     url: "https://aws.amazon.com/training/awsacademy/",
   },
   {
-    name: "Cisco NetAcad",
-    description: "Networking & cybersecurity skills",
-    icon: Network,
-    gradient: "from-cyan-500 to-blue-500",
-    url: "https://www.netacad.com",
-  },
-  {
     name: "Mindluster",
     description: "Free courses with verified certs",
     icon: BookMarked,
