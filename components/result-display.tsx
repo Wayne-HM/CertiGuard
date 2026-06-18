@@ -860,6 +860,63 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* Batch Results Panel */}
+              {result._batchResults && result._batchResults.length > 1 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8 }}
+                  className="mt-6 space-y-3"
+                >
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      Batch Results ({result._batchSummary?.valid || 0}/{result._batchSummary?.total || 0} Valid)
+                    </h3>
+                    <div className="flex gap-2 text-xs">
+                      <span className="px-2 py-1 rounded-full bg-success/10 text-success font-bold">
+                        ✓ {result._batchSummary?.valid || 0}
+                      </span>
+                      <span className="px-2 py-1 rounded-full bg-destructive/10 text-destructive font-bold">
+                        ✕ {result._batchSummary?.fake || 0}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                    {result._batchResults.map((br: any, idx: number) => (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.9 + idx * 0.05 }}
+                        className={`flex items-center gap-3 p-3 glass rounded-xl border ${
+                          br.isValid ? "border-success/20" : "border-destructive/20"
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          br.isValid ? "bg-success/10" : "bg-destructive/10"
+                        }`}>
+                          {br.isValid 
+                            ? <CheckCircle2 className="w-4 h-4 text-success" />
+                            : <XCircle className="w-4 h-4 text-destructive" />
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{br.filename || br.name || `Certificate ${idx + 1}`}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {br.platform} • {br.course || "Unknown Course"}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
+                          br.isValid ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
+                        }`}>
+                          {br.isValid ? "Valid" : "Fake"}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </CardContent>
  
             {/* Corner glows */}

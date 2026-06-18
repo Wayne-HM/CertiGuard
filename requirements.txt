@@ -5,3 +5,8 @@ Pillow
 requests
 beautifulsoup4
 flask-cors
+thefuzz
+python-Levenshtein
+sqlalchemy
+cryptography
+psutil

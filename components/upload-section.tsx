@@ -2,11 +2,12 @@
 
 import { useState, useCallback, useRef, memo } from "react"
 import { motion, AnimatePresence, useInView } from "framer-motion"
-import { Upload, FileText, X, CheckCircle, Loader2, Sparkles, Shield, Zap, Search, Globe, Award, GraduationCap, BookOpen, Building, Laptop } from "lucide-react"
+import { Upload, FileText, X, CheckCircle, Loader2, Sparkles, Shield, Zap, Search, Globe, Award, GraduationCap, BookOpen, Building, Laptop, Cloud, Network, BookMarked, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface UploadSectionProps {
   onUpload: (file: File, platform: string) => void
+  onBatchUpload?: (files: File[], platform: string) => void
   isVerifying: boolean
 }
 
@@ -17,15 +18,20 @@ const selectPlatforms = [
   { id: "alison", name: "Alison", icon: Award, color: "text-emerald-500" },
   { id: "saylor", name: "Saylor", icon: Building, color: "text-orange-500" },
   { id: "infosys", name: "Infosys", icon: Laptop, color: "text-blue-400" },
+  { id: "aws", name: "AWS Academy", icon: Cloud, color: "text-amber-500" },
+  { id: "cisco", name: "Cisco", icon: Network, color: "text-cyan-500" },
+  { id: "mindluster", name: "Mindluster", icon: BookMarked, color: "text-rose-500" },
 ]
 
 // Optimized spring configs
 const quickSpring = { stiffness: 300, damping: 30, mass: 0.8 }
 const smoothTransition = { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
 
-export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
+export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSectionProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
+  const [batchFiles, setBatchFiles] = useState<File[]>([])
+  const [isBatchMode, setIsBatchMode] = useState(false)
   const [selectedPlatform, setSelectedPlatform] = useState("auto")
   const [isHovering, setIsHovering] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -44,28 +50,41 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    const droppedFile = e.dataTransfer.files[0]
-    if (droppedFile && (droppedFile.type === "application/pdf" || droppedFile.type.startsWith("image/"))) {
-      setFile(droppedFile)
+    if (isBatchMode) {
+      const dropped = Array.from(e.dataTransfer.files).filter(f => f.type === "application/pdf")
+      if (dropped.length > 0) setBatchFiles(prev => [...prev, ...dropped].slice(0, 25))
+    } else {
+      const droppedFile = e.dataTransfer.files[0]
+      if (droppedFile && droppedFile.type === "application/pdf") {
+        setFile(droppedFile)
+      }
     }
-  }, [])
+  }, [isBatchMode])
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
-      setFile(selectedFile)
+    if (isBatchMode) {
+      const selected = Array.from(e.target.files || []).filter(f => f.type === "application/pdf")
+      if (selected.length > 0) setBatchFiles(prev => [...prev, ...selected].slice(0, 25))
+    } else {
+      const selectedFile = e.target.files?.[0]
+      if (selectedFile) {
+        setFile(selectedFile)
+      }
     }
-  }, [])
+  }, [isBatchMode])
 
   const removeFile = useCallback(() => {
     setFile(null)
+    setBatchFiles([])
   }, [])
 
   const handleStartVerification = useCallback(() => {
-    if (file) {
+    if (isBatchMode && batchFiles.length > 0 && onBatchUpload) {
+      onBatchUpload(batchFiles, selectedPlatform)
+    } else if (file) {
       onUpload(file, selectedPlatform)
     }
-  }, [file, selectedPlatform, onUpload])
+  }, [file, batchFiles, isBatchMode, selectedPlatform, onUpload, onBatchUpload])
 
   return (
     <section ref={containerRef} id="verify" className="relative py-24 px-4 overflow-hidden">
@@ -95,6 +114,31 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
           <p className="text-muted-foreground max-w-xl mx-auto text-lg">
             Upload any digital credential and let our neural networks scan for authenticity in milliseconds.
           </p>
+        </motion.div>
+
+        {/* Batch Mode Toggle */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={isInView ? { opacity: 1, scale: 1 } : {}}
+          transition={{ duration: 0.5, delay: 0.05 }}
+          className="flex justify-center mb-6"
+        >
+          <button
+            onClick={() => { setIsBatchMode(!isBatchMode); setFile(null); setBatchFiles([]) }}
+            disabled={isVerifying}
+            className={`
+              flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-wider uppercase transition-all duration-300
+              ${isBatchMode
+                ? "bg-gradient-to-r from-neon-blue/20 to-neon-purple/20 border-neon-blue/50 text-neon-blue shadow-lg shadow-neon-blue/10"
+                : "bg-white/5 border-transparent text-muted-foreground hover:bg-white/10"
+              }
+              border glass-card disabled:opacity-50
+            `}
+          >
+            <Layers className="w-4 h-4" />
+            {isBatchMode ? "Batch Mode ON" : "Enable Batch Mode"}
+            {isBatchMode && <span className="ml-1 text-[10px] opacity-70">Up to 25 files</span>}
+          </button>
         </motion.div>
 
         {/* Platform Selector */}
@@ -167,7 +211,7 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
           </AnimatePresence>
 
           <AnimatePresence mode="wait">
-            {!file ? (
+            {(!file && batchFiles.length === 0) ? (
               <motion.div
                 key="upload-prompt"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -191,14 +235,18 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                   {isDragging ? "Release to Scan" : "Drop Certificate Here"}
                 </h3>
                 <p className="text-muted-foreground mb-8 max-w-sm mx-auto">
-                  Drag and drop your PDF or images. Multiple file processing is enabled for Pro users.
+                  {isBatchMode 
+                    ? "Drag and drop up to 25 PDF certificates for batch verification."
+                    : "Drag and drop your PDF certificate for instant verification."
+                  }
                 </p>
 
                 <div className="inline-block relative">
                   <input 
                     type="file" 
                     id="file-upload"
-                    accept=".pdf,image/*" 
+                    accept=".pdf" 
+                    multiple={isBatchMode}
                     onChange={handleFileSelect} 
                     className="hidden" 
                   />
@@ -244,8 +292,22 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                   </div>
 
                   <div className="text-center space-y-2">
-                    <h3 className="text-xl font-bold truncate max-w-xs">{file.name}</h3>
-                    <p className="text-sm text-muted-foreground">Ready for AI analysis • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    {isBatchMode && batchFiles.length > 0 ? (
+                      <>
+                        <h3 className="text-xl font-bold">{batchFiles.length} Certificate{batchFiles.length > 1 ? 's' : ''} Selected</h3>
+                        <p className="text-sm text-muted-foreground">Total: {(batchFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)} MB</p>
+                        <div className="max-h-24 overflow-y-auto mt-2 space-y-1">
+                          {batchFiles.map((f, i) => (
+                            <p key={i} className="text-xs text-muted-foreground truncate max-w-xs">{f.name}</p>
+                          ))}
+                        </div>
+                      </>
+                    ) : file ? (
+                      <>
+                        <h3 className="text-xl font-bold truncate max-w-xs">{file.name}</h3>
+                        <p className="text-sm text-muted-foreground">Ready for AI analysis • {(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                      </>
+                    ) : null}
                   </div>
 
                   <div className="flex items-center gap-4">
@@ -261,7 +323,7 @@ export function UploadSection({ onUpload, isVerifying }: UploadSectionProps) {
                       className="relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple text-white px-10 h-14 text-lg rounded-2xl shadow-xl shadow-neon-blue/20 group"
                     >
                       <span className="relative z-10 flex items-center gap-2 font-bold tracking-tight">
-                        {isVerifying ? "Analyzing Logic..." : "Perform AI Scan"}
+                        {isVerifying ? "Analyzing Logic..." : (isBatchMode ? `Scan ${batchFiles.length} Certificates` : "Perform AI Scan")}
                         {!isVerifying && <Zap className="w-5 h-5 fill-current" />}
                       </span>
                       {isVerifying && <div className="absolute inset-0 bg-white/10 animate-pulse" />}

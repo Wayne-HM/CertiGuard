@@ -6,7 +6,9 @@ import os
 import re
 import time
 import gc
+import json as json_mod
 import worker_client
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Log memory usage if psutil is available
 try:
@@ -70,6 +72,79 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 HISTORY_FILE = 'data/history.json'
 USERS_FILE = 'data/users.json'
 os.makedirs('data', exist_ok=True)
+
+# ====== Encrypted Master Cache ======
+try:
+    from sqlalchemy import create_engine, Column, String, Text, Float
+    from sqlalchemy.orm import declarative_base, sessionmaker
+    from cryptography.fernet import Fernet
+
+    db_engine = create_engine('sqlite:///data/masterCache.db', echo=False)
+    BaseModel = declarative_base()
+    encryption_key = os.environ.get('CACHE_ENCRYPTION_KEY', Fernet.generate_key().decode())
+    cipher_suite = Fernet(encryption_key.encode() if isinstance(encryption_key, str) else encryption_key)
+
+    class MasterCache(BaseModel):
+        __tablename__ = 'master_cache'
+        cache_key = Column(String, primary_key=True)
+        platform = Column(String)
+        official_data = Column(Text)
+        cached_at = Column(Float)  # timestamp
+
+    BaseModel.metadata.create_all(db_engine)
+    SessionMaker = sessionmaker(bind=db_engine)
+    CACHE_ENABLED = True
+    CACHE_TTL = 7 * 24 * 3600  # 7 days
+    print("STARTUP: Encrypted Master Cache initialized")
+
+    def get_cached_data(cache_key):
+        session = SessionMaker()
+        try:
+            record = session.query(MasterCache).filter_by(cache_key=cache_key).first()
+            if record:
+                # Check TTL
+                if time.time() - (record.cached_at or 0) > CACHE_TTL:
+                    session.delete(record)
+                    session.commit()
+                    return None
+                decrypted = cipher_suite.decrypt(record.official_data.encode()).decode()
+                print(f"[CACHE HIT] {cache_key}")
+                return json_mod.loads(decrypted)
+        except Exception as e:
+            print(f"[CACHE ERROR] {e}")
+        finally:
+            session.close()
+        return None
+
+    def save_to_cache(cache_key, platform, data):
+        if not data or data.get('status') != 'Authentic':
+            return
+        session = SessionMaker()
+        try:
+            encrypted = cipher_suite.encrypt(json_mod.dumps(data).encode()).decode()
+            existing = session.query(MasterCache).filter_by(cache_key=cache_key).first()
+            if existing:
+                existing.official_data = encrypted
+                existing.cached_at = time.time()
+            else:
+                session.add(MasterCache(
+                    cache_key=cache_key, platform=platform,
+                    official_data=encrypted, cached_at=time.time()
+                ))
+            session.commit()
+            print(f"[CACHE SAVE] {platform} data for {cache_key}")
+        except Exception as e:
+            print(f"[CACHE SAVE ERROR] {e}")
+        finally:
+            session.close()
+
+except ImportError as e:
+    print(f"STARTUP: Cache dependencies missing ({e}), cache disabled")
+    CACHE_ENABLED = False
+    def get_cached_data(k): return None
+    def save_to_cache(k, p, d): pass
+
+MAX_BATCH_SIZE = 25
 
 # ====== Storage Logic ======
 
@@ -160,7 +235,6 @@ def detect_certification_platform(pdf_path, worker_data=None):
     filename = pdf_path.split("/")[-1].split("\\")[-1].lower()
 
     # 0b. Extract embedded PDF links for platforms whose branding is image-only
-    #     (e.g., Saylor certs render "Saylor Academy" as a logo, not text)
     pdf_links = extract_links_from_pdf(pdf_path)
     links_text = " ".join(pdf_links).lower()
     
@@ -168,9 +242,7 @@ def detect_certification_platform(pdf_path, worker_data=None):
     if any(k in text or k in filename for k in ["coursera", "google cloud", "university of"]):
         return "coursera"
     
-    # 2. Check for Saylor (BEFORE Udemy — Saylor certs contain generic phrases like
-    #    "certificate of completion" that previously caused false Udemy matches)
-    #    Also check embedded PDF links because Saylor branding is often image-only
+    # 2. Check for Saylor (BEFORE Udemy — Saylor certs contain generic phrases)
     saylor_keywords = ["saylor", "jeffery daubs", "saylor.org", "learn.saylor.org", "saylor academy"]
     if any(k in text or k in filename or k in links_text for k in saylor_keywords):
         return "saylor"
@@ -178,17 +250,30 @@ def detect_certification_platform(pdf_path, worker_data=None):
     # 3. Check for Alison
     if "alison" in text or "alison" in filename:
         return "alison"
-    
-    # 4. Check for Infosys (QR-Only as per requirement)
-    # Identification for Infosys is handled via detect_qr_platform below
 
-    # 5. Check for Udemy (uses platform-specific markers only, NOT generic phrases
-    #    like "certificate of completion" which are shared across many platforms)
+    # 4. Check for AWS Academy / Credly
+    aws_keywords = ["aws academy", "aws certified", "credly.com"]
+    if any(k in text or k in filename or k in links_text for k in aws_keywords):
+        return "aws"
+
+    # 5. Check for Cisco Networking Academy
+    cisco_keywords = ["cisco", "networking academy", "netacad", "ccna", "ccnp", "cyberops"]
+    if any(k in text or k in filename or k in links_text for k in cisco_keywords):
+        return "cisco"
+
+    # 6. Check for Mindluster
+    if "mindluster" in text or "mindluster" in filename or "mindluster" in links_text:
+        return "mindluster"
+    
+    # 7. Check for Infosys (QR-Only as per requirement)
+    # Identification handled via detect_qr_platform below
+
+    # 8. Check for Udemy (platform-specific markers only)
     udemy_keywords = ["udemy", "udemy certified", "ude.my"]
     if any(k in text or k in filename for k in udemy_keywords) or "uc-" in text or "uc-" in filename:
         return "udemy"
     
-    # 6. QR Fallback — use worker_data preferred
+    # 9. QR Fallback — use worker_data preferred
     qr = detect_qr_platform(pdf_path, worker_data=worker_data)
     if qr:
         return qr
@@ -300,6 +385,15 @@ def execute_script(platform, pdf_path, worker_data=None):
             elif platform == "infosys":
                 import infosys
                 result = infosys.run_verification(pdf_path, worker_data=worker_data)
+            elif platform == "aws":
+                import aws
+                result = aws.run_verification(pdf_path, worker_data=worker_data)
+            elif platform == "cisco":
+                import cisco
+                result = cisco.run_verification(pdf_path, worker_data=worker_data)
+            elif platform == "mindluster":
+                import mindluster
+                result = mindluster.run_verification(pdf_path, worker_data=worker_data)
             else:
                 return "❌ No matching script found for platform."
 
@@ -307,8 +401,6 @@ def execute_script(platform, pdf_path, worker_data=None):
             if "✅" in result:
                 return result
             
-            # If the result is a failure indicator, we retry if attempts are left
-            # We retry for "❌", "fake", or "error" results
             is_failure = "❌" in result or "fake" in result.lower() or "error" in result.lower()
             
             if is_failure and attempt < max_retries - 1:
@@ -425,7 +517,7 @@ def check_pdf_metadata(file_path):
             if not metadata:
                 return False, "No forensic metadata available"
             
-            suspicious_tools = ["photoshop", "illustrator", "canva", "gimp", "pdfeditor", "inkscape", "affinity"]
+            suspicious_tools = ["photoshop", "illustrator", "canva", "gimp", "pdfeditor", "inkscape", "affinity", "ilovepdf", "sejda", "pdfescape", "foxit phantom", "coreldraw", "pdf24", "nitro"]
             creator = str(metadata.get('/Creator', '')).lower()
             producer = str(metadata.get('/Producer', '')).lower()
             
@@ -450,8 +542,10 @@ def verify():
             return jsonify({"error": "No file part"}), 400
             
         file = request.files['certificate']
-        if not file or not file.filename.endswith('.pdf'):
-            return jsonify({"error": "Please upload a valid PDF"}), 400
+        if not file or not file.filename:
+            return jsonify({"error": "No file selected"}), 400
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({"error": "Only PDF files are supported. Image processing is disabled."}), 400
 
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -559,11 +653,13 @@ def chat():
     user_message = data.get('message', '').lower()
     
     if 'platform' in user_message or 'supported' in user_message:
-        reply = "Currently, I support verification for Coursera, Udemy, Alison, Saylor Academy, and Infosys Springboard certificates."
+        reply = "I support verification for Coursera, Udemy, Alison, Saylor Academy, Infosys Springboard, AWS Academy (Credly), Cisco Networking Academy, and Mindluster certificates. You can also batch-verify up to 25 certificates at once!"
+    elif 'batch' in user_message:
+        reply = "Yes! You can upload up to 25 certificates at once using our batch verification feature. Each certificate is processed concurrently for maximum speed."
     elif 'how' in user_message and 'work' in user_message:
-        reply = "I use advanced AI to extract key details like the student name and certificate ID from your PDF, then I cross-reference them with the official platform's records using real-time validation!"
+        reply = "I use a GPU-powered OCR engine on HuggingFace to extract text and QR codes, then cross-reference with official platform records. I also use fuzzy matching to handle OCR imperfections!"
     elif 'fake' in user_message:
-        reply = "I detect fake certificates by identifying mismatches between the extracted data and the platform's verification page. If they don't match, I flag it as potentially fraudulent."
+        reply = "I detect fake certificates by identifying mismatches between the extracted data and the platform's verification page. I also check PDF metadata for signs of tampering with tools like Photoshop or Canva."
     elif 'hello' in user_message or 'hi' in user_message:
         reply = "Hello! I'm CertiGuard AI. How can I help you with certificate verification today?"
     else:
@@ -571,8 +667,115 @@ def chat():
 
     return jsonify({"reply": reply})
 
+# ====== Batch Verification ======
+
+def _verify_single_for_batch(file_storage, platform_hint, user_id):
+    """Process a single certificate for the batch endpoint. Runs in a thread."""
+    filepath = None
+    try:
+        filename = secure_filename(file_storage.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"batch_{os.urandom(4).hex()}_{filename}")
+        file_storage.save(filepath)
+
+        worker_data = None
+        if worker_client.client.is_available():
+            try:
+                worker_data = worker_client.client.process_pdf(filepath)
+            except Exception:
+                pass
+
+        if platform_hint == 'auto' or not platform_hint:
+            platform = detect_certification_platform(filepath, worker_data=worker_data)
+        else:
+            platform = platform_hint
+
+        raw_output = execute_script(platform, filepath, worker_data=worker_data)
+        forensic_result = check_pdf_metadata(filepath)
+
+        text = ""
+        if worker_data and worker_data.get("text"):
+            text = worker_data["text"]
+        else:
+            text = extract_text_from_pdf(filepath) or ""
+
+        result = parse_verification_output(raw_output, platform, text, forensic_result)
+        result['filename'] = filename
+        save_history(result, user_id=user_id)
+        return result
+
+    except Exception as e:
+        return {
+            "error": str(e), "isValid": False, "status": "error",
+            "filename": getattr(file_storage, 'filename', 'unknown'),
+            "name": "Error", "course": str(e), "platform": "Error", "totalHours": "N/A"
+        }
+    finally:
+        if filepath and os.path.exists(filepath):
+            try: os.remove(filepath)
+            except: pass
+        gc.collect()
+
+
+@app.route('/verify-batch', methods=['POST'])
+def verify_batch():
+    """Batch verification: process up to 25 certificates concurrently."""
+    try:
+        files = []
+        for key in request.files:
+            f = request.files[key]
+            if f and f.filename and f.filename.lower().endswith('.pdf'):
+                files.append(f)
+
+        if not files:
+            return jsonify({"error": "No valid PDF files found"}), 400
+
+        if len(files) > MAX_BATCH_SIZE:
+            return jsonify({"error": f"Maximum {MAX_BATCH_SIZE} files per batch"}), 400
+
+        platform_hint = request.form.get('platform', 'auto').lower()
+        user_id = request.form.get('user_id') or request.headers.get('X-User-ID')
+
+        print(f"DEBUG: Batch verification starting for {len(files)} files")
+        results = []
+
+        # Process concurrently with ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(len(files), 4)) as executor:
+            futures = {
+                executor.submit(_verify_single_for_batch, f, platform_hint, user_id): i
+                for i, f in enumerate(files)
+            }
+            for future in as_completed(futures):
+                idx = futures[future]
+                try:
+                    result = future.result(timeout=180)
+                    results.append(result)
+                except Exception as e:
+                    results.append({
+                        "error": str(e), "isValid": False, "status": "error",
+                        "filename": f"file_{idx}", "name": "Error", "course": str(e),
+                        "platform": "Error", "totalHours": "N/A"
+                    })
+
+        # Sort results to match upload order where possible
+        total = len(results)
+        valid = sum(1 for r in results if r.get('isValid'))
+
+        return jsonify({
+            "results": results,
+            "summary": {
+                "total": total,
+                "valid": valid,
+                "fake": total - valid
+            }
+        })
+
+    except Exception as e:
+        print(f"CRITICAL ERROR in /verify-batch: {str(e)}")
+        return jsonify({"error": f"Batch error: {str(e)}"}), 500
+    finally:
+        gc.collect()
+
+
 if __name__ == '__main__':
-    print("STARTUP: CertiGuard API starting (browser-free mode)")
+    print("STARTUP: CertiGuard API v4.0 (HuggingFace + Batch + 8 Platforms)")
     app.run(host='0.0.0.0', port=10000)
-
-

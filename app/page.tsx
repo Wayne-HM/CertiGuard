@@ -27,6 +27,7 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(0)
   const [progress, setProgress] = useState(0)
   const [result, setResult] = useState<VerificationResult | null>(null)
+  const [batchResults, setBatchResults] = useState<any[] | null>(null)
 
   const handleUpload = useCallback(async (file: File, platform: string = "auto") => {
     console.log("Starting verification for:", file.name, "on platform:", platform, "User:", user?.id || "Guest")
@@ -101,11 +102,80 @@ export default function Home() {
     }
   }, [])
 
+  const handleBatchUpload = useCallback(async (files: File[], platform: string = "auto") => {
+    console.log(`Starting batch verification for ${files.length} files, platform: ${platform}`)
+    setVerificationState("verifying")
+    setCurrentStep(1)
+    setProgress(10)
+    setBatchResults(null)
+
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev < 30) return prev + 1;
+        if (prev < 60) return prev + 0.5;
+        if (prev < 95) return prev + 0.2;
+        return prev;
+      });
+      setProgress(p => {
+        if (p > 20) setCurrentStep(2);
+        if (p > 40) setCurrentStep(3);
+        if (p > 60) setCurrentStep(4);
+        if (p > 80) setCurrentStep(5);
+        return p;
+      });
+    }, 300);
+
+    try {
+      const formData = new FormData()
+      files.forEach((file, i) => formData.append(`certificate_${i}`, file))
+      formData.append("platform", platform)
+      if (user?.id) formData.append("user_id", user.id)
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://certiguard-ksm9.onrender.com"
+      const response = await fetch(`${API_URL}/verify-batch`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) throw new Error(`Server responded with ${response.status}`)
+      const data = await response.json()
+      console.log("Batch verification complete:", data)
+
+      clearInterval(interval)
+      setProgress(100)
+      setCurrentStep(5)
+
+      setTimeout(() => {
+        setBatchResults(data.results || [])
+        // Use first result as primary display, attach batch info
+        const primary = data.results?.[0] || {
+          isValid: false, name: "Batch Complete", course: `${data.summary?.total || 0} certificates processed`,
+          platform: "Batch", verificationUrl: "", issueDate: "N/A",
+        }
+        primary._batchSummary = data.summary
+        primary._batchResults = data.results
+        setResult(primary)
+        setVerificationState("complete")
+      }, 800)
+
+    } catch (error) {
+      console.error("Batch error:", error)
+      clearInterval(interval)
+      setResult({
+        isValid: false, name: "Batch Upload Failed",
+        course: "Check Backend Connection", platform: "Error",
+        verificationUrl: "", issueDate: "N/A", certificateId: "ERROR",
+      })
+      setVerificationState("complete")
+    }
+  }, [user])
+
   const handleVerifyAnother = useCallback(() => {
     setVerificationState("idle")
     setCurrentStep(0)
     setProgress(0)
     setResult(null)
+    setBatchResults(null)
   }, [])
 
   // Scroll to verification section when starting
@@ -134,7 +204,8 @@ export default function Home() {
         {/* Upload Section - Always visible unless showing results */}
         {verificationState !== "complete" && (
           <UploadSection 
-            onUpload={handleUpload} 
+            onUpload={handleUpload}
+            onBatchUpload={handleBatchUpload}
             isVerifying={verificationState === "verifying"} 
           />
         )}

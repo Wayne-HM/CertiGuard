@@ -2,7 +2,7 @@
 
 import { useRef } from "react"
 import { motion, useInView, useMotionValue, useSpring, useTransform } from "framer-motion"
-import { BookOpen, GraduationCap, Award, Building, ArrowRight, Sparkles, Laptop } from "lucide-react"
+import { BookOpen, GraduationCap, Award, Building, ArrowRight, Sparkles, Laptop, Cloud, Network, BookMarked } from "lucide-react"
 
 const platforms = [
   {
@@ -39,6 +39,27 @@ const platforms = [
     icon: Laptop,
     gradient: "from-blue-400 to-cyan-500",
     url: "https://infyspringboard.onwingspan.com",
+  },
+  {
+    name: "AWS Academy",
+    description: "Cloud computing via Credly badges",
+    icon: Cloud,
+    gradient: "from-amber-500 to-orange-500",
+    url: "https://aws.amazon.com/training/awsacademy/",
+  },
+  {
+    name: "Cisco NetAcad",
+    description: "Networking & cybersecurity skills",
+    icon: Network,
+    gradient: "from-cyan-500 to-blue-500",
+    url: "https://www.netacad.com",
+  },
+  {
+    name: "Mindluster",
+    description: "Free courses with verified certs",
+    icon: BookMarked,
+    gradient: "from-rose-500 to-pink-500",
+    url: "https://www.mindluster.com",
   },
 ]
 
@@ -119,7 +140,7 @@ export function PlatformsSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 [perspective:2000px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 [perspective:2000px]">
           {platforms.map((platform, index) => (
             <PlatformCard key={platform.name} platform={platform} index={index} />
           ))}
