@@ -154,8 +154,8 @@ export function AnimatedBackground() {
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <motion.div
           animate={{
-            x: ["0%", "5%", "-5%", "0%"],
-            y: ["0%", "10%", "5%", "0%"],
+            x: [0, 100, -50, 0],
+            y: [0, -50, 100, 0],
             scale: [1, 1.1, 0.9, 1],
           }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
@@ -167,8 +167,8 @@ export function AnimatedBackground() {
         />
         <motion.div
           animate={{
-            x: ["0%", "-10%", "5%", "0%"],
-            y: ["0%", "-5%", "-15%", "0%"],
+            x: [0, -120, 80, 0],
+            y: [0, 80, -100, 0],
             scale: [1, 1.2, 0.8, 1],
           }}
           transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 2 }}
@@ -180,8 +180,8 @@ export function AnimatedBackground() {
         />
         <motion.div
           animate={{
-            x: ["0%", "15%", "-10%", "0%"],
-            y: ["0%", "-10%", "15%", "0%"],
+            x: [0, 80, -100, 0],
+            y: [0, 120, -80, 0],
             scale: [1, 1.1, 0.9, 1],
           }}
           transition={{ duration: 30, repeat: Infinity, ease: "easeInOut", delay: 4 }}
