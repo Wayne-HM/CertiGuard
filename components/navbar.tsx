@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth-context"
+import { AuthModal } from "@/components/auth-modal"
 import { GlassButton, smoothSpring } from "@/components/ui/glass-container"
 
 const navLinks = [
@@ -304,6 +305,12 @@ export function Navbar() {
           )}
         </AnimatePresence>
       </motion.nav>
+      
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)} 
+        defaultMode={authMode} 
+      />
     </>
   )
 }
