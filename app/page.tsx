@@ -184,10 +184,13 @@ export default function Home() {
   // Scroll to verification section when starting
   useEffect(() => {
     if (verificationState === "verifying") {
-      const element = document.getElementById("verify")
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "start" })
-      }
+      const timeoutId = setTimeout(() => {
+        const element = document.getElementById("security-analysis")
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" })
+        }
+      }, 2000)
+      return () => clearTimeout(timeoutId)
     }
   }, [verificationState])
 

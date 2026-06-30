@@ -124,7 +124,7 @@ const StepCard = memo(function StepCard({
 
 export function VerificationStepper({ currentStep, progress }: VerificationStepperProps) {
   return (
-    <section className="relative py-16 px-4 z-10">
+    <section id="security-analysis" className="relative py-16 px-4 z-10">
       <div className="max-w-4xl mx-auto">
         {/* Section Header */}
         <motion.div
