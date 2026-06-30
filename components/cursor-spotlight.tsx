@@ -51,29 +51,34 @@ export function CursorSpotlight() {
         }}
       />
       
-      {/* Custom Pointer Dot */}
+      {/* Custom Pointer SVG */}
       <motion.div
-        className="fixed top-0 left-0 w-2 h-2 rounded-full bg-text-primary pointer-events-none z-[9999] mix-blend-difference hidden md:block"
+        className="fixed w-8 h-8 pointer-events-none z-[9999] hidden md:block"
         style={{
           x: mouseX,
           y: mouseY,
-          translateX: "-50%",
-          translateY: "-50%",
+          // Removed the -50% translations so the top-left tip is exactly at the mouse coordinates
           opacity: isVisible ? 1 : 0,
         }}
-      />
-      
-      {/* Trailing Ring */}
-      <motion.div
-        className="fixed top-0 left-0 w-10 h-10 rounded-full border border-text-primary pointer-events-none z-[9998] mix-blend-difference hidden md:block"
-        style={{
-          x: ringX,
-          y: ringY,
-          translateX: "-50%",
-          translateY: "-50%",
-          opacity: isVisible ? 0.5 : 0,
-        }}
-      />
+      >
+        <svg 
+          width="32" 
+          height="32" 
+          viewBox="0 0 32 32" 
+          fill="none" 
+          xmlns="http://www.w3.org/2000/svg"
+          className="drop-shadow-[0_2px_10px_rgba(0,0,0,0.4)] text-text-primary"
+        >
+          <path 
+            d="M4.5 4.5L23.5 12.5L14.5 15.5L10.5 25.5L4.5 4.5Z" 
+            fill="currentColor" 
+            stroke="var(--bg-color)" 
+            strokeWidth="2.5" 
+            strokeLinejoin="round" 
+            strokeLinecap="round"
+          />
+        </svg>
+      </motion.div>
     </>
   )
 }
