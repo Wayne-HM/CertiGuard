@@ -273,7 +273,7 @@ export function Navbar() {
               transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
               className="md:hidden absolute top-full left-4 right-4 mt-4"
             >
-              <div className="liquid-glass border border-glass-border rounded-3xl p-4 space-y-2 shadow-2xl origin-top">
+              <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-3xl border border-glass-border rounded-3xl p-4 space-y-2 shadow-2xl origin-top">
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
