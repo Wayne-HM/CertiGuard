@@ -2,7 +2,7 @@
 
 import { memo } from "react"
 import { motion } from "framer-motion"
-import { Upload, FileSearch, Globe, ShieldCheck, CheckCircle2, Cpu } from "lucide-react"
+import { Upload, FileSearch, Globe, ShieldCheck, CheckCircle2, Cpu, Loader2 } from "lucide-react"
 import { GlassCard, smoothSpring } from "@/components/ui/glass-container"
 
 interface VerificationStep {
