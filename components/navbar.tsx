@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, memo, useCallback } from "react"
+import { useState, memo, useCallback, useEffect } from "react"
 import Link from "next/link"
-import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion"
-import { Shield, Menu, X, User, Moon, Sun, Sparkles, LogOut, Settings, Bell, LayoutDashboard } from "lucide-react"
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent } from "framer-motion"
+import { Shield, Menu, X, User, LogOut, Settings, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -13,9 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth-context"
-import { AuthModal } from "@/components/auth-modal"
+import { GlassButton, smoothSpring } from "@/components/ui/glass-container"
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -24,76 +24,60 @@ const navLinks = [
   { href: "/#about", label: "About" },
 ]
 
-// Optimized spring config for 120fps
-const quickSpring = { stiffness: 400, damping: 35, mass: 0.8 }
-const smoothTransition = { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
-
-// Memoized nav link component
-const NavLink = memo(function NavLink({ 
-  link, 
-  isHovered, 
-  onHover 
-}: { 
+// Memoized nav link component - Apple style with smooth layout animation for the active indicator
+const NavLink = memo(function NavLink({
+  link,
+  isActive,
+}: {
   link: typeof navLinks[0]
-  isHovered: boolean
-  onHover: (href: string | null) => void 
+  isActive: boolean
 }) {
   return (
     <Link
       href={link.href}
-      className="relative px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150"
-      onMouseEnter={() => onHover(link.href)}
-      onMouseLeave={() => onHover(null)}
-      onClick={() => {
+      className={`relative px-4 py-2 text-sm transition-colors duration-300 ${isActive ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+      onClick={(e) => {
         if (link.href.startsWith("/#")) {
-          const id = link.href.substring(2);
-          const element = document.getElementById(id);
+          e.preventDefault()
+          const id = link.href.substring(2)
+          const element = document.getElementById(id)
           if (element) {
-            element.scrollIntoView({ behavior: "smooth" });
+            element.scrollIntoView({ behavior: "smooth", block: "start" })
           }
         }
       }}
     >
       <span className="relative z-10">{link.label}</span>
-      
-      {/* Hover background */}
-      <AnimatePresence>
-        {isHovered && (
-          <motion.div
-            layoutId="navbar-hover-bg"
-            className="absolute inset-0 rounded-lg bg-secondary/80"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-          />
-        )}
-      </AnimatePresence>
-      
-      {/* Underline */}
-      <motion.div
-        className="absolute bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-neon-blue to-neon-cyan rounded-full"
-        initial={{ width: 0, x: "-50%" }}
-        animate={{ width: isHovered ? "60%" : 0, x: "-50%" }}
-        transition={{ duration: 0.15 }}
-      />
+
+      {isActive && (
+        <motion.div
+          layoutId="navbar-active-indicator"
+          className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"
+          initial={false}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        />
+      )}
     </Link>
   )
 })
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
-  const [isDark, setIsDark] = useState(true)
   const [isScrolled, setIsScrolled] = useState(false)
-  const [hoveredLink, setHoveredLink] = useState<string | null>(null)
-  
-  // Auth states
   const { user, logout, isInitialized } = useAuth()
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
-  
+  const [activeSection, setActiveSection] = useState<string>("home")
+
   const { scrollY } = useScroll()
-  
+
+  // Dynamic values mapped directly to scroll using framer-motion useTransform for 60fps performance
+  const navWidth = useTransform(scrollY, [0, 100], ["100%", "96%"])
+  const navY = useTransform(scrollY, [0, 100], [0, 10])
+  const bgOpacity = useTransform(scrollY, [0, 100], [0, 0.4])
+  const blurValue = useTransform(scrollY, [0, 100], [0, 30])
+  const shadowOpacity = useTransform(scrollY, [0, 100], [0, 0.2])
+
   useMotionValueEvent(scrollY, "change", (latest) => {
     setIsScrolled(latest > 50)
   })
@@ -103,155 +87,157 @@ export function Navbar() {
     setIsAuthModalOpen(true)
   }, [])
 
+  const checkActiveSection = useCallback(() => {
+    const sections = ["home", "verify", "about"]
+    for (const section of sections) {
+      const element = document.getElementById(section)
+      if (element) {
+        const rect = element.getBoundingClientRect()
+        // Determine active section based on what's most prominent on screen
+        if (rect.top <= 150 && rect.bottom >= 150) {
+          setActiveSection(section)
+          return
+        }
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener("scroll", checkActiveSection, { passive: true })
+    return () => window.removeEventListener("scroll", checkActiveSection)
+  }, [checkActiveSection])
+
   return (
     <>
       <motion.nav
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        className="fixed top-0 left-0 right-0 z-50 px-4 py-3"
+        transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
+        className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex justify-center"
+        style={{ width: "100%" }}
       >
-        <motion.div 
-          className="max-w-7xl mx-auto"
-          animate={{ scale: isScrolled ? 0.99 : 1 }}
-          transition={smoothTransition}
+        <motion.div
+          className="relative flex items-center justify-between rounded-full px-6 py-3 border border-glass-border"
+          style={{
+            width: navWidth,
+            y: navY,
+            maxWidth: "80rem",
+            background: useTransform(bgOpacity, (v) => `rgba(0, 0, 0, ${v})`),
+            backdropFilter: useTransform(blurValue, (v) => `blur(${v}px)`),
+            WebkitBackdropFilter: useTransform(blurValue, (v) => `blur(${v}px)`),
+            boxShadow: useTransform(shadowOpacity, (v) => `0 10px 30px rgba(0, 0, 0, ${v}), inset 0 1px 1px rgba(255, 255, 255, ${v * 0.5})`),
+          }}
         >
-          <motion.div 
-            className={`
-              relative overflow-hidden rounded-2xl px-6 py-3 flex items-center justify-between gpu-accelerate
-              transition-all duration-300
-              ${isScrolled ? "glass-strong shadow-lg shadow-black/10" : "glass"}
-            `}
-            style={{ 
-              borderWidth: 1, 
-              borderStyle: "solid",
-              borderColor: isScrolled ? "oklch(0.5 0.1 220 / 0.25)" : "oklch(0.5 0.1 220 / 0.15)"
-            }}
-          >
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group relative z-10">
-              <motion.div
-                whileHover={{ rotate: 15, scale: 1.05 }}
-                transition={{ duration: 0.3 }}
-                className="relative"
-              >
-                <div className="absolute inset-0 bg-neon-blue/20 blur-md rounded-full" />
-                <Shield className="w-8 h-8 text-neon-blue relative z-10" />
-              </motion.div>
-              
-              <span className="text-xl font-bold bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple bg-clip-text text-transparent">
-                CertiGuard
-              </span>
-              
-              <motion.span
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3, ...quickSpring }}
-                className="hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full bg-neon-blue/10 text-[10px] font-medium text-neon-blue border border-neon-blue/20"
-              >
-                <Sparkles className="w-2.5 h-2.5" />
-                PRO
-              </motion.span>
-            </Link>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={smoothSpring}
+            >
+              <Shield className="w-7 h-7 text-text-primary" strokeWidth={1.5} />
+            </motion.div>
+            <span className="text-xl font-semibold text-text-primary tracking-tight">
+              CertiGuard
+            </span>
+          </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-1 relative z-10">
-              {navLinks.map((link) => (
-                <NavLink 
-                  key={link.href} 
-                  link={link} 
-                  isHovered={hoveredLink === link.href}
-                  onHover={setHoveredLink}
-                />
-              ))}
-            </div>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => (
+              <NavLink
+                key={link.href}
+                link={link}
+                isActive={activeSection === (link.href.startsWith("/#") ? link.href.substring(2) : link.href.substring(1) || "home")}
+              />
+            ))}
+          </div>
 
-            {/* Right Side */}
-            <div className="hidden md:flex items-center gap-3 relative z-10">
-
-              {!isInitialized ? (
-                <div className="w-9 h-9 rounded-full bg-secondary animate-pulse" />
-              ) : user ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={quickSpring}>
-                      <Button variant="ghost" size="icon" className="relative group p-0 overflow-hidden rounded-full">
-                        <Avatar className="w-9 h-9 border-2 border-neon-blue/30 group-hover:border-neon-blue transition-colors">
-                          <AvatarFallback className="bg-neon-blue/10 text-neon-blue text-xs font-bold">
-                            {user.name && user.name.length >= 2 ? user.name.substring(0, 2).toUpperCase() : (user.name?.charAt(0).toUpperCase() || "CG")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-success rounded-full border-2 border-background" />
-                      </Button>
-                    </motion.div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 glass-strong border-glass-border p-2">
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.name}</p>
-                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-glass-border" />
-                    <Link href="/dashboard">
-                      <DropdownMenuItem className="focus:bg-secondary/50 cursor-pointer rounded-lg">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
-                      </DropdownMenuItem>
-                    </Link>
-                    <DropdownMenuItem className="focus:bg-secondary/50 cursor-pointer rounded-lg">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Profile</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="focus:bg-secondary/50 cursor-pointer rounded-lg">
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-glass-border" />
-                    <DropdownMenuItem 
-                      onClick={logout}
-                      className="focus:bg-destructive/10 text-destructive cursor-pointer rounded-lg font-medium"
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Sign Out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => openAuth("login")}
-                    className="text-muted-foreground hover:text-foreground hover:bg-white/5"
+          {/* Right Side */}
+          <div className="hidden md:flex items-center gap-3">
+            {!isInitialized ? (
+              <div className="w-8 h-8 rounded-full bg-surface-2 animate-pulse" />
+            ) : user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={smoothSpring}
                   >
-                    Sign In
-                  </Button>
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} transition={quickSpring}>
-                    <Button 
-                      onClick={() => openAuth("signup")}
-                      className="bg-gradient-to-r from-neon-blue to-neon-purple text-white px-5 h-9 rounded-xl shadow-lg shadow-neon-blue/20"
-                    >
-                      Get Started
+                    <Button variant="ghost" size="icon" className="relative p-0 rounded-full border border-glass-border">
+                      <Avatar className="w-8 h-8">
+                        <AvatarFallback className="bg-surface-1 text-text-primary text-xs font-medium">
+                          {user.name && user.name.length >= 2
+                            ? user.name.substring(0, 2).toUpperCase()
+                            : (user.name?.charAt(0).toUpperCase() || "CG")
+                          }
+                        </AvatarFallback>
+                      </Avatar>
                     </Button>
                   </motion.div>
-                </div>
-              )}
-            </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-56 liquid-glass border border-glass-border rounded-2xl p-2 shadow-2xl"
+                >
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium text-text-primary">{user.name}</p>
+                      <p className="text-xs text-text-secondary">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-glass-border" />
+                  <Link href="/dashboard">
+                    <DropdownMenuItem className="rounded-xl cursor-pointer focus:bg-surface-2 text-text-secondary hover:text-text-primary transition-colors">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </DropdownMenuItem>
+                  </Link>
+                  <DropdownMenuItem className="rounded-xl cursor-pointer focus:bg-surface-2 text-text-secondary hover:text-text-primary transition-colors">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-xl cursor-pointer focus:bg-surface-2 text-text-secondary hover:text-text-primary transition-colors">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-glass-border" />
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="rounded-xl cursor-pointer focus:bg-surface-2 text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => openAuth("login")}
+                  className="text-text-secondary hover:text-text-primary hover:bg-surface-1 rounded-full px-4 h-9 transition-colors"
+                >
+                  Sign In
+                </Button>
+                <GlassButton variant="primary" size="md" onClick={() => openAuth("signup")}>
+                  Get Started
+                </GlassButton>
+              </div>
+            )}
+          </div>
 
-            {/* Mobile Menu Button */}
-            <motion.div 
-              whileHover={{ scale: 1.05 }} 
-              whileTap={{ scale: 0.95 }}
-              className="md:hidden"
+          {/* Mobile Menu Button */}
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-text-secondary hover:text-text-primary rounded-full transition-colors"
             >
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsOpen(!isOpen)}
-              >
-                {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </Button>
-            </motion.div>
+              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
           </motion.div>
         </motion.div>
 
@@ -259,40 +245,37 @@ export function Navbar() {
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="md:hidden overflow-hidden"
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.3, ease: [0.19, 1, 0.22, 1] }}
+              className="md:hidden absolute top-full left-4 right-4 mt-4"
             >
-              <div className="glass-strong rounded-2xl mt-2 p-4 space-y-2">
+              <div className="liquid-glass border border-glass-border rounded-3xl p-4 space-y-2 shadow-2xl origin-top">
                 {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="block px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
+                    className="block px-4 py-3 rounded-2xl text-text-secondary hover:text-text-primary hover:bg-surface-1 transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
                     {link.label}
                   </Link>
                 ))}
-                
+
                 <div className="pt-3 mt-2 border-t border-glass-border flex items-center justify-between">
-                  
                   {user ? (
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={logout}
-                      className="text-destructive border-destructive/20 hover:bg-destructive/10"
+                      className="text-text-primary border-glass-border hover:bg-surface-2 rounded-full px-5 transition-colors"
                     >
                       Sign Out
                     </Button>
                   ) : (
-                    <Button 
-                      onClick={() => openAuth("signup")}
-                      className="bg-neon-blue text-white rounded-lg px-6"
-                    >
+                    <GlassButton variant="primary" size="md" onClick={() => { setIsOpen(false); openAuth("signup") }}>
                       Get Started
-                    </Button>
+                    </GlassButton>
                   )}
                 </div>
               </div>
@@ -300,12 +283,6 @@ export function Navbar() {
           )}
         </AnimatePresence>
       </motion.nav>
-
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)} 
-        initialMode={authMode} 
-      />
     </>
   )
 }

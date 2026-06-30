@@ -1,25 +1,21 @@
 import type { Metadata } from 'next'
-import { Inter, Playfair_Display } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/components/auth-context'
 import { Toaster } from 'sonner'
+import { SmoothScrollProvider } from '@/components/smooth-scroll-provider'
+import { CursorSpotlight } from '@/components/cursor-spotlight'
 import './globals.css'
 
-const inter = Inter({ 
-  subsets: ["latin"], 
+const inter = Inter({
+  subsets: ["latin"],
   variable: "--font-inter",
   display: 'swap',
 });
 
-const playfair = Playfair_Display({ 
-  subsets: ["latin"], 
-  variable: "--font-playfair",
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
-  title: 'CertiGuard - AI Fake Certificate Verification System',
-  description: 'Detect fake certificates in seconds using advanced AI-powered verification technology',
+  title: 'CertiGuard - AI Fake Certificate Verification',
+  description: 'Premium certificate verification with liquid glass analysis',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -38,11 +34,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark scroll-smooth">
-      <body className={`${inter.variable} ${playfair.variable} font-sans antialiased bg-background text-foreground selection:bg-neon-blue/30`}>
-        <AuthProvider>
-          {children}
-          <Toaster richColors position="top-right" theme="dark" closeButton />
-        </AuthProvider>
+      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground selection:bg-white/20 relative`}>
+        <SmoothScrollProvider>
+          <AuthProvider>
+            <CursorSpotlight />
+            {children}
+            <Toaster richColors position="top-right" theme="dark" closeButton />
+          </AuthProvider>
+        </SmoothScrollProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

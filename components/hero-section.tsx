@@ -1,156 +1,196 @@
 "use client"
 
-import { useRef, memo, useCallback } from "react"
-import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion"
+import { useRef, useCallback } from "react"
+import { motion, useScroll, useTransform, useInView } from "framer-motion"
 import { ArrowRight, Sparkles, Shield, Zap } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { FloatingCertificate } from "@/components/floating-certificate"
+import { GlassButton } from "@/components/ui/glass-container"
 
 const stats = [
-  { value: "99.9%", label: "Accuracy Rate", icon: Shield, color: "text-neon-blue" },
-  { value: "1k+", label: "Verified", icon: Sparkles, color: "text-neon-cyan" },
-  { value: "<1min", label: "Time", icon: Zap, color: "text-neon-purple" },
+  { value: "99.9%", label: "Accuracy Rate", icon: Shield },
+  { value: "1k+", label: "Verified", icon: Sparkles },
+  { value: "<1min", label: "Time", icon: Zap },
 ]
 
-// Optimized spring config for 120fps feel
-const smoothSpring = { stiffness: 80, damping: 20, mass: 0.5 }
-const quickSpring = { stiffness: 300, damping: 30, mass: 0.8 }
+// Apple-style scroll storytelling container variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+      delayChildren: 0.2,
+    },
+  },
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: "spring",
+      stiffness: 200,
+      damping: 25,
+      mass: 0.5,
+    },
+  },
+}
 
 export function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null)
   const isInView = useInView(containerRef, { once: true, margin: "-100px" })
-  
+
   const scrollToSection = useCallback((id: string) => {
-    const element = document.getElementById(id);
+    const element = document.getElementById(id)
     if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      element.scrollIntoView({ behavior: "smooth", block: "start" })
     }
-  }, []);
+  }, [])
+
+  // Parallax effect mapped to scroll for smooth exit
+  const { scrollY } = useScroll()
+  const yContent = useTransform(scrollY, [0, 800], [0, 150])
+  const opacityContent = useTransform(scrollY, [0, 500], [1, 0])
+  const scaleContent = useTransform(scrollY, [0, 500], [1, 0.95])
+  
+  const yOrb = useTransform(scrollY, [0, 800], [0, -100])
+  const rotateOrb = useTransform(scrollY, [0, 800], [0, 45])
 
   return (
-    <section 
+    <section
       ref={containerRef}
-      id="home" 
+      id="home"
       className="relative min-h-screen flex items-center justify-center px-4 pt-32 pb-20 overflow-hidden"
     >
-      {/* Background Decorative Elements */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-neon-blue/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-neon-purple/10 rounded-full blur-[120px] pointer-events-none" />
+      {/* Background spotlight behind text for that Vision Pro glow */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.5 }}
+        transition={{ duration: 2, delay: 0.5 }}
+        className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-white/5 blur-[120px] pointer-events-none hidden lg:block"
+      />
 
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+      <motion.div 
+        className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-20 items-center w-full"
+        style={{ y: yContent, opacity: opacityContent, scale: scaleContent }}
+      >
         {/* Left Side: Content */}
         <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={isInView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          variants={containerVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
           className="relative z-10 text-left"
         >
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={isInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mb-6"
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-neon-blue/20">
-              <Sparkles className="w-4 h-4 text-neon-cyan animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground mr-2">CertiGuard PRO</span>
-              <div className="h-4 w-px bg-glass-border mr-2" />
-              <span className="text-xs text-foreground font-medium">Next-Gen AI Verification Engine</span>
+          {/* Badge - Apple style subtle glass capsule */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full liquid-glass border border-glass-border">
+              <Sparkles className="w-4 h-4 text-text-secondary" />
+              <span className="text-xs font-semibold text-text-secondary tracking-widest uppercase">CertiGuard PRO</span>
+              <div className="h-3 w-px bg-glass-border" />
+              <span className="text-xs text-text-secondary font-medium tracking-wide">AI Verification Engine</span>
             </div>
           </motion.div>
 
-          {/* Main Title */}
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] mb-8">
-            <span className="text-foreground">Stop Certificate</span>
-            <br />
-            <span className="relative inline-block">
-              <span className="bg-gradient-to-r from-neon-blue via-neon-cyan to-neon-purple bg-clip-text text-transparent neon-text">
-                Fraud Instantly
+          {/* Main Title - Apple oversized typography */}
+          <motion.h1 variants={itemVariants} className="text-6xl md:text-7xl lg:text-8xl font-semibold leading-[0.95] mb-8 tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/40">
+            <span className="block mb-2">Stop Certificate</span>
+            <span className="block">Fraud Instantly</span>
+          </motion.h1>
+
+          {/* Subtitle - Minimal and elegant */}
+          <motion.p variants={itemVariants} className="text-lg md:text-xl text-text-secondary max-w-xl mb-12 leading-relaxed font-light">
+            Harness neural networks to verify educational credentials. Advanced forensic analysis
+            that detects tampering with millisecond precision.
+          </motion.p>
+
+          {/* CTA Buttons - Apple style premium interactions */}
+          <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-5 mb-16">
+            <GlassButton variant="primary" size="lg" onClick={() => scrollToSection('verify')}>
+              <span className="flex items-center gap-2 font-semibold">
+                Verify Now
+                <ArrowRight className="w-5 h-5" />
               </span>
-              <motion.div
-                initial={{ scaleX: 0 }}
-                animate={isInView ? { scaleX: 1 } : {}}
-                transition={{ duration: 1, delay: 0.8 }}
-                className="absolute -bottom-2 left-0 h-1.5 w-full bg-gradient-to-r from-neon-blue to-neon-purple rounded-full origin-left"
-              />
-            </span>
-          </h1>
+            </GlassButton>
 
-          {/* Subtitle */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-xl mb-10 leading-relaxed">
-            Harness the power of neural networks to verify educational credentials in real-world time. 
-            The industry standard for secure, immutable certificate forensic analysis.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-wrap items-center gap-4 mb-12">
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={quickSpring}>
-              <Button
-                size="lg"
-                onClick={() => scrollToSection('verify')}
-                className="relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white px-8 h-14 text-lg rounded-2xl shadow-xl shadow-neon-blue/20 group"
-              >
-                <div className="relative z-10 flex items-center gap-2">
-                  Verify Now
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-              </Button>
-            </motion.div>
-            
-            <Button
-              size="lg"
-              variant="outline"
-              onClick={() => scrollToSection('about')}
-              className="px-8 h-14 text-lg rounded-2xl border-glass-border hover:bg-white/5 transition-all"
-            >
+            <GlassButton variant="ghost" size="lg" onClick={() => scrollToSection('about')}>
               Learn More
-            </Button>
-          </div>
+            </GlassButton>
+          </motion.div>
 
-          {/* Mini Stats */}
-          <div className="flex items-center gap-8 border-t border-glass-border pt-8">
-            {stats.map((stat) => (
+          {/* Mini Stats - Clean and minimal liquid glass cards */}
+          <motion.div variants={itemVariants} className="grid grid-cols-3 gap-6 pt-10 border-t border-glass-border">
+            {stats.map((stat, i) => (
               <div key={stat.label}>
-                <div className="text-2xl font-bold text-foreground flex items-center gap-2">
-                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                <div className="text-2xl md:text-3xl font-medium text-text-primary flex items-center gap-2">
                   {stat.value}
                 </div>
-                <div className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mt-1">{stat.label}</div>
+                <div className="text-[11px] uppercase font-bold tracking-widest text-text-secondary mt-2 flex items-center gap-1.5">
+                  <stat.icon className="w-3.5 h-3.5 opacity-60" />
+                  {stat.label}
+                </div>
               </div>
             ))}
-          </div>
+          </motion.div>
         </motion.div>
 
         {/* Right Side: 3D Visual */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.8, rotateY: 30 }}
-          animate={isInView ? { opacity: 1, scale: 1, rotateY: 0 } : {}}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-          className="relative flex items-center justify-center lg:justify-end"
+          initial={{ opacity: 0, scale: 0.8, filter: "blur(20px)" }}
+          animate={isInView ? { opacity: 1, scale: 1, filter: "blur(0px)" } : {}}
+          transition={{ duration: 1.5, ease: [0.19, 1, 0.22, 1], delay: 0.3 }}
+          className="relative flex items-center justify-center lg:justify-end h-[500px]"
+          style={{ y: yOrb, rotate: rotateOrb }}
         >
+          {/* Cyber-security aesthetic scanning ring */}
+          <motion.div 
+            className="absolute w-[450px] h-[450px] rounded-full border border-[rgba(255,255,255,0.05)]"
+            animate={{ rotate: 360, scale: [1, 1.05, 1] }}
+            transition={{ rotate: { duration: 20, repeat: Infinity, ease: "linear" }, scale: { duration: 4, repeat: Infinity, ease: "easeInOut" } }}
+          />
 
+          <motion.div 
+            className="absolute w-[350px] h-[350px] rounded-full border border-dashed border-[rgba(255,255,255,0.1)]"
+            animate={{ rotate: -360 }}
+            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+          />
 
-          {/* Main 3D Certificate */}
-          <FloatingCertificate />
+          {/* 3D Glass Orb Visual (Nothing.tech / Vision Pro style) */}
+          <div className="w-80 h-80 rounded-full liquid-glass flex items-center justify-center relative overflow-hidden group shadow-[0_0_100px_rgba(255,255,255,0.05)]">
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"
+              animate={{ opacity: [0.2, 0.5, 0.2] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            />
+            
+            {/* Inner dynamic core */}
+            <motion.div 
+              className="w-40 h-40 rounded-full bg-white/5 blur-xl absolute"
+              animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            />
+
+            <Shield className="w-24 h-24 text-white/40 relative z-10 filter drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" strokeWidth={1} />
+            
+            {/* Glass reflection shine */}
+            <div className="absolute top-0 -left-full w-1/2 h-full bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[30deg] group-hover:animate-[shimmer_1.5s_ease-out]" />
+          </div>
         </motion.div>
-      </div>
+      </motion.div>
 
-      {/* Scroll indicator */}
+      {/* Scroll indicator - Apple style minimal dot */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 hidden md:block"
+        transition={{ delay: 1.5 }}
+        className="absolute bottom-12 left-1/2 -translate-x-1/2 hidden md:block"
       >
-        <div className="w-[1px] h-12 bg-gradient-to-b from-neon-blue to-transparent mx-auto relative">
-          <motion.div 
-            animate={{ top: ["0%", "100%"] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="absolute left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-neon-blue rounded-full blur-[2px]"
-          />
-        </div>
+        <motion.div
+          animate={{ y: [0, 10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-[1px] h-12 bg-gradient-to-b from-white/30 to-transparent"
+        />
       </motion.div>
     </section>
   )
