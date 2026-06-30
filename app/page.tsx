@@ -11,6 +11,7 @@ import { PlatformsSection } from "@/components/platforms-section"
 import { FloatingAssistant } from "@/components/floating-assistant"
 import { Footer } from "@/components/footer"
 import { useAuth } from "@/components/auth-context"
+import { toast } from "sonner"
 
 const ResultDisplay = dynamic(
   () => import("@/components/result-display").then((mod) => mod.ResultDisplay),
@@ -88,6 +89,7 @@ export default function Home() {
     } catch (error) {
       console.error("Verification error:", error)
       clearInterval(interval)
+      toast.error("Analysis server could not be reached. Falling back to error state.")
       
       setResult({
         isValid: false,
@@ -161,6 +163,7 @@ export default function Home() {
     } catch (error) {
       console.error("Batch error:", error)
       clearInterval(interval)
+      toast.error("Batch analysis server could not be reached.")
       setResult({
         isValid: false, name: "Batch Upload Failed",
         course: "Check Backend Connection", platform: "Error",

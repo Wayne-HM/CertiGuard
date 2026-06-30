@@ -149,7 +149,7 @@ export function AnimatedBackground() {
         style={{ zIndex: 1 }}
       />
       
-      {/* 4. CSS-animated floating orbs (Blurred, Black/White only) */}
+      {/* 4. CSS-animated floating orbs (using radial gradient instead of expensive CSS blur) */}
       <motion.div
         className="fixed pointer-events-none"
         animate={{
@@ -165,8 +165,7 @@ export function AnimatedBackground() {
           width: '500px',
           height: '500px',
           borderRadius: '50%',
-          background: "radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 70%)",
-          filter: "blur(60px)",
+          background: "radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 30%, transparent 70%)",
         }}
       />
       
@@ -185,8 +184,7 @@ export function AnimatedBackground() {
           width: '600px',
           height: '600px',
           borderRadius: '50%',
-          background: "radial-gradient(circle, rgba(255,255,255,0.02) 0%, transparent 70%)",
-          filter: "blur(70px)",
+          background: "radial-gradient(circle, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 30%, transparent 70%)",
         }}
       />
       

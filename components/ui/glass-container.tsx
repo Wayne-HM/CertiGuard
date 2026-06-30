@@ -95,6 +95,7 @@ export const GlassButton = memo(forwardRef<HTMLButtonElement, GlassButtonProps>(
 
     return (
       <motion.button
+        type="button"
         ref={ref}
         className={`${buttonVariants[variant]} ${buttonSizes[size]} relative overflow-hidden inline-flex items-center justify-center gap-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20 disabled:pointer-events-none disabled:opacity-50 ${className}`}
         onMouseMove={handleMouseMove}
