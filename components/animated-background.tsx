@@ -151,50 +151,44 @@ export function AnimatedBackground() {
       
       {/* 4. CSS-animated floating orbs (using radial gradient instead of expensive CSS blur) */}
       {/* Ambient Fluid Mesh Gradient - Next-Gen Apple Aesthetic */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-50 dark:opacity-30">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
         <motion.div
           animate={{
-            transform: [
-              'translate(0%, 0%) scale(1)',
-              'translate(5%, 10%) scale(1.1)',
-              'translate(-5%, 5%) scale(0.9)',
-              'translate(0%, 0%) scale(1)'
-            ],
+            x: ["0%", "5%", "-5%", "0%"],
+            y: ["0%", "10%", "5%", "0%"],
+            scale: [1, 1.1, 0.9, 1],
           }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] rounded-full"
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full"
           style={{
-            background: "radial-gradient(circle, var(--orb-color) 0%, transparent 60%)"
+            background: "radial-gradient(circle, var(--orb-color) 0%, transparent 65%)",
+            opacity: 0.8
           }}
         />
         <motion.div
           animate={{
-            transform: [
-              'translate(0%, 0%) scale(1)',
-              'translate(-10%, -5%) scale(1.2)',
-              'translate(5%, -15%) scale(0.8)',
-              'translate(0%, 0%) scale(1)'
-            ],
+            x: ["0%", "-10%", "5%", "0%"],
+            y: ["0%", "-5%", "-15%", "0%"],
+            scale: [1, 1.2, 0.8, 1],
           }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear", delay: 2 }}
-          className="absolute bottom-[-20%] right-[-10%] w-[80vw] h-[80vw] rounded-full"
+          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className="absolute bottom-[-10%] right-[-10%] w-[70vw] h-[70vw] rounded-full"
           style={{
-            background: "radial-gradient(circle, var(--orb-color) 0%, transparent 60%)"
+            background: "radial-gradient(circle, var(--orb-color) 0%, transparent 65%)",
+            opacity: 0.8
           }}
         />
         <motion.div
           animate={{
-            transform: [
-              'translate(0%, 0%) scale(1)',
-              'translate(15%, -10%) scale(1.1)',
-              'translate(-10%, 15%) scale(0.9)',
-              'translate(0%, 0%) scale(1)'
-            ],
+            x: ["0%", "15%", "-10%", "0%"],
+            y: ["0%", "-10%", "15%", "0%"],
+            scale: [1, 1.1, 0.9, 1],
           }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear", delay: 4 }}
-          className="absolute top-[20%] left-[30%] w-[60vw] h-[60vw] rounded-full"
+          transition={{ duration: 30, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+          className="absolute top-[30%] left-[20%] w-[50vw] h-[50vw] rounded-full"
           style={{
-            background: "radial-gradient(circle, var(--orb-color) 0%, transparent 60%)"
+            background: "radial-gradient(circle, var(--orb-color) 0%, transparent 65%)",
+            opacity: 0.8
           }}
         />
       </div>
