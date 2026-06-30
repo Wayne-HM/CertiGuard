@@ -150,43 +150,40 @@ export function AnimatedBackground() {
       />
       
       {/* 4. CSS-animated floating orbs (using radial gradient instead of expensive CSS blur) */}
-      <motion.div
-        className="fixed pointer-events-none"
-        animate={{
-          y: [0, -30, 0],
-          x: [0, 20, 0],
-          scale: [1, 1.05, 1],
-        }}
-        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        style={{ 
-          zIndex: 1,
-          top: '15%',
-          left: '15%',
-          width: '500px',
-          height: '500px',
-          borderRadius: '50%',
-          background: "radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 30%, transparent 70%)",
-        }}
-      />
-      
-      <motion.div
-        className="fixed pointer-events-none"
-        animate={{
-          y: [0, 40, 0],
-          x: [0, -30, 0],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        style={{ 
-          zIndex: 1,
-          bottom: '10%',
-          right: '15%',
-          width: '600px',
-          height: '600px',
-          borderRadius: '50%',
-          background: "radial-gradient(circle, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 30%, transparent 70%)",
-        }}
-      />
+      {/* Deep Space Glowing Orbs - Adapted to Theme & Larger */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.1, 0.2, 0.1],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full"
+          style={{
+            background: "radial-gradient(circle, var(--orb-color) 0%, transparent 70%)"
+          }}
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            opacity: [0.05, 0.15, 0.05],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2,
+          }}
+          className="absolute bottom-1/4 right-1/4 w-[700px] h-[700px] rounded-full"
+          style={{
+            background: "radial-gradient(circle, var(--orb-color) 0%, transparent 70%)"
+          }}
+        />
+      </div>
       
       {/* 5. Noise Overlay Layer */}
       <div className="noise-overlay" />

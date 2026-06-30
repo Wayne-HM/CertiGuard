@@ -143,7 +143,7 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -10, scale: 0.98 }}
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                      className="absolute z-50 top-[calc(100%+8px)] left-0 right-0 bg-[#0a0a0a] border border-glass-border rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden origin-top"
+                      className="absolute z-50 top-[calc(100%+8px)] left-0 right-0 bg-surface-1 border border-glass-border rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden origin-top backdrop-blur-3xl"
                     >
                       {selectPlatforms.map((p) => (
                          <button

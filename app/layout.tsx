@@ -27,21 +27,25 @@ export const metadata: Metadata = {
   },
 }
 
+import { ThemeProvider } from '@/components/theme-provider'
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark scroll-smooth">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased bg-background text-foreground selection:bg-white/20 relative`}>
-        <SmoothScrollProvider>
-          <AuthProvider>
-            <CursorSpotlight />
-            {children}
-            <Toaster richColors position="top-right" theme="dark" closeButton />
-          </AuthProvider>
-        </SmoothScrollProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <SmoothScrollProvider>
+            <AuthProvider>
+              <CursorSpotlight />
+              {children}
+              <Toaster richColors position="top-right" theme="system" closeButton />
+            </AuthProvider>
+          </SmoothScrollProvider>
+        </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

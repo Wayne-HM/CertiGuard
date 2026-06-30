@@ -3,7 +3,8 @@
 import { useState, memo, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { motion, AnimatePresence, useScroll, useTransform, useMotionValueEvent } from "framer-motion"
-import { Shield, Menu, X, User, LogOut, Settings, LayoutDashboard } from "lucide-react"
+import { Shield, Menu, X, User, LogOut, Settings, LayoutDashboard, Sun, Moon } from "lucide-react"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -68,6 +69,7 @@ export function Navbar() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "signup">("login")
   const [activeSection, setActiveSection] = useState<string>("home")
+  const { theme, setTheme } = useTheme()
 
   const { scrollY } = useScroll()
 
@@ -226,6 +228,25 @@ export function Navbar() {
                 </GlassButton>
               </div>
             )}
+            {/* Theme Toggle */}
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={smoothSpring}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="relative p-0 w-9 h-9 rounded-full border border-glass-border bg-surface-1 text-text-secondary hover:text-text-primary flex items-center justify-center overflow-hidden"
+              >
+                <div className="relative w-4 h-4 flex items-center justify-center">
+                  <Sun className={`absolute transition-all duration-300 ${theme === 'dark' ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'} w-4 h-4`} />
+                  <Moon className={`absolute transition-all duration-300 ${theme === 'dark' ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'} w-4 h-4`} />
+                </div>
+              </Button>
+            </motion.div>
+
           </div>
 
           {/* Mobile Menu Button */}
