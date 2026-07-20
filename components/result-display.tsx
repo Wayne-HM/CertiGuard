@@ -117,6 +117,12 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       canvas.height = H
       const ctx = canvas.getContext("2d")!
 
+      const loadFont = async (family: string, url: string, weight: string, style = "normal") => {
+        const font = new FontFace(family, `url(${url})`, { weight, style })
+        await font.load()
+        document.fonts.add(font)
+      }
+
 
       // =====================================================================
       //  BACKGROUND - Match the website's dark background (#0f121b)
