@@ -117,48 +117,366 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       canvas.height = H
       const ctx = canvas.getContext("2d")!
 
-      // Background
-      ctx.fillStyle = "#FFFFFF"
+
+      // =====================================================================
+      //  BACKGROUND - Engine Console Dark (#0f121b)
+      // =====================================================================
+      ctx.fillStyle = "#0f121b"
       ctx.fillRect(0, 0, W, H)
 
-      // Borders
-      ctx.strokeStyle = "#E5E5E5"
-      ctx.lineWidth = 2
-      ctx.strokeRect(50, 50, W - 100, H - 100)
+      // Ambient glows (cyan and indigo)
+      const drawOrb = (cx: number, cy: number, r: number, color: string) => {
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
+        g.addColorStop(0, color)
+        g.addColorStop(1, "rgba(15, 18, 27, 0)") // fade to bg
+        ctx.fillStyle = g
+        ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
+      }
+      drawOrb(W, 0, 800, "rgba(34, 211, 238, 0.08)") // top-right cyan
+      drawOrb(0, H, 800, "rgba(79, 70, 229, 0.08)") // bottom-left indigo
 
-      // Header
-      ctx.fillStyle = "#000000"
-      ctx.font = "bold 60px 'Helvetica Neue', Helvetica, Arial, sans-serif"
-      ctx.fillText("CERTIGUARD VERIFICATION REPORT", 100, 150)
+      // =====================================================================
+      //  BORDER FRAME (Dashed + Solid)
+      // =====================================================================
+      const pad = 60
+      // Outer solid border (#1e2433)
+      ctx.strokeStyle = "#1e2433"
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      ctx.roundRect(pad, pad, W - pad * 2, H - pad * 2, 24)
+      ctx.stroke()
       
-      ctx.fillStyle = result.isValid ? "#000000" : "#666666"
-      ctx.font = "bold 40px 'Helvetica Neue', Helvetica, Arial, sans-serif"
-      ctx.fillText(result.isValid ? "STATUS: VERIFIED" : "STATUS: UNVERIFIED", 100, 220)
+      // Inner dashed border (#2a3143)
+      ctx.strokeStyle = "#2a3143"
+      ctx.lineWidth = 2
+      ctx.setLineDash([12, 12])
+      ctx.beginPath()
+      ctx.roundRect(pad + 20, pad + 20, W - (pad + 20) * 2, H - (pad + 20) * 2, 16)
+      ctx.stroke()
+      ctx.setLineDash([])
 
-      // Details
-      ctx.fillStyle = "#000000"
-      ctx.font = "bold 30px 'Helvetica Neue', Helvetica, Arial, sans-serif"
-      ctx.fillText("CANDIDATE NAME", 100, 400)
-      ctx.font = "normal 50px 'Helvetica Neue', Helvetica, Arial, sans-serif"
-      ctx.fillText(result.name || "N/A", 100, 460)
+      // Corner accents (Cyan)
+      const cornerLen = 80
+      const corners = [
+        [pad + 20, pad + 20], [W - pad - 20, pad + 20], 
+        [pad + 20, H - pad - 20], [W - pad - 20, H - pad - 20]
+      ]
+      ctx.strokeStyle = "#22d3ee" // cyan-400
+      ctx.lineWidth = 4
+      corners.forEach(([cx, cy]) => {
+        const dx = cx < W / 2 ? 1 : -1
+        const dy = cy < H / 2 ? 1 : -1
+        ctx.beginPath()
+        ctx.moveTo(cx + dx * cornerLen, cy)
+        ctx.lineTo(cx, cy)
+        ctx.lineTo(cx, cy + dy * cornerLen)
+        ctx.stroke()
+      })
 
-      ctx.font = "bold 30px 'Helvetica Neue', Helvetica, Arial, sans-serif"
-      ctx.fillText("COURSE TITLE", 100, 560)
-      ctx.font = "normal 50px 'Helvetica Neue', Helvetica, Arial, sans-serif"
-      ctx.fillText(result.course || "N/A", 100, 620)
+      // =====================================================================
+      //  HEADER BAR (Glowing Cyan Scanline)
+      // =====================================================================
+      const headerBarGrad = ctx.createLinearGradient(0, 0, W, 0)
+      headerBarGrad.addColorStop(0, "rgba(34, 211, 238, 0)")
+      headerBarGrad.addColorStop(0.5, "rgba(34, 211, 238, 1)")
+      headerBarGrad.addColorStop(1, "rgba(34, 211, 238, 0)")
+      ctx.fillStyle = headerBarGrad
+      ctx.fillRect(W/2 - 400, pad + 140, 800, 3)
+      // Add a glow under the line
+      const glowGrad = ctx.createLinearGradient(0, 0, W, 0)
+      glowGrad.addColorStop(0, "rgba(34, 211, 238, 0)")
+      glowGrad.addColorStop(0.5, "rgba(34, 211, 238, 0.4)")
+      glowGrad.addColorStop(1, "rgba(34, 211, 238, 0)")
+      ctx.fillStyle = glowGrad
+      ctx.fillRect(W/2 - 400, pad + 140, 800, 15)
 
-      ctx.font = "bold 30px 'Helvetica Neue', Helvetica, Arial, sans-serif"
-      ctx.fillText("PLATFORM", 100, 720)
-      ctx.font = "normal 40px 'Helvetica Neue', Helvetica, Arial, sans-serif"
-      ctx.fillText(result.platform || "N/A", 100, 780)
+      // =====================================================================
+      //  LOGO & TITLE
+      // =====================================================================
+      // Shield Icon Background
+      const shieldX = 140, shieldY = 130
+      ctx.fillStyle = "#151923"
+      ctx.beginPath()
+      ctx.roundRect(shieldX - 20, shieldY - 20, 110, 110, 20)
+      ctx.fill()
+      ctx.strokeStyle = "#1e2433"
+      ctx.lineWidth = 2
+      ctx.stroke()
 
-      // QR Code
+      // Shield Shape
+      ctx.save()
+      const shieldSize = 70
+      ctx.beginPath()
+      const sr = shieldSize * 0.18
+      ctx.moveTo(shieldX + sr, shieldY)
+      ctx.lineTo(shieldX + shieldSize - sr, shieldY)
+      ctx.quadraticCurveTo(shieldX + shieldSize, shieldY, shieldX + shieldSize, shieldY + sr)
+      ctx.lineTo(shieldX + shieldSize, shieldY + shieldSize * 0.58)
+      ctx.quadraticCurveTo(shieldX + shieldSize, shieldY + shieldSize * 0.88, shieldX + shieldSize / 2, shieldY + shieldSize)
+      ctx.quadraticCurveTo(shieldX, shieldY + shieldSize * 0.88, shieldX, shieldY + shieldSize * 0.58)
+      ctx.lineTo(shieldX, shieldY + sr)
+      ctx.quadraticCurveTo(shieldX, shieldY, shieldX + sr, shieldY)
+      ctx.closePath()
+      const shieldGrad = ctx.createLinearGradient(shieldX, shieldY, shieldX, shieldY + shieldSize)
+      shieldGrad.addColorStop(0, "#22d3ee") // cyan-400
+      shieldGrad.addColorStop(1, "#0284c7") // sky-600
+      ctx.fillStyle = shieldGrad
+      ctx.fill()
+      // Checkmark inside shield
+      ctx.strokeStyle = "#0f121b"
+      ctx.lineWidth = 6
+      ctx.lineCap = "round"
+      ctx.lineJoin = "round"
+      ctx.beginPath()
+      ctx.moveTo(shieldX + 18, shieldY + 38)
+      ctx.lineTo(shieldX + 30, shieldY + 50)
+      ctx.lineTo(shieldX + 52, shieldY + 26)
+      ctx.stroke()
+      ctx.restore()
+
+      // Title Text
+      ctx.textAlign = "left"
+      ctx.fillStyle = "#ffffff"
+      ctx.font = "700 48px 'Inter', 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "-1px"
+      ctx.fillText("CERTIGUARD", 260, 175)
+      ctx.fillStyle = "#94a3b8"
+      ctx.font = "700 16px 'Inter', 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "8px"
+      ctx.fillText("VERIFICATION ENGINE REPORT", 265, 210)
+      ctx.letterSpacing = "0px"
+
+      // Status Seal
+      const statusColor = result.isValid ? "#22c55e" : "#ef4444"
+      const statusText = result.isValid ? "VERIFIED" : "FAILED"
+      ctx.save()
+      ctx.textAlign = "center"
+      const stampX = W - 180, stampY = 180
+      ctx.beginPath()
+      ctx.arc(stampX, stampY, 60, 0, Math.PI * 2)
+      ctx.strokeStyle = statusColor
+      ctx.lineWidth = 4
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(stampX, stampY, 50, 0, Math.PI * 2)
+      ctx.setLineDash([5, 5])
+      ctx.strokeStyle = statusColor + "99"
+      ctx.lineWidth = 2
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.fillStyle = statusColor
+      ctx.font = "800 18px 'Inter', 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "2px"
+      ctx.fillText(statusText, stampX, stampY + 6)
+      ctx.restore()
+
+      // =====================================================================
+      //  "THIS CERTIFIES THAT" + NAME
+      // =====================================================================
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#64748b"
+      ctx.font = "700 16px 'Inter', 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "6px"
+      ctx.fillText("THIS CERTIFIES THAT", W / 2, 340)
+      ctx.letterSpacing = "0px"
+
+      // Recipient Name 
+      ctx.fillStyle = "#ffffff"
+      const nameText = result.name || "Verified Participant"
+      let nameFontSize = 90
+      ctx.font = `italic 700 ${nameFontSize}px 'Playfair Display', Georgia, serif`
+      while (ctx.measureText(nameText).width > W - 400 && nameFontSize > 40) {
+        nameFontSize -= 4
+        ctx.font = `italic 700 ${nameFontSize}px 'Playfair Display', Georgia, serif`
+      }
+      ctx.fillText(nameText, W / 2, 450)
+
+      // Scanline under name
+      const nameWidth = Math.min(ctx.measureText(nameText).width + 120, W - 400)
+      ctx.fillStyle = headerBarGrad
+      ctx.fillRect(W / 2 - nameWidth / 2, 490, nameWidth, 2)
+
+      // =====================================================================
+      //  COURSE TITLE
+      // =====================================================================
+      ctx.fillStyle = "#94a3b8"
+      ctx.font = "700 16px 'Inter', 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "4px"
+      ctx.fillText("HAS SUCCESSFULLY COMPLETED", W / 2, 560)
+      ctx.letterSpacing = "0px"
+
+      ctx.fillStyle = "#f8fafc"
+      const courseText = result.course || "Certificate Course"
+      let courseFontSize = 42
+      ctx.font = `800 ${courseFontSize}px 'Inter', 'Segoe UI', sans-serif`
+      while (ctx.measureText(courseText).width > W - 500 && courseFontSize > 20) {
+        courseFontSize -= 2
+        ctx.font = `800 ${courseFontSize}px 'Inter', 'Segoe UI', sans-serif`
+      }
+      ctx.fillText(courseText, W / 2, 620)
+
+      // =====================================================================
+      //  DETAILS GRID (4 columns) - Skeleton Style
+      // =====================================================================
+      ctx.textAlign = "left"
+      const gridY = 720
+      const gridH = 140
+      const colWidth = (W - 320) / 4
+      const gridStartX = 160
+      const finalDate = result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A")
+      const gridItems = [
+        { label: "PLATFORM", value: result.platform || "N/A", accent: "#22d3ee" },
+        { label: "COMPLETED DATE", value: finalDate, accent: "#818cf8" },
+        { label: "TOTAL HOURS", value: result.totalHours || "N/A", accent: "#c084fc" },
+        { label: "CERTIFICATE ID", value: result.certificateId || "N/A", accent: "#38bdf8" },
+      ]
+
+      gridItems.forEach((item, i) => {
+        const x = gridStartX + i * colWidth
+        // Card background (engine console style)
+        ctx.fillStyle = "#151923"
+        ctx.beginPath()
+        ctx.roundRect(x, gridY, colWidth - 24, gridH, 16)
+        ctx.fill()
+        ctx.strokeStyle = "#1e2433"
+        ctx.lineWidth = 2
+        ctx.stroke()
+        
+        // Label
+        ctx.fillStyle = "#64748b"
+        ctx.font = "700 12px 'Inter', 'Segoe UI', sans-serif"
+        ctx.letterSpacing = "2px"
+        ctx.fillText(item.label, x + 24, gridY + 46)
+        ctx.letterSpacing = "0px"
+        
+        // Value skeleton box
+        ctx.fillStyle = "#1b233a"
+        ctx.beginPath()
+        ctx.roundRect(x + 24, gridY + 66, colWidth - 72, 44, 8)
+        ctx.fill()
+        
+        // Value text over skeleton box
+        ctx.fillStyle = "#e2e8f0"
+        let valFont = 18
+        ctx.font = `700 ${valFont}px 'Inter', 'Segoe UI', sans-serif`
+        while (ctx.measureText(item.value).width > colWidth - 100 && valFont > 12) {
+          valFont -= 2
+          ctx.font = `700 ${valFont}px 'Inter', 'Segoe UI', sans-serif`
+        }
+        ctx.fillText(item.value, x + 36, gridY + 95)
+      })
+
+      // =====================================================================
+      //  STATUS BANNER
+      // =====================================================================
+      const bannerY = 900
+      const bannerH = 80
+      ctx.fillStyle = "#151923"
+      ctx.beginPath()
+      ctx.roundRect(160, bannerY, W - 320, bannerH, 16)
+      ctx.fill()
+      ctx.strokeStyle = result.isValid ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)"
+      ctx.lineWidth = 2
+      ctx.stroke()
+      
+      // Gradient glow behind text
+      const bannerGrad = ctx.createLinearGradient(W/2 - 200, bannerY, W/2 + 200, bannerY)
+      if (result.isValid) {
+        bannerGrad.addColorStop(0, "rgba(34, 197, 94, 0)")
+        bannerGrad.addColorStop(0.5, "rgba(34, 197, 94, 0.15)")
+        bannerGrad.addColorStop(1, "rgba(34, 197, 94, 0)")
+      } else {
+        bannerGrad.addColorStop(0, "rgba(239, 68, 68, 0)")
+        bannerGrad.addColorStop(0.5, "rgba(239, 68, 68, 0.15)")
+        bannerGrad.addColorStop(1, "rgba(239, 68, 68, 0)")
+      }
+      ctx.fillStyle = bannerGrad
+      ctx.fill()
+
+      ctx.textAlign = "center"
+      ctx.fillStyle = result.isValid ? "#4ade80" : "#f87171"
+      ctx.font = "800 24px 'Inter', 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "4px"
+      ctx.fillText(result.isValid ? "✓  VERIFICATION STATUS : AUTHENTIC" : "✕  VERIFICATION STATUS : FAILED", W / 2, bannerY + 50)
+      ctx.letterSpacing = "0px"
+
+      // =====================================================================
+      //  FOOTER: QR Code + Branding
+      // =====================================================================
+      // QR Code Box
       const qrImg = new Image()
       qrImg.src = qrDataUrl
       await new Promise(resolve => qrImg.onload = resolve)
-      ctx.drawImage(qrImg, W - 400, H - 450, 300, 300)
+      const qrSize = 160
+      const qrX = 160, qrY = 1040
+      ctx.fillStyle = "#ffffff"
+      ctx.beginPath()
+      ctx.roundRect(qrX, qrY, qrSize, qrSize, 12)
+      ctx.fill()
+      ctx.drawImage(qrImg, qrX + 10, qrY + 10, qrSize - 20, qrSize - 20)
       
-      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" })
+      // QR Frame (Engine style)
+      ctx.strokeStyle = "#22d3ee"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.roundRect(qrX - 10, qrY - 10, qrSize + 20, qrSize + 20, 16)
+      ctx.stroke()
+      
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#64748b"
+      ctx.font = "700 12px 'Inter', 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "2px"
+      ctx.fillText("SCAN TO VERIFY", qrX + qrSize / 2, qrY + qrSize + 36)
+
+      // Center: Verification URL text
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#64748b"
+      ctx.font = "500 18px 'Inter', 'Segoe UI', sans-serif"
+      ctx.fillText("Verify this certificate digitally at", W / 2, 1080)
+      ctx.fillStyle = "#22d3ee"
+      ctx.font = "700 22px 'Inter', 'Segoe UI', sans-serif"
+      const displayUrl = result.verificationUrl || "certiguardofficial.vercel.app"
+      const truncatedUrl = displayUrl.length > 70 ? displayUrl.substring(0, 67) + "..." : displayUrl
+      ctx.fillText(truncatedUrl, W / 2, 1120)
+
+      // Timestamp
+      ctx.fillStyle = "#475569"
+      ctx.font = "500 14px 'Inter', 'Segoe UI', sans-serif"
+      const now = new Date()
+      ctx.fillText(`Generated by Engine on ${now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} at ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`, W / 2, 1170)
+
+      // Right side: "Secured by AI" badge
+      const badgeW = 220, badgeH = 54
+      const badgeX = W - 160 - badgeW, badgeY2 = 1090
+      ctx.fillStyle = "#151923"
+      ctx.beginPath()
+      ctx.roundRect(badgeX, badgeY2, badgeW, badgeH, 12)
+      ctx.fill()
+      ctx.strokeStyle = "#1e2433"
+      ctx.lineWidth = 2
+      ctx.stroke()
+      ctx.fillStyle = "#22d3ee"
+      ctx.font = "800 16px 'Inter', 'Segoe UI', sans-serif"
+      ctx.letterSpacing = "4px"
+      ctx.fillText("SECURED BY AI", badgeX + badgeW / 2, badgeY2 + 34)
+      ctx.letterSpacing = "0px"
+
+      // Bottom Disclaimer
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#334155"
+      ctx.font = "500 14px 'Inter', 'Segoe UI', sans-serif"
+      ctx.fillText("This document is an automated engine report generated by CertiGuard AI.", W / 2, H - 100)
+
+      // =====================================================================
+      //  EXPORT TO PDF
+      // =====================================================================
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4"
+      })
+
+
       const imgData = canvas.toDataURL("image/jpeg", 0.95)
       pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
       pdf.save(`CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`)
