@@ -2,9 +2,8 @@
 
 import { useState, memo, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { CheckCircle2, XCircle, User, BookOpen, Building2, ExternalLink, Download, RotateCcw, Sparkles, AlertTriangle, Terminal, Clock, Calendar } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { CheckCircle2, XCircle, User, BookOpen, Building2, ExternalLink, Download, RotateCcw, Sparkles, AlertTriangle, Terminal, Clock, Calendar, Check } from "lucide-react"
+import { GlassCard, GlassButton, smoothSpring } from "@/components/ui/glass-container"
 import QRCode from "qrcode"
 
 export interface VerificationResult {
@@ -26,23 +25,17 @@ interface ResultDisplayProps {
   onVerifyAnother: () => void
 }
 
-// Optimized spring configs
-const quickSpring = { stiffness: 300, damping: 30, mass: 0.8 }
-const smoothTransition = { duration: 0.25, ease: [0.4, 0, 0.2, 1] }
-
-const confettiColors = ["#3B82F6", "#06B6D4", "#8B5CF6", "#22C55E", "#F59E0B"]
-
-// Memoized confetti with reduced particle count
+// B/W Confetti replacement: floating orbs
 const Confetti = memo(function Confetti() {
   const particles = useMemo(() => 
-    Array.from({ length: 30 }).map((_, i) => ({
+    Array.from({ length: 20 }).map((_, i) => ({
       id: i,
-      color: confettiColors[i % confettiColors.length],
       left: `${Math.random() * 100}%`,
       scale: Math.random() * 0.5 + 0.5,
       duration: Math.random() * 1.5 + 1.5,
       delay: Math.random() * 0.3,
-      rotate: Math.random() * 720 - 360,
+      yStart: -20,
+      yEnd: "110%",
     })), []
   )
 
@@ -51,10 +44,10 @@ const Confetti = memo(function Confetti() {
       {particles.map((p) => (
         <motion.div
           key={p.id}
-          className="absolute w-2 h-2 rounded-full gpu-accelerate"
-          style={{ backgroundColor: p.color, left: p.left }}
-          initial={{ top: -10, opacity: 1, scale: p.scale, rotate: 0 }}
-          animate={{ top: "110%", opacity: 0, rotate: p.rotate }}
+          className="absolute w-2 h-2 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]"
+          style={{ left: p.left }}
+          initial={{ top: p.yStart, opacity: 1, scale: p.scale }}
+          animate={{ top: p.yEnd, opacity: 0 }}
           transition={{ duration: p.duration, delay: p.delay, ease: "easeOut" }}
         />
       ))}
@@ -79,19 +72,14 @@ const DetailRow = memo(function DetailRow({
       initial={{ opacity: 0, x: -15 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.35, delay: 0.3 + index * 0.08, ease: "easeInOut" }}
-      whileHover={{ scale: 1.01, x: 3 }}
-      className="flex items-center gap-4 p-4 glass rounded-xl hover:border-neon-blue/30 transition-colors duration-150 cursor-default group gpu-accelerate"
+      className="flex items-center gap-4 p-4 rounded-xl liquid-glass group hover:bg-surface-2 transition-colors cursor-default"
     >
-      <motion.div 
-        className="flex-shrink-0 w-10 h-10 rounded-lg bg-secondary flex items-center justify-center group-hover:bg-neon-blue/10 transition-colors duration-150"
-        whileHover={{ rotate: [-8, 8, 0] }}
-        transition={{ duration: 0.3 }}
-      >
-        <Icon className="w-5 h-5 text-neon-blue" />
-      </motion.div>
+      <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-surface-1 border border-glass-border flex items-center justify-center transition-colors">
+        <Icon className="w-5 h-5 text-text-primary" />
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="font-medium text-foreground break-words whitespace-pre-wrap">{value}</p>
+        <p className="text-[10px] uppercase tracking-widest text-text-secondary">{label}</p>
+        <p className="font-medium text-text-primary break-words whitespace-pre-wrap">{value}</p>
       </div>
     </motion.div>
   )
@@ -116,38 +104,19 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
     try {
       const { jsPDF } = await import("jspdf")
 
-      // --- Load Professional Google Fonts ---
-      const loadFont = async (family: string, url: string, weight: string = "normal", style: string = "normal") => {
-        try {
-          const face = new FontFace(family, `url(${url})`, { weight, style })
-          const loaded = await face.load()
-          document.fonts.add(loaded)
-        } catch { /* graceful fallback */ }
-      }
-
-      await Promise.all([
-        loadFont("Inter", "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZhrib2Bg-4.ttf", "400"),
-        loadFont("Inter", "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fMZhrib2Bg-4.ttf", "600"),
-        loadFont("Inter", "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYMZhrib2Bg-4.ttf", "700"),
-        loadFont("Playfair Display", "https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKdFvXDTbtPY_Q.ttf", "700"),
-        loadFont("Playfair Display", "https://fonts.gstatic.com/s/playfairdisplay/v37/nuFRD-vYSZviVYUb_rj3ij__anPXDTnCjmHKM4nYO7KN_qiTbtbK-F2rA0s.ttf", "700", "italic"),
-      ])
-
-      // 1. Generate QR Code — use verification URL or CertiGuard production URL
+      // Minimal monochrome PDF generation
       const qrDataUrl = await QRCode.toDataURL(result.verificationUrl || "https://certiguardofficial.vercel.app", {
         margin: 2,
         width: 300,
-        color: {
-          dark: "#E2E8F0",
-          light: "#00000000"
-        }
+        color: { dark: "#000000", light: "#FFFFFF" }
       })
 
       const canvas = document.createElement("canvas")
-      const W = 2000, H = 1414 // High-resolution A4 landscape
+      const W = 2000, H = 1414 
       canvas.width = W
       canvas.height = H
       const ctx = canvas.getContext("2d")!
+
 
       // =====================================================================
       //  BACKGROUND - Engine Console Dark (#0f121b)
@@ -507,11 +476,11 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
         format: "a4"
       })
 
+
       const imgData = canvas.toDataURL("image/jpeg", 0.95)
       pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
+      pdf.save(`CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`)
 
-      const fileName = `CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`
-      pdf.save(fileName)
     } catch (error) {
       console.error("Report generation failed:", error)
     } finally {
@@ -520,385 +489,200 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
   }
 
   return (
-    <section className="relative py-16 px-4">
+    <section className="relative py-16 px-4 z-10">
       <div className="max-w-2xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+          transition={{ duration: 0.5, ease: [0.19, 1, 0.22, 1] }}
         >
           {/* Result Card */}
-          <Card
-            className={`
-              relative overflow-hidden glass-strong rounded-3xl border-2 gpu-accelerate
-              ${isActionRequired ? "border-amber-500/50" : isValid ? "border-success/50" : "border-destructive/50"}
-            `}
-            style={{
-              boxShadow: isActionRequired
-                ? "0 0 40px oklch(0.7 0.2 60 / 0.15)"
-                : isValid 
-                ? "0 0 40px oklch(0.65 0.2 160 / 0.2)" 
-                : "0 0 40px oklch(0.55 0.22 25 / 0.2)",
-            }}
-          >
-            {/* Confetti for success */}
+          <GlassCard interactive={false} className="p-8">
             <AnimatePresence>
               {isValid && <Confetti />}
             </AnimatePresence>
             
-            <CardContent className="p-8 relative z-10">
-              {/* Status Icon */}
-              <div className="text-center mb-8">
-                <motion.div
-                  initial={{ scale: 0, rotate: -90 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={quickSpring}
-                  className="inline-flex relative"
-                >
-                  {isActionRequired ? (
-                    <>
-                      {/* Warning glow */}
-                      <div className="absolute inset-0 bg-amber-500/25 blur-2xl rounded-full animate-pulse" />
-                      <motion.div
-                        animate={{ rotate: [0, -5, 5, 0] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="relative gpu-accelerate"
-                      >
-                        <AlertTriangle className="w-24 h-24 text-amber-500 drop-shadow-lg" />
-                      </motion.div>
-                    </>
-                  ) : isValid ? (
-                    <>
-                      {/* Success glow */}
-                      <div className="absolute inset-0 bg-success/25 blur-2xl rounded-full animate-glow-pulse" />
-                      
-                      <motion.div
-                        animate={{ scale: [1, 1.03, 1] }}
-                        transition={{ duration: 1.2, repeat: Infinity }}
-                        className="relative gpu-accelerate"
-                      >
-                        <CheckCircle2 className="w-24 h-24 text-success drop-shadow-lg" />
-                      </motion.div>
-                      
-                      {/* Sparkle */}
-                      <motion.div
-                        className="absolute -top-1 -right-1"
-                        animate={{ rotate: [0, 12, 0], scale: [1, 1.15, 1] }}
-                        transition={{ duration: 1.5, repeat: Infinity }}
-                      >
-                        <Sparkles className="w-5 h-5 text-success" />
-                      </motion.div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Error glow */}
-                      <div className="absolute inset-0 bg-destructive/25 blur-2xl rounded-full animate-glow-pulse" />
-                      
-                      <motion.div
-                        initial={{ x: 0 }}
-                        animate={{ x: [-2, 2, -2, 2, 0] }}
-                        transition={{ duration: 0.4, delay: 0.2 }}
-                        className="relative gpu-accelerate"
-                      >
-                        <XCircle className="w-24 h-24 text-destructive drop-shadow-lg" />
-                      </motion.div>
-                      
-                      {/* Warning */}
-                      <motion.div
-                        className="absolute -top-1 -right-1"
-                        animate={{ y: [0, -2, 0] }}
-                        transition={{ duration: 0.8, repeat: Infinity }}
-                      >
-                        <AlertTriangle className="w-5 h-5 text-destructive" />
-                      </motion.div>
-                    </>
-                  )}
-                </motion.div>
- 
-                {/* Status Text */}
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35, duration: 0.35 }}
-                >
-                  <h2 className={`text-2xl sm:text-3xl font-bold mt-6 mb-2 ${isActionRequired ? "text-amber-500" : isValid ? "text-success" : "text-destructive"}`}>
-                    {isActionRequired ? "Verification Blocked: Captcha Required" : isValid ? "Verification Status: AUTHENTIC" : "Fake Certificate Detected"}
-                  </h2>
-                  <p className="text-muted-foreground">
-                    {isActionRequired 
-                      ? "The platform side is asking to verify you are a human. Please solve it on their site." 
-                      : isValid 
-                        ? "This certificate is authentic and secured by AI" 
-                        : "This certificate could not be verified"}
-                  </p>
-                </motion.div>
-              </div>
- 
-              {isActionRequired && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-8 p-6 glass rounded-2xl border border-amber-500/30 bg-amber-500/5"
-                >
-                  <h4 className="flex items-center gap-2 text-amber-500 font-semibold mb-3">
-                    <Sparkles className="w-4 h-4" />
-                    How to fix this:
-                  </h4>
-                  <ol className="text-sm space-y-3 text-muted-foreground list-decimal pl-4">
-                    <li>Click the <strong>Solve Captcha on Site</strong> button below.</li>
-                    <li>Verify the "Just a moment..." or captcha challenge in the new tab.</li>
-                    <li>Once the certificate appears, return here and click <strong>Verify Another</strong> to re-check.</li>
-                  </ol>
-                  <div className="mt-6">
-                    <Button
-                      asChild
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold h-12 shadow-lg shadow-amber-500/20"
-                    >
-                      <a href={result.verificationUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2">
-                        <ExternalLink className="w-4 h-4" />
-                        Solve Captcha on Site
-                      </a>
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
- 
-              {/* Certificate Details */}
-              <div className="space-y-4">
-                <motion.h3 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.25 }}
-                  className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4"
-                >
-                  Extracted Details
-                </motion.h3>
- 
-                <div className="grid gap-3">
-                  {details.map((item, index) => (
-                    <DetailRow key={item.label} {...item} index={index} />
-                  ))}
-                </div>
- 
-                {/* Verification Link */}
-                {result.verificationUrl && (
-                  <motion.a
-                    initial={{ opacity: 0, x: -15 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.35, delay: 0.55, ease: "easeInOut" }}
-                    whileHover={{ scale: 1.01, x: 3 }}
-                    href={result.verificationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-4 glass rounded-xl hover:border-neon-blue/50 transition-colors duration-150 group gpu-accelerate"
-                    style={{ borderWidth: 1, borderStyle: "solid", borderColor: "transparent" }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <ExternalLink className="w-5 h-5 text-neon-blue" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Verification Link</p>
-                        <p className="text-sm font-medium text-neon-blue truncate max-w-[200px] sm:max-w-[300px]">
-                          {result.verificationUrl}
-                        </p>
-                      </div>
-                    </div>
-                    <motion.div
-                      animate={{ x: [0, 3, 0] }}
-                      transition={{ duration: 1.2, repeat: Infinity }}
-                    >
-                      <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-neon-blue transition-colors duration-150" />
-                    </motion.div>
-                  </motion.a>
-                )}
- 
-                {/* Additional Info */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                  className="flex flex-wrap gap-3 pt-4"
-                >
-                  <motion.div 
-                    whileHover={{ scale: 1.03 }}
-                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    className="px-4 py-2 glass rounded-lg text-xs"
-                  >
-                    <span className="text-muted-foreground">Issue Date: </span>
-                    <span className="text-foreground font-medium">{result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A")}</span>
-                  </motion.div>
-                  <motion.div 
-                    whileHover={{ scale: 1.03 }}
-                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    className="px-4 py-2 glass rounded-lg text-xs"
-                  >
-                    <span className="text-muted-foreground">Certificate ID: </span>
-                    <span className="text-foreground font-medium font-mono">{result.certificateId}</span>
-                  </motion.div>
-                </motion.div>
-              </div>
- 
-              {/* Action Buttons */}
+            <div className="text-center mb-10 relative z-10">
               <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7, duration: 0.35 }}
-                className="flex flex-col sm:flex-row gap-3 mt-8"
+                initial={{ scale: 0, rotate: -90 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={smoothSpring}
+                className="inline-flex relative mb-6"
               >
-                <div className="flex-1 flex flex-col gap-3">
-                  <motion.div 
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={quickSpring}
-                  >
-                    <Button
-                      size="lg"
-                      onClick={downloadReport}
-                      disabled={isDownloading}
-                      className="w-full relative overflow-hidden bg-gradient-to-r from-neon-blue to-neon-purple hover:opacity-90 text-white shadow-lg shadow-neon-blue/20 gpu-accelerate disabled:opacity-70"
-                    >
-                      <span className="relative z-10 flex items-center justify-center gap-2">
-                        {isDownloading ? (
-                          <RotateCcw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Download className="w-4 h-4" />
-                        )}
-                        {isDownloading ? "Generating Report..." : "Download Report"}
-                      </span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent animate-shimmer" />
-                    </Button>
-                  </motion.div>
-                   
-                  {/* Debug Log Toggle */}
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={quickSpring}
-                  >
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowLog(!showLog)}
-                      className="w-full text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 gap-2"
-                    >
-                      <Terminal className="w-3 h-3" />
-                      {showLog ? "Hide Debug Log" : "Show Debug Log"}
-                    </Button>
-                  </motion.div>
-                </div>
-                 
-                <motion.div 
-                  className="flex-1"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={quickSpring}
-                >
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    onClick={onVerifyAnother}
-                    className="w-full h-full min-h-[44px] border-glass-border hover:bg-secondary hover:border-neon-blue/50 transition-all duration-150 group gpu-accelerate"
-                  >
+                {isActionRequired ? (
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-white/10 blur-xl rounded-full" />
+                    <AlertTriangle className="w-20 h-20 text-white relative z-10" />
+                  </div>
+                ) : isValid ? (
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-white/20 blur-xl rounded-full animate-glow-pulse" />
+                    <CheckCircle2 className="w-20 h-20 text-white relative z-10" />
                     <motion.div
-                      className="mr-2"
-                      whileHover={{ rotate: -360 }}
-                      transition={{ duration: 0.4 }}
+                      className="absolute -top-1 -right-1"
+                      animate={{ rotate: [0, 15, 0], scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
                     >
-                      <RotateCcw className="w-4 h-4 group-hover:text-neon-blue transition-colors duration-150" />
+                      <Sparkles className="w-6 h-6 text-white" />
                     </motion.div>
-                    <span className="group-hover:text-neon-blue transition-colors duration-150">Verify Another</span>
-                  </Button>
-                </motion.div>
-              </motion.div>
- 
-              {/* Debug Log Content */}
-              <AnimatePresence>
-                {showLog && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                    className="overflow-hidden mt-4"
-                  >
-                    <div className="p-4 glass-stronger rounded-xl border border-white/5 bg-black/40">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Verification Raw Output</span>
-                        <div className="flex gap-1">
-                          <div className="w-2 h-2 rounded-full bg-destructive/40" />
-                          <div className="w-2 h-2 rounded-full bg-warning/40" />
-                          <div className="w-2 h-2 rounded-full bg-success/40" />
-                        </div>
-                      </div>
-                      <pre className="text-[11px] font-mono whitespace-pre-wrap text-muted-foreground leading-relaxed max-h-48 overflow-y-auto custom-scrollbar italic">
-                        {result.rawOutput || "No debug information available for this certificate."}
-                      </pre>
-                    </div>
-                  </motion.div>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-white/5 blur-xl rounded-full" />
+                    <XCircle className="w-20 h-20 text-text-secondary relative z-10" />
+                  </div>
                 )}
-              </AnimatePresence>
+              </motion.div>
 
-              {/* Batch Results Panel */}
-              {result._batchResults && result._batchResults.length > 1 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8 }}
-                  className="mt-6 space-y-3"
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+              >
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-text-primary mb-2">
+                  {isActionRequired ? "Action Required" : isValid ? "Authentic Certificate" : "Verification Failed"}
+                </h2>
+                <p className="text-text-secondary">
+                  {isActionRequired 
+                    ? "The platform requires a manual captcha check." 
+                    : isValid 
+                      ? "This certificate has been verified via our neural engine." 
+                      : "We could not verify the authenticity of this document."}
+                </p>
+              </motion.div>
+            </div>
+
+            {isActionRequired && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8 p-6 bg-surface-2 rounded-2xl border border-glass-border"
+              >
+                <h4 className="font-semibold mb-3 text-text-primary">How to proceed:</h4>
+                <ol className="text-sm space-y-3 text-text-secondary list-decimal pl-4 mb-6">
+                  <li>Click <strong>Solve on Site</strong> below.</li>
+                  <li>Complete the human verification challenge in the new tab.</li>
+                  <li>Return here and re-verify your certificate.</li>
+                </ol>
+                <GlassButton variant="primary" size="md" className="w-full">
+                  <a href={result.verificationUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full">
+                    <ExternalLink className="w-4 h-4" /> Solve on Site
+                  </a>
+                </GlassButton>
+              </motion.div>
+            )}
+
+            {/* Certificate Details */}
+            <div className="space-y-4">
+              <motion.h3 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-4 terminal-text"
+              >
+                &gt; Extracted_Data_Nodes
+              </motion.h3>
+
+              <div className="grid gap-3">
+                {details.map((item, index) => (
+                  <DetailRow key={item.label} {...item} index={index} />
+                ))}
+              </div>
+
+              {/* Verification Link */}
+              {result.verificationUrl && (
+                <motion.a
+                  initial={{ opacity: 0, x: -15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.35, delay: 0.6 }}
+                  href={result.verificationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-4 liquid-glass rounded-xl hover:bg-surface-2 transition-colors mt-2"
                 >
-                  <div className="flex items-center justify-between px-1">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                      Batch Results ({result._batchSummary?.valid || 0}/{result._batchSummary?.total || 0} Valid)
-                    </h3>
-                    <div className="flex gap-2 text-xs">
-                      <span className="px-2 py-1 rounded-full bg-success/10 text-success font-bold">
-                        ✓ {result._batchSummary?.valid || 0}
-                      </span>
-                      <span className="px-2 py-1 rounded-full bg-destructive/10 text-destructive font-bold">
-                        ✕ {result._batchSummary?.fake || 0}
-                      </span>
+                  <div className="flex items-center gap-3">
+                    <ExternalLink className="w-5 h-5 text-text-primary" />
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-text-secondary">Source Link</p>
+                      <p className="text-sm font-medium text-text-primary truncate max-w-[200px] sm:max-w-[300px]">
+                        {result.verificationUrl}
+                      </p>
                     </div>
                   </div>
-                  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
-                    {result._batchResults.map((br: any, idx: number) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.9 + idx * 0.05 }}
-                        className={`flex items-center gap-3 p-3 glass rounded-xl border ${
-                          br.isValid ? "border-success/20" : "border-destructive/20"
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          br.isValid ? "bg-success/10" : "bg-destructive/10"
-                        }`}>
-                          {br.isValid 
-                            ? <CheckCircle2 className="w-4 h-4 text-success" />
-                            : <XCircle className="w-4 h-4 text-destructive" />
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{br.filename || br.name || `Certificate ${idx + 1}`}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {br.platform} • {br.course || "Unknown Course"}
-                          </p>
-                        </div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
-                          br.isValid ? "text-success bg-success/10" : "text-destructive bg-destructive/10"
-                        }`}>
-                          {br.isValid ? "Valid" : "Fake"}
-                        </span>
-                      </motion.div>
-                    ))}
+                  <ExternalLink className="w-4 h-4 text-text-secondary" />
+                </motion.a>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.4 }}
+              className="flex flex-col sm:flex-row gap-4 mt-8"
+            >
+              <div className="flex-1 flex flex-col gap-4">
+                <GlassButton
+                  variant="primary"
+                  size="lg"
+                  onClick={downloadReport}
+                  disabled={isDownloading}
+                  className="w-full"
+                >
+                  {isDownloading ? <RotateCcw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {isDownloading ? "Generating..." : "Download Report"}
+                </GlassButton>
+
+                <GlassButton
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setShowLog(!showLog)}
+                  className="w-full"
+                >
+                  <Terminal className="w-4 h-4" />
+                  {showLog ? "Hide Console" : "View Console"}
+                </GlassButton>
+              </div>
+
+              <div className="flex-1">
+                <GlassButton
+                  variant="ghost"
+                  size="lg"
+                  onClick={onVerifyAnother}
+                  className="w-full h-[104px] sm:h-full border border-glass-border"
+                >
+                  <RotateCcw className="w-5 h-5 mb-1" />
+                  Verify Another
+                </GlassButton>
+              </div>
+            </motion.div>
+
+            {/* Terminal Log */}
+            <AnimatePresence>
+              {showLog && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="mt-6 overflow-hidden rounded-xl bg-black border border-glass-border"
+                >
+                  <div className="p-4 flex items-center justify-between border-b border-glass-border bg-surface-1">
+                    <span className="text-[10px] text-text-secondary terminal-text tracking-widest">system_log.txt</span>
+                    <div className="flex gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-surface-2" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-surface-2" />
+                      <div className="w-2.5 h-2.5 rounded-full bg-surface-2" />
+                    </div>
+                  </div>
+                  <div className="p-4 bg-black/50 overflow-x-auto">
+                    <pre className="text-[10px] text-text-secondary terminal-text whitespace-pre-wrap">
+                      {result.rawOutput || "No console output available."}
+                    </pre>
                   </div>
                 </motion.div>
               )}
-            </CardContent>
- 
-            {/* Corner glows */}
-            <div className={`absolute top-0 left-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
-            <div className={`absolute bottom-0 right-0 w-28 h-28 ${isActionRequired ? "bg-amber-500/8" : isValid ? "bg-success/8" : "bg-destructive/8"} blur-2xl pointer-events-none`} />
-          </Card>
+            </AnimatePresence>
+          </GlassCard>
         </motion.div>
       </div>
     </section>

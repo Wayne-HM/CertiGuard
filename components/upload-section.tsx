@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Upload, FileText, CheckCircle, Loader2, ChevronDown, Check } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { GlassCard, GlassButton, smoothSpring } from "@/components/ui/glass-container"
 
 interface UploadSectionProps {
   onUpload: (file: File, platform: string) => void
@@ -37,7 +37,7 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
     if (isVerifying) {
       setElapsedTime(0)
       interval = setInterval(() => {
-        setElapsedTime(prev => prev + 10) // tick every 10ms
+        setElapsedTime(prev => prev + 10)
       }, 10)
     }
     return () => clearInterval(interval)
@@ -70,7 +70,7 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
         setBatchFiles([])
       } else {
         setBatchFiles(droppedFiles)
-        setFile(droppedFiles[0]) // use first file for preview
+        setFile(droppedFiles[0])
       }
     }
   }, [])
@@ -83,7 +83,7 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
         setBatchFiles([])
       } else {
         setBatchFiles(selectedFiles)
-        setFile(selectedFiles[0]) // preview first file
+        setFile(selectedFiles[0])
       }
     }
   }, [])
@@ -97,61 +97,63 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
   }, [file, batchFiles, selectedPlatform, onUpload, onBatchUpload])
 
   const selectedPlatformName = selectPlatforms.find(p => p.id === selectedPlatform)?.name || "Auto-Detect"
-
-  // Check if we are handling batch vs single in UI
   const isBatch = batchFiles.length > 1;
 
   return (
-    <section id="verify" className="relative py-24 px-4 overflow-hidden">
-      {/* Background ambient light */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-900/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-900/10 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="max-w-6xl mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 items-stretch">
-          
+    <section id="verify" className="relative py-24 px-4 overflow-hidden z-10">
+      <div className="max-w-6xl mx-auto">
+        <motion.div 
+          className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 items-stretch"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
+        >
           {/* LEFT PANEL: ENGINE CONSOLE */}
-          <div className="bg-[#0f121b] border border-[#1e2433] rounded-[1.5rem] p-8 shadow-2xl relative overflow-visible">
+          <GlassCard className="p-8 relative">
             {/* Header with Timer */}
-            <div className="flex justify-between items-center mb-10 pb-5 border-b border-[#1e2433]">
-              <h2 className="text-xl font-bold text-white tracking-tight">Certificate Verification Engine</h2>
-              <div className="text-white font-mono text-lg font-bold tracking-wider">
+            <div className="flex justify-between items-center mb-10 pb-5 border-b border-glass-border">
+              <h2 className="text-xl font-semibold text-text-primary tracking-tight">Verification Engine</h2>
+              <div className="text-text-primary font-mono text-lg font-medium tracking-wider liquid-glass px-4 py-1 rounded-full">
                 {formatTime(elapsedTime)}
               </div>
             </div>
 
             {/* Platform Dropdown */}
             <div className="mb-8 relative">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+              <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-3">
                 Verification Platform
               </label>
-              <div className="relative">
+              <div className="relative z-20">
                 <button
                   onClick={() => !isVerifying && setDropdownOpen(!dropdownOpen)}
                   disabled={isVerifying}
-                  className="w-full bg-[#151923] border border-[#1e2433] hover:border-cyan-500/50 text-white rounded-xl px-5 py-4 flex items-center justify-between transition-colors disabled:opacity-50"
+                  className="w-full liquid-glass rounded-2xl px-5 py-4 flex items-center justify-between transition-colors disabled:opacity-50 hover:bg-surface-2"
                 >
-                  <span className="font-medium text-sm">{selectedPlatformName}</span>
-                  <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+                  <span className="font-medium text-sm text-text-primary">{selectedPlatformName}</span>
+                  <motion.div animate={{ rotate: dropdownOpen ? 180 : 0 }} transition={smoothSpring}>
+                    <ChevronDown className="w-5 h-5 text-text-secondary" />
+                  </motion.div>
                 </button>
                 
                 <AnimatePresence>
                   {dropdownOpen && (
                     <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-[calc(100%+8px)] left-0 right-0 bg-[#151923] border border-[#1e2433] rounded-xl shadow-[0_20px_40px_rgba(0,0,0,0.5)] z-50 overflow-hidden"
+                      initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      className="absolute z-50 top-[calc(100%+8px)] left-0 right-0 bg-surface-1 border border-glass-border rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden origin-top backdrop-blur-3xl"
                     >
                       {selectPlatforms.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => { setSelectedPlatform(p.id); setDropdownOpen(false) }}
-                          className="w-full text-left px-5 py-3 hover:bg-[#1a2133] text-sm font-medium text-slate-300 hover:text-white transition-colors flex items-center justify-between"
-                        >
-                          {p.name}
-                          {selectedPlatform === p.id && <Check className="w-4 h-4 text-cyan-400" />}
-                        </button>
+                         <button
+                           key={p.id}
+                           onClick={() => { setSelectedPlatform(p.id); setDropdownOpen(false) }}
+                           className="w-full text-left px-5 py-3 hover:bg-surface-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors flex items-center justify-between"
+                         >
+                           {p.name}
+                           {selectedPlatform === p.id && <Check className="w-4 h-4 text-text-primary" />}
+                         </button>
                       ))}
                     </motion.div>
                   )}
@@ -160,8 +162,8 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
             </div>
 
             {/* Document Upload Zone */}
-            <div className="mb-10">
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
+            <div className="mb-10 relative z-10">
+              <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-3">
                 Document Upload (Single Or Batch)
               </label>
               
@@ -171,8 +173,8 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
                 onDrop={handleDrop}
                 onClick={() => !isVerifying && document.getElementById('file-upload')?.click()}
                 className={`
-                  relative rounded-2xl p-10 min-h-[220px] flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 overflow-hidden
-                  ${isVerifying ? "border-2 border-dashed border-cyan-500/50 bg-[#111727]" : isDragging ? "border-2 border-dashed border-cyan-400 bg-[#111727]" : "border-2 border-dashed border-[#2a3143] bg-[#151923] hover:border-cyan-500/50 hover:bg-[#1a1f2b]"}
+                  relative rounded-3xl p-10 min-h-[220px] flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 overflow-hidden
+                  ${isVerifying ? "liquid-glass border-white/20" : isDragging ? "liquid-glass border-white/30" : "bg-surface-1 border border-glass-border hover:bg-surface-2"}
                 `}
               >
                 <input 
@@ -187,24 +189,24 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
 
                 {isVerifying ? (
                   <div className="flex flex-col items-center justify-center space-y-4 relative z-10 w-full">
-                    {/* Horizontal Glowing Scanline */}
+                    {/* Horizontal Glowing Scanline for security aesthetic */}
                     <motion.div 
-                      className="absolute w-[120%] h-[3px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_20px_rgba(34,211,238,1)] z-20"
-                      initial={{ top: "-10%" }}
-                      animate={{ top: ["-10%", "110%", "-10%"] }}
+                      className="absolute w-full h-[2px] bg-white/40 shadow-[0_0_15px_rgba(255,255,255,0.8)] z-20"
+                      initial={{ top: "0%" }}
+                      animate={{ top: ["0%", "100%", "0%"] }}
                       transition={{ duration: 3, ease: "linear", repeat: Infinity }}
                     />
-                    <FileText className="w-10 h-10 text-cyan-400 mb-2" />
-                    <h3 className="text-cyan-400 font-medium text-lg">Extracting Details...</h3>
-                    <p className="text-slate-400 text-sm">Please do not close this window</p>
+                    <FileText className="w-10 h-10 text-white mb-2 glowing-pulse" />
+                    <h3 className="text-white font-medium text-lg">Extracting Data...</h3>
+                    <p className="text-text-secondary text-sm">Forensic analysis in progress</p>
                   </div>
                 ) : file ? (
                   <div className="flex flex-col items-center justify-center space-y-3 z-10">
-                    <FileText className="w-12 h-12 text-white/80" />
+                    <FileText className="w-12 h-12 text-white" />
                     <h3 className="text-white font-medium text-sm truncate max-w-[280px]">
                       {isBatch ? `${batchFiles.length} Certificates Ready` : file.name}
                     </h3>
-                    <p className="text-slate-500 text-xs">
+                    <p className="text-text-secondary text-xs">
                       {isBatch 
                         ? `Total: ${(batchFiles.reduce((acc, f) => acc + f.size, 0) / 1024 / 1024).toFixed(2)} MB` 
                         : `${(file.size / 1024 / 1024).toFixed(2)} MB`
@@ -213,87 +215,94 @@ export function UploadSection({ onUpload, onBatchUpload, isVerifying }: UploadSe
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center space-y-3 z-10">
-                    <Upload className="w-12 h-12 text-slate-500 group-hover:text-cyan-400 transition-colors" />
-                    <h3 className="text-slate-300 font-medium text-sm">Drag & Drop Certificate Here</h3>
-                    <p className="text-slate-500 text-xs">Supports PDF</p>
+                    <Upload className="w-12 h-12 text-text-secondary transition-colors" />
+                    <h3 className="text-text-primary font-medium text-sm">Drag & Drop Document Here</h3>
+                    <p className="text-text-secondary text-xs">Supports PDF</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Verify Button */}
-            <Button
+            <GlassButton
+              variant="primary"
+              size="lg"
               onClick={handleStartVerification}
               disabled={isVerifying || !file}
-              className="w-full bg-gradient-to-r from-[#2b4c9e] to-[#4231a3] hover:from-[#355bd6] hover:to-[#5642d6] text-white font-bold h-14 rounded-xl shadow-[0_0_20px_rgba(43,76,158,0.2)] transition-all flex items-center justify-center gap-2 text-base"
+              className="w-full"
             >
               {isVerifying ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> Verifying...</>
               ) : (
                 <><CheckCircle className="w-5 h-5" /> Analyze & Verify</>
               )}
-            </Button>
-          </div>
+            </GlassButton>
+          </GlassCard>
 
           {/* RIGHT PANEL: LIVE ANALYSIS SKELETON */}
-          <div className="bg-[#0f121b] border border-[#1e2433] rounded-[1.5rem] shadow-2xl overflow-hidden h-full flex flex-col">
+          <GlassCard className="p-0 overflow-hidden flex flex-col">
             {/* Top Doc Area */}
-            <div className="p-6 border-b border-[#1e2433] flex items-center gap-4 bg-[#121621]">
-              <div className="w-10 h-10 rounded-lg bg-[#1e2433] flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5 text-slate-400" />
+            <div className="p-6 border-b border-glass-border flex items-center gap-4 bg-surface-1">
+              <div className="w-10 h-10 rounded-xl liquid-glass flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-text-secondary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-300 truncate">
+                <p className="text-sm font-medium text-text-primary truncate">
                   {isBatch ? `Processing ${batchFiles.length} files...` : (file ? file.name : "Waiting for upload...")}
                 </p>
               </div>
             </div>
 
             {/* Skeleton Grid Area */}
-            <div className="p-8 space-y-10 flex-1 bg-[#0f121b]">
-              {/* Row 1 */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest w-40">Platform</span>
-                {isVerifying ? (
-                  <div className="h-6 w-32 bg-[#1b233a] rounded-md animate-pulse ml-auto" />
-                ) : (
-                  <div className="h-6 w-32 bg-[#151923] rounded-md ml-auto" />
-                )}
-              </div>
+            <div className="p-8 space-y-10 flex-1 relative overflow-hidden">
+              {/* If verifying, show subtle scanline across skeletons */}
+              {isVerifying && <div className="scanline animate-scanline absolute inset-0 z-0 opacity-20 pointer-events-none" />}
+              
+              <div className="relative z-10 space-y-10">
+                {/* Row 1 */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest w-40">Platform</span>
+                  {isVerifying ? (
+                    <div className="h-6 w-32 rounded-lg liquid-glass animate-shimmer relative overflow-hidden" />
+                  ) : (
+                    <div className="h-6 w-32 bg-surface-1 rounded-lg ml-auto" />
+                  )}
+                </div>
 
-              {/* Row 2 */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest w-40">Candidate Name</span>
-                {isVerifying ? (
-                  <div className="h-6 w-56 bg-[#1b233a] rounded-md animate-pulse ml-auto" />
-                ) : (
-                  <div className="h-6 w-56 bg-[#151923] rounded-md ml-auto" />
-                )}
-              </div>
+                {/* Row 2 */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest w-40">Candidate Name</span>
+                  {isVerifying ? (
+                    <div className="h-6 w-56 rounded-lg liquid-glass animate-shimmer relative overflow-hidden" />
+                  ) : (
+                    <div className="h-6 w-56 bg-surface-1 rounded-lg ml-auto" />
+                  )}
+                </div>
 
-              {/* Row 3 */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest w-40">Course Title</span>
-                {isVerifying ? (
-                  <div className="h-6 w-64 bg-[#1b233a] rounded-md animate-pulse ml-auto" />
-                ) : (
-                  <div className="h-6 w-64 bg-[#151923] rounded-md ml-auto" />
-                )}
-              </div>
+                {/* Row 3 */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest w-40">Course Title</span>
+                  {isVerifying ? (
+                    <div className="h-6 w-64 rounded-lg liquid-glass animate-shimmer relative overflow-hidden" />
+                  ) : (
+                    <div className="h-6 w-64 bg-surface-1 rounded-lg ml-auto" />
+                  )}
+                </div>
 
-              {/* Row 4 */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest w-40">Completed Date</span>
-                {isVerifying ? (
-                  <div className="h-6 w-28 bg-[#1b233a] rounded-md animate-pulse ml-auto" />
-                ) : (
-                  <div className="h-6 w-28 bg-[#151923] rounded-md ml-auto" />
-                )}
+                {/* Row 4 */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest w-40">Completed Date</span>
+                  {isVerifying ? (
+                    <div className="h-6 w-28 rounded-lg liquid-glass animate-shimmer relative overflow-hidden" />
+                  ) : (
+                    <div className="h-6 w-28 bg-surface-1 rounded-lg ml-auto" />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          </GlassCard>
           
-        </div>
+        </motion.div>
       </div>
     </section>
   )

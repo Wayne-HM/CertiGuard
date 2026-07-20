@@ -232,8 +232,8 @@ export default function DashboardPage() {
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h1 className="text-3xl sm:text-4xl font-bold">
-                    <span className="bg-gradient-to-r from-primary via-emerald-400 to-accent bg-clip-text text-transparent italic">
+                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                    <span className="text-text-primary">
                       {user ? "Your Dashboard" : "Global Dashboard"}
                     </span>
                   </h1>
