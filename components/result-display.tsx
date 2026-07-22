@@ -112,7 +112,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       })
 
       const canvas = document.createElement("canvas")
-      const W = 2000, H = 1414 
+      const W = 1200, H = 1600 
       canvas.width = W
       canvas.height = H
       const ctx = canvas.getContext("2d")!
@@ -125,29 +125,50 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
 
 
       // =====================================================================
-      //  BACKGROUND - Match the website's dark background (#0f121b)
+      //  BACKGROUND
       // =====================================================================
-      ctx.fillStyle = "#0f121b" // Match root background
+      ctx.fillStyle = "#000000" // Match dark page background
       ctx.fillRect(0, 0, W, H)
 
-      // Ambient glows (match website spotlight/glows)
+      // Ambient glows
       const drawOrb = (cx: number, cy: number, r: number, color: string) => {
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r)
         g.addColorStop(0, color)
-        g.addColorStop(1, "rgba(15, 18, 27, 0)")
+        g.addColorStop(1, "rgba(0, 0, 0, 0)")
         ctx.fillStyle = g
         ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
       }
-      drawOrb(W / 2, -200, 1000, "rgba(34, 211, 238, 0.08)") // cyan top
-      drawOrb(W / 2, H + 200, 1000, "rgba(79, 70, 229, 0.08)") // indigo bottom
+      drawOrb(W / 2, 0, 800, "rgba(34, 211, 238, 0.08)")
+      drawOrb(W / 2, H, 800, "rgba(79, 70, 229, 0.08)")
 
       // =====================================================================
-      //  MAIN GLASS CARD (Mimicking ResultDisplay)
+      //  HEADER (CertiGuard Text)
       // =====================================================================
-      const cardX = 150
-      const cardY = 150
-      const cardW = W - 300
-      const cardH = H - 300
+      ctx.textAlign = "left"
+      ctx.fillStyle = "#ffffff"
+      ctx.font = "800 28px 'Inter', sans-serif"
+      ctx.fillText("CERTIGUARD", 80, 80)
+      
+      // Small shield next to text
+      ctx.beginPath()
+      ctx.moveTo(50, 60)
+      ctx.lineTo(60, 65)
+      ctx.lineTo(60, 75)
+      ctx.lineTo(50, 82)
+      ctx.lineTo(40, 75)
+      ctx.lineTo(40, 65)
+      ctx.closePath()
+      ctx.strokeStyle = "#ffffff"
+      ctx.lineWidth = 2
+      ctx.stroke()
+
+      // =====================================================================
+      //  MAIN VERTICAL CARD
+      // =====================================================================
+      const cardX = 80
+      const cardY = 120
+      const cardW = W - 160
+      const cardH = H - 200
       
       // Card background
       ctx.fillStyle = "#151923" // surface-1
@@ -155,8 +176,21 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       ctx.roundRect(cardX, cardY, cardW, cardH, 32)
       ctx.fill()
       
+      // Glass streak
+      ctx.save()
+      ctx.beginPath()
+      ctx.roundRect(cardX, cardY, cardW, cardH, 32)
+      ctx.clip()
+      const streakGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH)
+      streakGrad.addColorStop(0, "rgba(255,255,255,0.06)")
+      streakGrad.addColorStop(0.3, "rgba(255,255,255,0.01)")
+      streakGrad.addColorStop(0.5, "rgba(255,255,255,0)")
+      ctx.fillStyle = streakGrad
+      ctx.fill()
+      ctx.restore()
+
       // Card border
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)" // glass-border
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)"
       ctx.lineWidth = 2
       ctx.stroke()
       
@@ -165,7 +199,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       const statusColorRgba = result.isValid ? "rgba(34, 197, 94, 0.15)" : "rgba(239, 68, 68, 0.15)"
       
       ctx.shadowColor = statusColor
-      ctx.shadowBlur = 60
+      ctx.shadowBlur = 40
       ctx.shadowOffsetX = 0
       ctx.shadowOffsetY = 0
       ctx.strokeStyle = statusColorRgba
@@ -173,127 +207,163 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       ctx.shadowBlur = 0 // reset
 
       // =====================================================================
-      //  HEADER (Inside Card)
+      //  STATUS ICON & TEXT
       // =====================================================================
-      // Title
-      ctx.textAlign = "left"
-      ctx.fillStyle = "#ffffff"
-      ctx.font = "800 40px 'Inter', sans-serif"
-      ctx.fillText("CERTIGUARD", cardX + 60, cardY + 80)
-      
-      ctx.fillStyle = "#94a3b8"
-      ctx.font = "600 16px 'Inter', sans-serif"
-      ctx.letterSpacing = "4px"
-      ctx.fillText("VERIFICATION RESULT", cardX + 60, cardY + 110)
-      ctx.letterSpacing = "0px"
-      
-      // Top right status badge
-      ctx.fillStyle = result.isValid ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)"
+      const iconY = cardY + 140
       ctx.beginPath()
-      ctx.roundRect(cardX + cardW - 220, cardY + 50, 160, 50, 25)
-      ctx.fill()
-      ctx.strokeStyle = result.isValid ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"
+      ctx.arc(W / 2, iconY, 50, 0, Math.PI * 2)
+      ctx.strokeStyle = "#ffffff"
+      ctx.lineWidth = 8
       ctx.stroke()
       
-      ctx.textAlign = "center"
-      ctx.fillStyle = statusColor
-      ctx.font = "700 16px 'Inter', sans-serif"
-      ctx.fillText(result.isValid ? "AUTHENTIC" : "FAILED", cardX + cardW - 140, cardY + 82)
-
-      // Divider line
-      ctx.fillStyle = "rgba(255,255,255,0.05)"
-      ctx.fillRect(cardX, cardY + 160, cardW, 2)
-      
-      // =====================================================================
-      //  CANDIDATE INFO (Top Section)
-      // =====================================================================
-      ctx.textAlign = "center"
-      ctx.fillStyle = "#94a3b8"
-      ctx.font = "600 14px 'Inter', sans-serif"
-      ctx.letterSpacing = "4px"
-      ctx.fillText("CERTIFICATE ISSUED TO", W / 2, cardY + 240)
-      ctx.letterSpacing = "0px"
-
-      // Name (sans-serif, Inter, modern)
-      ctx.fillStyle = "#ffffff"
-      const nameText = result.name || "Verified Participant"
-      let nameFontSize = 72
-      ctx.font = `800 ${nameFontSize}px 'Inter', sans-serif`
-      while (ctx.measureText(nameText).width > cardW - 200 && nameFontSize > 40) {
-        nameFontSize -= 4
-        ctx.font = `800 ${nameFontSize}px 'Inter', sans-serif`
-      }
-      ctx.fillText(nameText, W / 2, cardY + 320)
-
-      // Course Title
-      ctx.fillStyle = "#e2e8f0"
-      ctx.font = "500 24px 'Inter', sans-serif"
-      const courseText = result.course || "Certificate Course"
-      ctx.fillText(courseText, W / 2, cardY + 380)
-
-      // =====================================================================
-      //  DETAILS GRID (Mimicking DetailRow from Website UI)
-      // =====================================================================
-      const finalDate = result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A")
-      const detailItems = [
-        { label: "PLATFORM", value: result.platform || "N/A" },
-        { label: "COMPLETED DATE", value: finalDate },
-        { label: "TOTAL HOURS", value: result.totalHours || "N/A" },
-        { label: "CERTIFICATE ID", value: result.certificateId || "N/A" }
-      ]
-
-      const startY = cardY + 480
-      const colWidth = (cardW - 120) / 2
-      
-      detailItems.forEach((item, i) => {
-        const isLeft = i % 2 === 0
-        const row = Math.floor(i / 2)
-        const x = cardX + 40 + (isLeft ? 0 : colWidth + 40)
-        const y = startY + (row * 120)
-
-        // DetailRow container (liquid-glass)
-        ctx.fillStyle = "#0f121b" 
+      if (result.isValid) {
+        // Checkmark
         ctx.beginPath()
-        ctx.roundRect(x, y, colWidth, 90, 16)
-        ctx.fill()
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.03)"
+        ctx.moveTo(W / 2 - 15, iconY)
+        ctx.lineTo(W / 2 - 5, iconY + 12)
+        ctx.lineTo(W / 2 + 20, iconY - 15)
+        ctx.strokeStyle = "#ffffff"
+        ctx.lineWidth = 8
+        ctx.lineCap = "round"
+        ctx.lineJoin = "round"
         ctx.stroke()
         
-        // Icon box skeleton
-        ctx.fillStyle = "#151923" // surface-1
+        // Sparkle
         ctx.beginPath()
-        ctx.roundRect(x + 20, y + 20, 50, 50, 12)
+        ctx.moveTo(W / 2 + 40, iconY - 40)
+        ctx.lineTo(W / 2 + 45, iconY - 55)
+        ctx.lineTo(W / 2 + 60, iconY - 60)
+        ctx.lineTo(W / 2 + 45, iconY - 65)
+        ctx.lineTo(W / 2 + 40, iconY - 80)
+        ctx.lineTo(W / 2 + 35, iconY - 65)
+        ctx.lineTo(W / 2 + 20, iconY - 60)
+        ctx.lineTo(W / 2 + 35, iconY - 55)
+        ctx.closePath()
+        ctx.fillStyle = "#ffffff"
+        ctx.fill()
+      } else {
+        // X mark
+        ctx.beginPath()
+        ctx.moveTo(W / 2 - 20, iconY - 20)
+        ctx.lineTo(W / 2 + 20, iconY + 20)
+        ctx.moveTo(W / 2 + 20, iconY - 20)
+        ctx.lineTo(W / 2 - 20, iconY + 20)
+        ctx.strokeStyle = "#ffffff"
+        ctx.lineWidth = 8
+        ctx.lineCap = "round"
+        ctx.stroke()
+      }
+      
+      // Text
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#ffffff"
+      ctx.font = "800 48px 'Inter', sans-serif"
+      ctx.fillText(result.isValid ? "Authentic Certificate" : "Verification Failed", W / 2, iconY + 120)
+      
+      ctx.fillStyle = "#94a3b8"
+      ctx.font = "500 22px 'Inter', sans-serif"
+      ctx.fillText(result.isValid ? "This certificate has been verified via our neural engine." : "We could not verify the authenticity of this document.", W / 2, iconY + 160)
+
+      // =====================================================================
+      //  DATA ROWS
+      // =====================================================================
+      ctx.textAlign = "left"
+      ctx.fillStyle = "#cbd5e1"
+      ctx.font = "700 14px 'Inter', sans-serif"
+      ctx.letterSpacing = "2px"
+      ctx.fillText("> EXTRACTED_DATA_NODES", cardX + 80, iconY + 260)
+      ctx.letterSpacing = "0px"
+      
+      const finalDate = result.issueDate && result.issueDate !== "N/A" ? result.issueDate : (result.date || "N/A")
+      const detailItems = [
+        { label: "NAME", value: result.name || "N/A", drawIcon: (cx: number, cy: number) => {
+          ctx.beginPath(); ctx.arc(cx, cy - 6, 8, 0, Math.PI*2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(cx, cy + 12, 12, Math.PI, 0); ctx.stroke();
+        }},
+        { label: "COURSE", value: result.course || "N/A", drawIcon: (cx: number, cy: number) => {
+          ctx.beginPath(); ctx.rect(cx - 10, cy - 8, 10, 16); ctx.rect(cx, cy - 8, 10, 16); ctx.stroke();
+        }},
+        { label: "PLATFORM", value: result.platform || "N/A", drawIcon: (cx: number, cy: number) => {
+          ctx.beginPath(); ctx.rect(cx - 8, cy - 10, 16, 20); ctx.stroke();
+        }},
+        { label: "ISSUE DATE", value: finalDate, drawIcon: (cx: number, cy: number) => {
+          ctx.beginPath(); ctx.rect(cx - 10, cy - 8, 20, 18); ctx.moveTo(cx - 10, cy - 2); ctx.lineTo(cx + 10, cy - 2); ctx.stroke();
+        }},
+        { label: "TOTAL HOURS", value: result.totalHours || "N/A", drawIcon: (cx: number, cy: number) => {
+          ctx.beginPath(); ctx.arc(cx, cy, 10, 0, Math.PI*2); ctx.moveTo(cx, cy - 4); ctx.lineTo(cx, cy); ctx.lineTo(cx + 3, cy + 3); ctx.stroke();
+        }},
+        { label: "CERTIFICATE ID", value: result.certificateId || "N/A", drawIcon: (cx: number, cy: number) => {
+          ctx.beginPath(); ctx.rect(cx - 12, cy - 6, 24, 12); ctx.arc(cx - 12, cy, 6, Math.PI/2, Math.PI*1.5); ctx.stroke();
+        }}
+      ]
+      
+      let currentY = iconY + 290
+      
+      detailItems.forEach(item => {
+        // Row background
+        ctx.fillStyle = "#0f121b" 
+        ctx.beginPath()
+        ctx.roundRect(cardX + 80, currentY, cardW - 160, 100, 16)
+        ctx.fill()
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.03)"
+        ctx.lineWidth = 1
+        ctx.stroke()
+        
+        // Icon box
+        ctx.fillStyle = "#151923"
+        ctx.beginPath()
+        ctx.roundRect(cardX + 100, currentY + 20, 60, 60, 12)
         ctx.fill()
         ctx.strokeStyle = "rgba(255, 255, 255, 0.05)"
         ctx.stroke()
         
+        // Draw icon
+        ctx.strokeStyle = "#94a3b8"
+        ctx.lineWidth = 2
+        item.drawIcon(cardX + 130, currentY + 50)
+        
         // Label
-        ctx.textAlign = "left"
-        ctx.fillStyle = "#64748b" // text-secondary
-        ctx.font = "600 12px 'Inter', sans-serif"
+        ctx.fillStyle = "#64748b"
+        ctx.font = "700 12px 'Inter', sans-serif"
         ctx.letterSpacing = "2px"
-        ctx.fillText(item.label, x + 90, y + 42)
+        ctx.fillText(item.label, cardX + 190, currentY + 44)
         ctx.letterSpacing = "0px"
         
         // Value
-        ctx.fillStyle = "#f8fafc" // text-primary
-        ctx.font = "600 20px 'Inter', sans-serif"
-        ctx.fillText(item.value, x + 90, y + 68)
+        ctx.fillStyle = "#f8fafc"
+        let valFont = 24
+        ctx.font = `600 ${valFont}px 'Inter', sans-serif`
+        while (ctx.measureText(item.value).width > cardW - 380 && valFont > 14) {
+          valFont -= 2
+          ctx.font = `600 ${valFont}px 'Inter', sans-serif`
+        }
+        ctx.fillText(item.value, cardX + 190, currentY + 76)
+        
+        currentY += 112
       })
 
       // =====================================================================
-      //  QR CODE & SOURCE LINK (Bottom of Card)
+      //  QR CODE & SOURCE LINK (Bottom)
       // =====================================================================
-      const qrY = cardY + 740
+      const qrY = currentY + 10
       const qrImg = new Image()
       qrImg.src = qrDataUrl
       await new Promise(resolve => qrImg.onload = resolve)
       
+      // Link Box container
+      ctx.fillStyle = "#0f121b"
+      ctx.beginPath()
+      ctx.roundRect(cardX + 80, qrY, cardW - 160, 120, 16)
+      ctx.fill()
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.03)"
+      ctx.stroke()
+      
+      // QR Box
       ctx.fillStyle = "#ffffff"
       ctx.beginPath()
-      ctx.roundRect(cardX + 40, qrY, 120, 120, 12)
+      ctx.roundRect(cardX + 100, qrY + 16, 88, 88, 8)
       ctx.fill()
-      ctx.drawImage(qrImg, cardX + 45, qrY + 5, 110, 110)
+      ctx.drawImage(qrImg, cardX + 104, qrY + 20, 80, 80)
       
       await Promise.all([
         loadFont("Inter", "https://fonts.gstatic.com/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfMZg.ttf", "400"),
@@ -307,46 +377,45 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
       ctx.fillStyle = "#64748b"
       ctx.font = "600 12px 'Inter', sans-serif"
       ctx.letterSpacing = "2px"
-      ctx.fillText("SOURCE LINK", cardX + 190, qrY + 40)
+      ctx.fillText("SOURCE LINK", cardX + 220, qrY + 54)
       ctx.letterSpacing = "0px"
       
       ctx.fillStyle = "#38bdf8"
-      ctx.font = "500 16px 'Inter', sans-serif"
+      ctx.font = "500 18px 'Inter', sans-serif"
       const displayUrl = result.verificationUrl || "certiguardofficial.vercel.app"
-      const truncatedUrl = displayUrl.length > 70 ? displayUrl.substring(0, 67) + "..." : displayUrl
-      ctx.fillText(truncatedUrl, cardX + 190, qrY + 70)
-
+      const truncatedUrl = displayUrl.length > 55 ? displayUrl.substring(0, 52) + "..." : displayUrl
+      ctx.fillText(truncatedUrl, cardX + 220, qrY + 86)
+      
       // Secured by AI Badge
-      ctx.fillStyle = "#0f121b"
+      ctx.fillStyle = "#151923"
       ctx.beginPath()
-      ctx.roundRect(cardX + cardW - 200, qrY + 35, 160, 50, 12)
+      ctx.roundRect(cardX + cardW - 220, qrY + 35, 120, 50, 12)
       ctx.fill()
       ctx.strokeStyle = "rgba(255, 255, 255, 0.05)"
       ctx.stroke()
       ctx.textAlign = "center"
       ctx.fillStyle = "#64748b"
-      ctx.font = "600 14px 'Inter', sans-serif"
-      ctx.fillText("SECURED BY AI", cardX + cardW - 120, qrY + 65)
+      ctx.font = "600 12px 'Inter', sans-serif"
+      ctx.fillText("SECURED BY AI", cardX + cardW - 160, qrY + 65)
 
-      // Footer Timestamp
+      // Footer
       ctx.fillStyle = "#334155"
       ctx.font = "400 12px 'Inter', sans-serif"
       const now = new Date()
-      ctx.fillText(`Automated Verification Record — ${now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} at ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`, W / 2, H - 40)
+      ctx.fillText(`Automated Verification Record — ${now.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} at ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`, W / 2, H - 30)
 
       // =====================================================================
       //  EXPORT TO PDF
       // =====================================================================
       const pdf = new jsPDF({
-        orientation: "landscape",
+        orientation: "portrait",
         unit: "mm",
         format: "a4"
       })
 
-
       const imgData = canvas.toDataURL("image/jpeg", 0.95)
-      pdf.addImage(imgData, "JPEG", 0, 0, 297, 210)
-      pdf.save(`CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`)
+      pdf.addImage(imgData, "JPEG", 0, 0, 210, 297)
+      pdf.save(`CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`)`)
 
     } catch (error) {
       console.error("Report generation failed:", error)
