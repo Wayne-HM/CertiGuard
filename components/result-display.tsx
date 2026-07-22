@@ -415,7 +415,7 @@ export function ResultDisplay({ result, onVerifyAnother }: ResultDisplayProps) {
 
       const imgData = canvas.toDataURL("image/jpeg", 0.95)
       pdf.addImage(imgData, "JPEG", 0, 0, 210, 297)
-      pdf.save(`CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`)`)
+      pdf.save(`CertiGuard_Report_${result.name?.replace(/\s+/g, "_") || "Verification"}.pdf`)
 
     } catch (error) {
       console.error("Report generation failed:", error)
